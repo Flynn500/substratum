@@ -3,7 +3,6 @@ use crate::array::shape::Shape;
 pub struct BroadcastIter {
     output_shape: Shape,
     current: Vec<usize>,
-    output_strides: Vec<usize>,
     shape_a: Shape,
     shape_b: Shape,
     strides_a: Vec<usize>,
@@ -20,7 +19,6 @@ impl BroadcastIter {
             return Some(BroadcastIter {
                 output_shape,
                 current: vec![],
-                output_strides: vec![],
                 shape_a: shape_a.clone(),
                 shape_b: shape_b.clone(),
                 strides_a: vec![],
@@ -29,14 +27,12 @@ impl BroadcastIter {
             });
         }
 
-        let output_strides = output_shape.strides_row_major();
         let strides_a = shape_a.strides_row_major();
         let strides_b = shape_b.strides_row_major();
 
         Some(BroadcastIter {
             output_shape,
             current: vec![0; ndim],
-            output_strides,
             shape_a: shape_a.clone(),
             shape_b: shape_b.clone(),
             strides_a,
