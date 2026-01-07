@@ -89,8 +89,15 @@ impl Generator {
         let mut data= Vec::with_capacity(shape.size());
 
         for _ in 0..(shape.size() / 2){
-            let rand1 = self.next_f64();
-            let rand2 = self.next_f64();
+            let mut rand1 = self.next_f64();
+            while rand1 == 0.0 {
+                rand1 = self.next_f64();
+            }
+            let mut rand2 = self.next_f64();
+            while rand2 == 0.0 {
+                rand2 = self.next_f64();
+            }
+
             let r = f64::sqrt(-2.0 * f64::ln(rand1));
             let z0 = r * f64::sin(2.0 * pi * rand2);
             let z1 = r * f64::cos(2.0 * pi * rand2);
@@ -169,7 +176,6 @@ impl Generator {
 }
 
 mod tests {
-    #[allow(dead_code)]
     use super::*;
 
     #[test]
@@ -281,8 +287,8 @@ mod tests {
         let sample_mean = mean(data);
         let sample_var = variance(data, sample_mean);
         
-        let expected_mean = shape_param * scale;  // 6.0
-        let expected_var = shape_param * scale * scale;  // 18.0
+        let expected_mean = shape_param * scale;  //6.0
+        let expected_var = shape_param * scale * scale;  //18.0
         
         assert!((sample_mean - expected_mean).abs() < 0.1, 
                 "Mean should be ~{}, got {}", expected_mean, sample_mean);

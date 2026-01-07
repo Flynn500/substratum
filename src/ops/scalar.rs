@@ -10,7 +10,7 @@ macro_rules! impl_scalar_ops {
             type Output = NdArray<$scalar>;
 
             fn add(self, rhs: $scalar) -> Self::Output {
-                scalar_op(&self, rhs, |a, b| a + b)
+                scalar_op_inplace(self, rhs, |a, b| a + b)
             }
         }
 
@@ -18,7 +18,7 @@ macro_rules! impl_scalar_ops {
             type Output = NdArray<$scalar>;
 
             fn add(self, rhs: $scalar) -> Self::Output {
-                scalar_op(self, rhs, |a, b| a + b)
+                scalar_op_copy(self, rhs, |a, b| a + b)
             }
         }
 
@@ -27,7 +27,7 @@ macro_rules! impl_scalar_ops {
             type Output = NdArray<$scalar>;
 
             fn add(self, rhs: NdArray<$scalar>) -> Self::Output {
-                scalar_op(&rhs, self, |a, b| a + b)
+                scalar_op_inplace(rhs, self, |a, b| a + b)
             }
         }
 
@@ -35,7 +35,7 @@ macro_rules! impl_scalar_ops {
             type Output = NdArray<$scalar>;
 
             fn add(self, rhs: &NdArray<$scalar>) -> Self::Output {
-                scalar_op(rhs, self, |a, b| a + b)
+                scalar_op_copy(rhs, self, |a, b| a + b)
             }
         }
 
@@ -44,7 +44,7 @@ macro_rules! impl_scalar_ops {
             type Output = NdArray<$scalar>;
 
             fn sub(self, rhs: $scalar) -> Self::Output {
-                scalar_op(&self, rhs, |a, b| a - b)
+                scalar_op_inplace(self, rhs, |a, b| a - b)
             }
         }
 
@@ -52,7 +52,7 @@ macro_rules! impl_scalar_ops {
             type Output = NdArray<$scalar>;
 
             fn sub(self, rhs: $scalar) -> Self::Output {
-                scalar_op(self, rhs, |a, b| a - b)
+                scalar_op_copy(self, rhs, |a, b| a - b)
             }
         }
 
@@ -61,7 +61,7 @@ macro_rules! impl_scalar_ops {
             type Output = NdArray<$scalar>;
 
             fn sub(self, rhs: NdArray<$scalar>) -> Self::Output {
-                scalar_op_rev(&rhs, self, |a, b| b - a)
+                scalar_op_inplace_rev(rhs, self, |a, b| a - b)
             }
         }
 
@@ -69,7 +69,7 @@ macro_rules! impl_scalar_ops {
             type Output = NdArray<$scalar>;
 
             fn sub(self, rhs: &NdArray<$scalar>) -> Self::Output {
-                scalar_op_rev(rhs, self, |a, b| b - a)
+                scalar_op_copy_rev(rhs, self, |a, b| a - b)
             }
         }
 
@@ -78,7 +78,7 @@ macro_rules! impl_scalar_ops {
             type Output = NdArray<$scalar>;
 
             fn mul(self, rhs: $scalar) -> Self::Output {
-                scalar_op(&self, rhs, |a, b| a * b)
+                scalar_op_inplace(self, rhs, |a, b| a * b)
             }
         }
 
@@ -86,7 +86,7 @@ macro_rules! impl_scalar_ops {
             type Output = NdArray<$scalar>;
 
             fn mul(self, rhs: $scalar) -> Self::Output {
-                scalar_op(self, rhs, |a, b| a * b)
+                scalar_op_copy(self, rhs, |a, b| a * b)
             }
         }
 
@@ -95,7 +95,7 @@ macro_rules! impl_scalar_ops {
             type Output = NdArray<$scalar>;
 
             fn mul(self, rhs: NdArray<$scalar>) -> Self::Output {
-                scalar_op(&rhs, self, |a, b| a * b)
+                scalar_op_inplace(rhs, self, |a, b| a * b)
             }
         }
 
@@ -103,7 +103,7 @@ macro_rules! impl_scalar_ops {
             type Output = NdArray<$scalar>;
 
             fn mul(self, rhs: &NdArray<$scalar>) -> Self::Output {
-                scalar_op(rhs, self, |a, b| a * b)
+                scalar_op_copy(rhs, self, |a, b| a * b)
             }
         }
 
@@ -112,7 +112,7 @@ macro_rules! impl_scalar_ops {
             type Output = NdArray<$scalar>;
 
             fn div(self, rhs: $scalar) -> Self::Output {
-                scalar_op(&self, rhs, |a, b| a / b)
+                scalar_op_inplace(self, rhs, |a, b| a / b)
             }
         }
 
@@ -120,7 +120,7 @@ macro_rules! impl_scalar_ops {
             type Output = NdArray<$scalar>;
 
             fn div(self, rhs: $scalar) -> Self::Output {
-                scalar_op(self, rhs, |a, b| a / b)
+                scalar_op_copy(self, rhs, |a, b| a / b)
             }
         }
 
@@ -129,7 +129,7 @@ macro_rules! impl_scalar_ops {
             type Output = NdArray<$scalar>;
 
             fn div(self, rhs: NdArray<$scalar>) -> Self::Output {
-                scalar_op_rev(&rhs, self, |a, b| b / a)
+                scalar_op_inplace_rev(rhs, self, |a, b| a / b)
             }
         }
 
@@ -137,13 +137,13 @@ macro_rules! impl_scalar_ops {
             type Output = NdArray<$scalar>;
 
             fn div(self, rhs: &NdArray<$scalar>) -> Self::Output {
-                scalar_op_rev(rhs, self, |a, b| b / a)
+                scalar_op_copy_rev(rhs, self, |a, b| a / b)
             }
         }
     };
 }
 
-fn scalar_op<T, F>(arr: &NdArray<T>, scalar: T, op: F) -> NdArray<T>
+fn scalar_op_copy<T, F>(arr: &NdArray<T>, scalar: T, op: F) -> NdArray<T>
 where
     T: Copy,
     F: Fn(T, T) -> T,
@@ -152,13 +152,35 @@ where
     NdArray::new(arr.shape().clone(), Storage::from_vec(result))
 }
 
-fn scalar_op_rev<T, F>(arr: &NdArray<T>, scalar: T, op: F) -> NdArray<T>
+fn scalar_op_inplace<T, F>(mut arr: NdArray<T>, scalar: T, op: F) -> NdArray<T>
 where
     T: Copy,
     F: Fn(T, T) -> T,
 {
-    let result: Vec<T> = arr.as_slice().iter().map(|&a| op(a, scalar)).collect();
+    for elem in arr.as_mut_slice() {
+        *elem = op(*elem, scalar);
+    }
+    arr
+}
+
+fn scalar_op_copy_rev<T, F>(arr: &NdArray<T>, scalar: T, op: F) -> NdArray<T>
+where
+    T: Copy,
+    F: Fn(T, T) -> T,
+{
+    let result: Vec<T> = arr.as_slice().iter().map(|&a| op(scalar, a)).collect();
     NdArray::new(arr.shape().clone(), Storage::from_vec(result))
+}
+
+fn scalar_op_inplace_rev<T, F>(mut arr: NdArray<T>, scalar: T, op: F) -> NdArray<T>
+where
+    T: Copy,
+    F: Fn(T, T) -> T,
+{
+    for elem in arr.as_mut_slice() {
+        *elem = op(scalar, *elem);
+    }
+    arr
 }
 
 impl_scalar_ops!(f32);

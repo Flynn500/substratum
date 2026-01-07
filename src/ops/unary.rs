@@ -1,18 +1,6 @@
 use std::ops::Neg;
 use crate::array::ndarray::NdArray;
-use crate::array::storage::Storage;
 
-
-impl<T: Copy> NdArray<T> {
-    pub fn map<F, U>(&self, f: F) -> NdArray<U>
-    where
-        F: Fn(T) -> U,
-        U: Copy,
-    {
-        let result_data: Vec<U> = self.as_slice().iter().map(|&x| f(x)).collect();
-        NdArray::new(self.shape().clone(), Storage::from_vec(result_data))
-    }
-}
 
 impl<T> Neg for NdArray<T>
 where
@@ -20,8 +8,11 @@ where
 {
     type Output = NdArray<T>;
 
-    fn neg(self) -> Self::Output {
-        self.map(|x| -x)
+    fn neg(mut self) -> Self::Output {
+        for elem in self.as_mut_slice() {
+            *elem = -(*elem);
+        }
+        self
     }
 }
 
@@ -72,6 +63,17 @@ impl Float for f64 {
     fn powf(self, n: Self) -> Self { self.powf(n) }
 }
 
+fn map_inplace<T, F>(mut arr: NdArray<T>, f: F) -> NdArray<T>
+where
+    T: Copy,
+    F: Fn(T) -> T,
+{
+    for elem in arr.as_mut_slice() {
+        *elem = f(*elem);
+    }
+    arr
+}
+
 impl<T: Float> NdArray<T> {
     pub fn sin(&self) -> Self { self.map(|x| x.sin()) }
     pub fn cos(&self) -> Self { self.map(|x| x.cos()) }
@@ -82,6 +84,16 @@ impl<T: Float> NdArray<T> {
     pub fn abs(&self) -> Self { self.map(|x| x.abs()) }
     pub fn powi(&self, n: i32) -> Self { self.map(|x| x.powi(n)) }
     pub fn powf(&self, n: T) -> Self { self.map(|x| x.powf(n)) }
+
+    pub fn into_sin(self) -> Self { map_inplace(self, |x| x.sin()) }
+    pub fn into_cos(self) -> Self { map_inplace(self, |x| x.cos()) }
+    pub fn into_tan(self) -> Self { map_inplace(self, |x| x.tan()) }
+    pub fn into_sqrt(self) -> Self { map_inplace(self, |x| x.sqrt()) }
+    pub fn into_exp(self) -> Self { map_inplace(self, |x| x.exp()) }
+    pub fn into_ln(self) -> Self { map_inplace(self, |x| x.ln()) }
+    pub fn into_abs(self) -> Self { map_inplace(self, |x| x.abs()) }
+    pub fn into_powi(self, n: i32) -> Self { map_inplace(self, |x| x.powi(n)) }
+    pub fn into_powf(self, n: T) -> Self { map_inplace(self, |x| x.powf(n)) }
 }
 
 #[cfg(test)]

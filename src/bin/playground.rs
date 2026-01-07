@@ -114,4 +114,14 @@ fn main() {
     println!("rng1 output: {:?}", arr1.as_slice());
     println!("rng2 output: {:?}", arr2.as_slice());
     println!("identical: {}", arr1.as_slice() == arr2.as_slice());
+
+    println!("\n=== Random Distributions ===");
+
+    let mut rng = Generator::new();
+    
+    let normal = rng.standard_normal(Shape::d2(2, 3));
+    println!("standard_normal (2x3): {:?}", normal.as_slice());
+    
+    let gamma = rng.gamma(2.0, 3.0, Shape::d2(2, 3));
+    println!("gamma (2x3): {:?}", gamma.as_slice());
 }

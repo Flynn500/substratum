@@ -100,6 +100,17 @@ impl<T: Default + Clone> NdArray<T> {
     }
 }
 
+impl<T: Copy> NdArray<T> {
+    pub fn map<F, U>(&self, f: F) -> NdArray<U>
+    where
+        F: Fn(T) -> U,
+        U: Copy,
+    {
+        let result_data: Vec<U> = self.as_slice().iter().map(|&x| f(x)).collect();
+        NdArray::new(self.shape().clone(), Storage::from_vec(result_data))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
