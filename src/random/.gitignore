@@ -1,4 +1,3 @@
-/target/
 **/*.rs.bk
 *.pdb
 .idea/
@@ -7,3 +6,12 @@
 *.swo
 *~
 .DS_Store
+target/
+*.so
+*.pyd
+__pycache__/
+*.pyc
+.pytest_cache/
+*.egg-info/
+dist/
+build/

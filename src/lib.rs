@@ -7,8 +7,16 @@ pub use random::Generator;
 
 use pyo3::prelude::*;
 use pyo3::exceptions::PyValueError;
+use pyo3::types::PySlice;
+
+#[derive(FromPyObject)]
+enum ArrayOrScalar {
+    Array(PyArray),
+    Scalar(f64),
+}
 
 #[pyclass(name = "Array")]
+#[derive(Clone)]
 pub struct PyArray {
     inner: NdArray<f64>,
 }
@@ -49,12 +57,13 @@ impl PyArray {
     }
 
     #[pyo3(signature = (k=None))]
-    fn diagonal(&self, k: Option<isize>) -> PyResult<Vec<f64>> {
+    fn diagonal(&self, k: Option<isize>) -> PyResult<PyArray> {
         if self.inner.ndim() != 2 {
             return Err(PyValueError::new_err("diagonal requires a 2D array"));
         }
-        let diag = self.inner.diagonal(k.unwrap_or(0));
-        Ok(diag.as_slice().to_vec())
+        Ok(PyArray {
+            inner: self.inner.diagonal(k.unwrap_or(0)),
+        })
     }
 
     #[new]
@@ -106,20 +115,48 @@ impl PyArray {
         PyArray { inner: self.inner.clip(min, max) }
     }
 
-    fn __add__(&self, other: &PyArray) -> Self {
-        PyArray { inner: &self.inner + &other.inner }
+    fn __add__(&self, other: ArrayOrScalar) -> Self {
+        match other {
+            ArrayOrScalar::Array(arr) => PyArray { inner: &self.inner + &arr.inner },
+            ArrayOrScalar::Scalar(s) => PyArray { inner: &self.inner + s },
+        }
     }
 
-    fn __sub__(&self, other: &PyArray) -> Self {
-        PyArray { inner: &self.inner - &other.inner }
+    fn __radd__(&self, other: f64) -> Self {
+        PyArray { inner: other + &self.inner }
     }
 
-    fn __mul__(&self, other: &PyArray) -> Self {
-        PyArray { inner: &self.inner * &other.inner }
+    fn __sub__(&self, other: ArrayOrScalar) -> Self {
+        match other {
+            ArrayOrScalar::Array(arr) => PyArray { inner: &self.inner - &arr.inner },
+            ArrayOrScalar::Scalar(s) => PyArray { inner: &self.inner - s },
+        }
     }
 
-    fn __truediv__(&self, other: &PyArray) -> Self {
-        PyArray { inner: &self.inner / &other.inner }
+    fn __rsub__(&self, other: f64) -> Self {
+        PyArray { inner: other - &self.inner }
+    }
+
+    fn __mul__(&self, other: ArrayOrScalar) -> Self {
+        match other {
+            ArrayOrScalar::Array(arr) => PyArray { inner: &self.inner * &arr.inner },
+            ArrayOrScalar::Scalar(s) => PyArray { inner: &self.inner * s },
+        }
+    }
+
+    fn __rmul__(&self, other: f64) -> Self {
+        PyArray { inner: other * &self.inner }
+    }
+
+    fn __truediv__(&self, other: ArrayOrScalar) -> Self {
+        match other {
+            ArrayOrScalar::Array(arr) => PyArray { inner: &self.inner / &arr.inner },
+            ArrayOrScalar::Scalar(s) => PyArray { inner: &self.inner / s },
+        }
+    }
+
+    fn __rtruediv__(&self, other: f64) -> Self {
+        PyArray { inner: other / &self.inner }
     }
 
     fn __neg__(&self) -> Self {
@@ -130,6 +167,68 @@ impl PyArray {
         format!("Array(shape={:?}, data={:?})",
             self.inner.shape().dims(),
             self.inner.as_slice())
+    }
+
+    fn __len__(&self) -> usize {
+        self.inner.as_slice().len()
+    }
+
+    fn __getitem__(&self, py: Python<'_>, key: &Bound<'_, PyAny>) -> PyResult<PyObject> {
+        let data = self.inner.as_slice();
+        let len = data.len() as isize;
+
+        if let Ok(idx) = key.extract::<isize>() {
+            let idx = if idx < 0 { len + idx } else { idx };
+            if idx < 0 || idx >= len {
+                return Err(PyValueError::new_err("index out of range"));
+            }
+            Ok(data[idx as usize].into_pyobject(py)?.into_any().unbind())
+        } else if let Ok(slice) = key.downcast::<PySlice>() {
+            let indices = slice.indices(len)?;
+            let mut result = Vec::new();
+            let mut i = indices.start;
+            while (indices.step > 0 && i < indices.stop) || (indices.step < 0 && i > indices.stop) {
+                if i >= 0 && i < len {
+                    result.push(data[i as usize]);
+                }
+                i += indices.step;
+            }
+            Ok(PyArray {
+                inner: NdArray::from_vec(Shape::d1(result.len()), result),
+            }.into_pyobject(py)?.into_any().unbind())
+        } else {
+            Err(PyValueError::new_err("indices must be integers or slices"))
+        }
+    }
+
+    fn __iter__(slf: PyRef<'_, Self>) -> PyArrayIter {
+        PyArrayIter {
+            data: slf.inner.as_slice().to_vec(),
+            index: 0,
+        }
+    }
+}
+
+#[pyclass]
+pub struct PyArrayIter {
+    data: Vec<f64>,
+    index: usize,
+}
+
+#[pymethods]
+impl PyArrayIter {
+    fn __iter__(slf: PyRef<'_, Self>) -> PyRef<'_, Self> {
+        slf
+    }
+
+    fn __next__(mut slf: PyRefMut<'_, Self>) -> Option<f64> {
+        if slf.index < slf.data.len() {
+            let val = slf.data[slf.index];
+            slf.index += 1;
+            Some(val)
+        } else {
+            None
+        }
     }
 }
 
@@ -168,9 +267,12 @@ impl PyGenerator {
         }
     }
 
-    fn randint(&mut self, low: i64, high: i64, shape: Vec<usize>) -> Vec<i64> {
-        let arr = self.inner.randint(low, high, Shape::new(shape));
-        arr.as_slice().to_vec()
+    fn randint(&mut self, low: i64, high: i64, shape: Vec<usize>) -> PyArray {
+        let arr = self.inner.randint(low, high, Shape::new(shape.clone()));
+        let data: Vec<f64> = arr.as_slice().iter().map(|&x| x as f64).collect();
+        PyArray {
+            inner: NdArray::from_vec(Shape::new(shape), data),
+        }
     }
 }
 
