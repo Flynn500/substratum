@@ -22,6 +22,41 @@ impl PyArray {
         }
     }
 
+    #[staticmethod]
+    #[pyo3(signature = (n, m=None, k=None))]
+    fn eye(n: usize, m: Option<usize>, k: Option<isize>) -> Self {
+        PyArray {
+            inner: NdArray::eye(n, m, k.unwrap_or(0)),
+        }
+    }
+
+    #[staticmethod]
+    #[pyo3(signature = (v, k=None))]
+    fn diag(v: Vec<f64>, k: Option<isize>) -> Self {
+        let v_arr = NdArray::from_vec(Shape::d1(v.len()), v);
+        PyArray {
+            inner: NdArray::from_diag(&v_arr, k.unwrap_or(0)),
+        }
+    }
+
+    #[staticmethod]
+    fn outer(a: Vec<f64>, b: Vec<f64>) -> Self {
+        let a_arr = NdArray::from_vec(Shape::d1(a.len()), a);
+        let b_arr = NdArray::from_vec(Shape::d1(b.len()), b);
+        PyArray {
+            inner: NdArray::outer(&a_arr, &b_arr),
+        }
+    }
+
+    #[pyo3(signature = (k=None))]
+    fn diagonal(&self, k: Option<isize>) -> PyResult<Vec<f64>> {
+        if self.inner.ndim() != 2 {
+            return Err(PyValueError::new_err("diagonal requires a 2D array"));
+        }
+        let diag = self.inner.diagonal(k.unwrap_or(0));
+        Ok(diag.as_slice().to_vec())
+    }
+
     #[new]
     fn new(shape: Vec<usize>, data: Vec<f64>) -> PyResult<Self> {
         let expected_size: usize = shape.iter().product();
@@ -152,5 +187,22 @@ mod substratum {
     #[pyfunction]
     fn zeros(shape: Vec<usize>) -> PyArray {
         PyArray::zeros(shape)
+    }
+
+    #[pyfunction]
+    #[pyo3(signature = (n, m=None, k=None))]
+    fn eye(n: usize, m: Option<usize>, k: Option<isize>) -> PyArray {
+        PyArray::eye(n, m, k)
+    }
+
+    #[pyfunction]
+    #[pyo3(signature = (v, k=None))]
+    fn diag(v: Vec<f64>, k: Option<isize>) -> PyArray {
+        PyArray::diag(v, k)
+    }
+
+    #[pyfunction]
+    fn outer(a: Vec<f64>, b: Vec<f64>) -> PyArray {
+        PyArray::outer(a, b)
     }
 }

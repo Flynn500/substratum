@@ -77,7 +77,7 @@ mod tests {
     #[test]
     fn spawn_resets_child_count() {
         let mut seq = SeedSequence::new(12345);
-        let mut child = seq.spawn();
+        let child = seq.spawn();
 
         assert_eq!(child.spawn_count, 0);
     }
