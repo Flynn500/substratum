@@ -7,7 +7,7 @@ pub use random::Generator;
 
 use pyo3::prelude::*;
 use pyo3::exceptions::PyValueError;
-use pyo3::types::PySlice;
+use pyo3::types::{PySlice, PyTuple};
 
 #[derive(FromPyObject)]
 enum ArrayOrScalar {
@@ -226,31 +226,160 @@ impl PyArray {
     }
 
     fn __getitem__(&self, py: Python<'_>, key: &Bound<'_, PyAny>) -> PyResult<PyObject> {
-        let data = self.inner.as_slice();
-        let len = data.len() as isize;
+        let dims = self.inner.shape().dims();
+        let ndim = dims.len();
+
+        if let Ok(tuple) = key.downcast::<PyTuple>() {
+            let tuple_len = tuple.len();
+
+            if tuple_len > ndim {
+                return Err(PyValueError::new_err(format!(
+                    "too many indices for array: array is {}-dimensional, but {} were indexed",
+                    ndim, tuple_len
+                )));
+            }
+
+            let mut indices: Vec<usize> = Vec::with_capacity(tuple_len);
+            for i in 0..tuple_len {
+                let item = tuple.get_item(i)?;
+                let idx = item.extract::<isize>()?;
+                let dim_size = dims[i] as isize;
+                let normalized = if idx < 0 { dim_size + idx } else { idx };
+                if normalized < 0 || normalized >= dim_size {
+                    return Err(PyValueError::new_err(format!(
+                        "index {} is out of bounds for axis {} with size {}",
+                        idx, i, dims[i]
+                    )));
+                }
+                indices.push(normalized as usize);
+            }
+
+            if tuple_len == ndim {
+                let value = self.inner.get(&indices)
+                    .ok_or_else(|| PyValueError::new_err("index out of bounds"))?;
+                return Ok((*value).into_pyobject(py)?.into_any().unbind());
+            }
+
+            let result_dims: Vec<usize> = dims[tuple_len..].to_vec();
+            let result_size: usize = result_dims.iter().product();
+
+            let mut start_offset = 0;
+            let strides = self.inner.strides();
+            for (i, &idx) in indices.iter().enumerate() {
+                start_offset += idx * strides[i];
+            }
+
+            let data = self.inner.as_slice();
+            let result_data: Vec<f64> = data[start_offset..start_offset + result_size].to_vec();
+
+            return Ok(PyArray {
+                inner: NdArray::from_vec(Shape::new(result_dims), result_data),
+            }.into_pyobject(py)?.into_any().unbind());
+        }
 
         if let Ok(idx) = key.extract::<isize>() {
-            let idx = if idx < 0 { len + idx } else { idx };
-            if idx < 0 || idx >= len {
-                return Err(PyValueError::new_err("index out of range"));
+            let dim0 = dims[0] as isize;
+            let normalized = if idx < 0 { dim0 + idx } else { idx };
+            if normalized < 0 || normalized >= dim0 {
+                return Err(PyValueError::new_err(format!(
+                    "index {} is out of bounds for axis 0 with size {}",
+                    idx, dims[0]
+                )));
             }
-            Ok(data[idx as usize].into_pyobject(py)?.into_any().unbind())
-        } else if let Ok(slice) = key.downcast::<PySlice>() {
+
+            if ndim == 1 {
+                let data = self.inner.as_slice();
+                return Ok(data[normalized as usize].into_pyobject(py)?.into_any().unbind());
+            }
+
+            let result_dims: Vec<usize> = dims[1..].to_vec();
+            let result_size: usize = result_dims.iter().product();
+            let start_offset = normalized as usize * self.inner.strides()[0];
+            let data = self.inner.as_slice();
+            let result_data: Vec<f64> = data[start_offset..start_offset + result_size].to_vec();
+
+            return Ok(PyArray {
+                inner: NdArray::from_vec(Shape::new(result_dims), result_data),
+            }.into_pyobject(py)?.into_any().unbind());
+        }
+
+        if let Ok(slice) = key.downcast::<PySlice>() {
+            let len = self.inner.as_slice().len() as isize;
             let indices = slice.indices(len)?;
             let mut result = Vec::new();
             let mut i = indices.start;
+            let data = self.inner.as_slice();
             while (indices.step > 0 && i < indices.stop) || (indices.step < 0 && i > indices.stop) {
                 if i >= 0 && i < len {
                     result.push(data[i as usize]);
                 }
                 i += indices.step;
             }
-            Ok(PyArray {
+            return Ok(PyArray {
                 inner: NdArray::from_vec(Shape::d1(result.len()), result),
-            }.into_pyobject(py)?.into_any().unbind())
-        } else {
-            Err(PyValueError::new_err("indices must be integers or slices"))
+            }.into_pyobject(py)?.into_any().unbind());
         }
+
+        Err(PyValueError::new_err("indices must be integers, slices, or tuples of integers"))
+    }
+
+    fn __setitem__(&mut self, key: &Bound<'_, PyAny>, value: f64) -> PyResult<()> {
+        let dims = self.inner.shape().dims().to_vec();
+        let ndim = dims.len();
+
+        if let Ok(tuple) = key.downcast::<PyTuple>() {
+            let tuple_len = tuple.len();
+
+            if tuple_len != ndim {
+                return Err(PyValueError::new_err(format!(
+                    "cannot set item: expected {} indices, got {}",
+                    ndim, tuple_len
+                )));
+            }
+
+            let mut indices: Vec<usize> = Vec::with_capacity(tuple_len);
+            for i in 0..tuple_len {
+                let item = tuple.get_item(i)?;
+                let idx = item.extract::<isize>()?;
+                let dim_size = dims[i] as isize;
+                let normalized = if idx < 0 { dim_size + idx } else { idx };
+                if normalized < 0 || normalized >= dim_size {
+                    return Err(PyValueError::new_err(format!(
+                        "index {} is out of bounds for axis {} with size {}",
+                        idx, i, dims[i]
+                    )));
+                }
+                indices.push(normalized as usize);
+            }
+
+            let elem = self.inner.get_mut(&indices)
+                .ok_or_else(|| PyValueError::new_err("index out of bounds"))?;
+            *elem = value;
+            return Ok(());
+        }
+
+        if let Ok(idx) = key.extract::<isize>() {
+            if ndim != 1 {
+                return Err(PyValueError::new_err(
+                    "single index assignment only supported for 1D arrays; use tuple indexing for nD arrays"
+                ));
+            }
+
+            let dim0 = dims[0] as isize;
+            let normalized = if idx < 0 { dim0 + idx } else { idx };
+            if normalized < 0 || normalized >= dim0 {
+                return Err(PyValueError::new_err(format!(
+                    "index {} is out of bounds for axis 0 with size {}",
+                    idx, dims[0]
+                )));
+            }
+
+            let data = self.inner.as_mut_slice();
+            data[normalized as usize] = value;
+            return Ok(());
+        }
+
+        Err(PyValueError::new_err("indices must be integers or tuples of integers for assignment"))
     }
 
     fn __iter__(slf: PyRef<'_, Self>) -> PyArrayIter {

@@ -1,6 +1,6 @@
 """A Rust-based ndarray library. """
 
-from typing import Iterator, List, Sequence, overload
+from typing import Iterator, List, Sequence, Tuple, overload
 
 class Array:
     """N-dimensional array of float64 values."""
@@ -137,9 +137,23 @@ class Array:
 
     def __len__(self) -> int: ...
     @overload
-    def __getitem__(self, index: int) -> float: ...
+    def __getitem__(self, index: int) -> float | Array:
+        """Get element (1D) or row (2D+) at index."""
+        ...
     @overload
     def __getitem__(self, index: slice) -> Array: ...
+    @overload
+    def __getitem__(self, index: Tuple[int, ...]) -> float | Array:
+        """Get element at (i, j, ...) or sub-array if fewer indices than dimensions."""
+        ...
+    @overload
+    def __setitem__(self, index: int, value: float) -> None:
+        """Set element at index (1D arrays only)."""
+        ...
+    @overload
+    def __setitem__(self, index: Tuple[int, ...], value: float) -> None:
+        """Set element at (i, j, ...)."""
+        ...
     def __iter__(self) -> Iterator[float]: ...
 
 
