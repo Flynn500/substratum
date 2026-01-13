@@ -166,11 +166,26 @@ impl Generator {
     pub fn gamma(&mut self, shape_param: f64, scale: f64, shape: Shape) -> NdArray<f64> {
         assert!(shape_param > 0.0, "shape parameter must be positive");
         assert!(scale > 0.0, "scale must be positive");
-        
+
         let data: Vec<f64> = (0..shape.size())
             .map(|_| self.sample_gamma_single(shape_param) * scale)
             .collect();
-        
+
+        NdArray::from_vec(shape, data)
+    }
+
+    pub fn beta(&mut self, alpha: f64, beta_param: f64, shape: Shape) -> NdArray<f64> {
+        assert!(alpha > 0.0, "alpha must be positive");
+        assert!(beta_param > 0.0, "beta must be positive");
+
+        let data: Vec<f64> = (0..shape.size())
+            .map(|_| {
+                let x = self.sample_gamma_single(alpha);
+                let y = self.sample_gamma_single(beta_param);
+                x / (x + y)
+            })
+            .collect();
+
         NdArray::from_vec(shape, data)
     }
 }
@@ -303,11 +318,45 @@ mod tests {
         let scale = 1.0;
         let samples = rng.gamma(shape_param, scale, Shape::new(vec![50000]));
         let data = samples.as_slice();
-        
+
         let sample_mean = mean(data);
         let expected_mean = shape_param * scale;
-        
+
         assert!((sample_mean - expected_mean).abs() < 0.02,
                 "Mean should be ~{}, got {}", expected_mean, sample_mean);
+    }
+
+    #[test]
+    fn test_beta_moments() {
+        let mut rng = Generator::new();
+        let alpha = 2.0;
+        let beta_param = 5.0;
+        let samples = rng.beta(alpha, beta_param, Shape::new(vec![100000]));
+        let data = samples.as_slice();
+
+        let sample_mean = mean(data);
+        let sample_var = variance(data, sample_mean);
+
+        // Beta distribution: mean = alpha / (alpha + beta)
+        // variance = alpha * beta / ((alpha + beta)^2 * (alpha + beta + 1))
+        let expected_mean = alpha / (alpha + beta_param);
+        let sum = alpha + beta_param;
+        let expected_var = (alpha * beta_param) / (sum * sum * (sum + 1.0));
+
+        assert!((sample_mean - expected_mean).abs() < 0.01,
+                "Mean should be ~{}, got {}", expected_mean, sample_mean);
+        assert!((sample_var - expected_var).abs() < 0.01,
+                "Variance should be ~{}, got {}", expected_var, sample_var);
+    }
+
+    #[test]
+    fn test_beta_in_range() {
+        let mut rng = Generator::new();
+        let samples = rng.beta(0.5, 0.5, Shape::new(vec![10000]));
+        let data = samples.as_slice();
+
+        for &val in data {
+            assert!(val > 0.0 && val < 1.0, "Beta sample {} out of (0, 1)", val);
+        }
     }
 }

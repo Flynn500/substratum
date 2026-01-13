@@ -187,6 +187,30 @@ class Generator:
     def standard_normal(self, shape: Sequence[int]) -> Array: ...
     def normal(self, mu: float, sigma: float, shape: Sequence[int]) -> Array: ...
     def randint(self, low: int, high: int, shape: Sequence[int]) -> Array: ...
+    def gamma(self, shape_param: float, scale: float, shape: Sequence[int]) -> Array:
+        """Generate gamma-distributed random samples.
+
+        Args:
+            shape_param: Shape parameter (k or alpha), must be positive.
+            scale: Scale parameter (theta), must be positive.
+            shape: Output array shape.
+
+        Returns:
+            Array of gamma-distributed samples.
+        """
+        ...
+    def beta(self, alpha: float, beta: float, shape: Sequence[int]) -> Array:
+        """Generate beta-distributed random samples.
+
+        Args:
+            alpha: First shape parameter, must be positive.
+            beta: Second shape parameter, must be positive.
+            shape: Output array shape.
+
+        Returns:
+            Array of beta-distributed samples in the interval (0, 1).
+        """
+        ...
 
 
 def zeros(shape: Sequence[int]) -> Array:

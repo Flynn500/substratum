@@ -326,6 +326,18 @@ impl PyGenerator {
             inner: NdArray::from_vec(Shape::new(shape), data),
         }
     }
+
+    fn gamma(&mut self, shape_param: f64, scale: f64, shape: Vec<usize>) -> PyArray {
+        PyArray {
+            inner: self.inner.gamma(shape_param, scale, Shape::new(shape)),
+        }
+    }
+
+    fn beta(&mut self, alpha: f64, beta_param: f64, shape: Vec<usize>) -> PyArray {
+        PyArray {
+            inner: self.inner.beta(alpha, beta_param, Shape::new(shape)),
+        }
+    }
 }
 
 #[pymodule]
