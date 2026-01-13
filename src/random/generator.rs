@@ -127,7 +127,7 @@ impl Generator {
 
     pub fn lognormal(&mut self, mu: f64, sigma: f64, shape: Shape) -> NdArray<f64> {
         let z = self.normal(mu, sigma, shape);
-        z.sqrt()
+        z.exp()
     }
 
     fn sample_gamma_single(&mut self, alpha: f64) -> f64 {

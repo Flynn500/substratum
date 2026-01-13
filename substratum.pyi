@@ -15,6 +15,26 @@ class Array:
         ...
 
     @staticmethod
+    def ones(shape: Sequence[int]) -> Array:
+        """Create array filled with ones."""
+        ...
+
+    @staticmethod
+    def full(shape: Sequence[int], fill_value: float) -> Array:
+        """Create array filled with a specified value."""
+        ...
+
+    @staticmethod
+    def asarray(data: Sequence[float], shape: Sequence[int] | None = None) -> Array:
+        """Create array from a flat list of data.
+
+        Args:
+            data: Flat list of float values.
+            shape: Optional shape. If None, creates a 1D array.
+        """
+        ...
+
+    @staticmethod
     def eye(n: int, m: int | None = None, k: int | None = None) -> Array:
         """Create a 2D identity matrix with ones on the k-th diagonal."""
         ...
@@ -131,9 +151,50 @@ class Array:
 
     def sin(self) -> Array: ...
     def cos(self) -> Array: ...
+    def tan(self) -> Array: ...
+    def arcsin(self) -> Array: ...
+    def arccos(self) -> Array: ...
+    def arctan(self) -> Array: ...
     def exp(self) -> Array: ...
     def sqrt(self) -> Array: ...
+    def log(self) -> Array:
+        """Natural logarithm, element-wise."""
+        ...
+    def abs(self) -> Array:
+        """Absolute value, element-wise."""
+        ...
+    def sign(self) -> Array:
+        """Returns -1, 0, or 1 for each element based on sign."""
+        ...
     def clip(self, min: float, max: float) -> Array: ...
+
+    # Statistical reductions
+    def sum(self) -> float:
+        """Sum of all elements."""
+        ...
+    def mean(self) -> float:
+        """Mean of all elements."""
+        ...
+    def var(self) -> float:
+        """Variance of all elements (population variance)."""
+        ...
+    def std(self) -> float:
+        """Standard deviation of all elements."""
+        ...
+    def median(self) -> float:
+        """Median of all elements."""
+        ...
+    def quantile(self, q: float) -> float:
+        """q-th quantile of all elements (q in [0, 1])."""
+        ...
+
+    # Logical reductions
+    def any(self) -> bool:
+        """True if any element is non-zero."""
+        ...
+    def all(self) -> bool:
+        """True if all elements are non-zero."""
+        ...
 
     def __len__(self) -> int: ...
     @overload
@@ -226,6 +287,19 @@ class Generator:
         """
         ...
 
+    def lognormal(self, mu: float, sigma: float, shape: Sequence[int]) -> Array:
+        """Generate log-normal distributed random samples.
+
+        Args:
+            mu: Mean of the underlying normal distribution.
+            sigma: Standard deviation of the underlying normal distribution.
+            shape: Output array shape.
+
+        Returns:
+            Array of log-normal distributed samples.
+        """
+        ...
+
 
 def zeros(shape: Sequence[int]) -> Array:
     """Create array filled with zeros."""
@@ -241,4 +315,21 @@ def diag(v: Sequence[float], k: int | None = None) -> Array:
 
 def outer(a: Sequence[float], b: Sequence[float]) -> Array:
     """Compute the outer product of two 1D arrays."""
+    ...
+
+def ones(shape: Sequence[int]) -> Array:
+    """Create array filled with ones."""
+    ...
+
+def full(shape: Sequence[int], fill_value: float) -> Array:
+    """Create array filled with a specified value."""
+    ...
+
+def asarray(data: Sequence[float], shape: Sequence[int] | None = None) -> Array:
+    """Create array from a flat list of data.
+
+    Args:
+        data: Flat list of float values.
+        shape: Optional shape. If None, creates a 1D array.
+    """
     ...

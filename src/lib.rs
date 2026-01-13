@@ -31,6 +31,41 @@ impl PyArray {
     }
 
     #[staticmethod]
+    fn ones(shape: Vec<usize>) -> Self {
+        PyArray {
+            inner: NdArray::ones(Shape::new(shape)),
+        }
+    }
+
+    #[staticmethod]
+    fn full(shape: Vec<usize>, fill_value: f64) -> Self {
+        PyArray {
+            inner: NdArray::full(Shape::new(shape), fill_value),
+        }
+    }
+
+    #[staticmethod]
+    #[pyo3(signature = (data, shape=None))]
+    fn asarray(data: Vec<f64>, shape: Option<Vec<usize>>) -> PyResult<Self> {
+        let shape = if let Some(s) = shape {
+            let expected_size: usize = s.iter().product();
+            if data.len() != expected_size {
+                return Err(PyValueError::new_err(format!(
+                    "Data length {} doesn't match shape {:?} (expected {})",
+                    data.len(), s, expected_size
+                )));
+            }
+            Shape::new(s)
+        } else {
+            Shape::d1(data.len())
+        };
+
+        Ok(PyArray {
+            inner: NdArray::from_vec(shape, data),
+        })
+    }
+
+    #[staticmethod]
     #[pyo3(signature = (n, m=None, k=None))]
     fn eye(n: usize, m: Option<usize>, k: Option<isize>) -> Self {
         PyArray {
@@ -115,6 +150,66 @@ impl PyArray {
         PyArray { inner: self.inner.clip(min, max) }
     }
 
+    fn tan(&self) -> Self {
+        PyArray { inner: self.inner.tan() }
+    }
+
+    fn arcsin(&self) -> Self {
+        PyArray { inner: self.inner.asin() }
+    }
+
+    fn arccos(&self) -> Self {
+        PyArray { inner: self.inner.acos() }
+    }
+
+    fn arctan(&self) -> Self {
+        PyArray { inner: self.inner.atan() }
+    }
+
+    fn log(&self) -> Self {
+        PyArray { inner: self.inner.log() }
+    }
+
+    fn abs(&self) -> Self {
+        PyArray { inner: self.inner.abs() }
+    }
+
+    fn sign(&self) -> Self {
+        PyArray { inner: self.inner.sign() }
+    }
+
+    fn sum(&self) -> f64 {
+        self.inner.sum()
+    }
+
+    fn mean(&self) -> f64 {
+        self.inner.mean()
+    }
+
+    fn var(&self) -> f64 {
+        self.inner.var()
+    }
+
+    fn std(&self) -> f64 {
+        self.inner.std()
+    }
+
+    fn median(&self) -> f64 {
+        self.inner.median()
+    }
+
+    fn quantile(&self, q: f64) -> f64 {
+        self.inner.quantile(q)
+    }
+
+    fn any(&self) -> bool {
+        self.inner.any()
+    }
+
+    fn all(&self) -> bool {
+        self.inner.all()
+    }
+
     fn __add__(&self, other: ArrayOrScalar) -> Self {
         match other {
             ArrayOrScalar::Array(arr) => PyArray { inner: &self.inner + &arr.inner },
@@ -183,7 +278,6 @@ impl PyArray {
         PyArray { inner: self.inner.t() }
     }
 
-    /// Cholesky decomposition. Returns lower triangular L where A = L @ L.T
     fn cholesky(&self) -> PyResult<PyArray> {
         self.inner.cholesky()
             .map(|l| PyArray { inner: l })
@@ -467,6 +561,12 @@ impl PyGenerator {
             inner: self.inner.beta(alpha, beta_param, Shape::new(shape)),
         }
     }
+
+    fn lognormal(&mut self, mu: f64, sigma: f64, shape: Vec<usize>) -> PyArray {
+        PyArray {
+            inner: self.inner.lognormal(mu, sigma, Shape::new(shape)),
+        }
+    }
 }
 
 #[pymodule]
@@ -499,5 +599,21 @@ mod substratum {
     #[pyfunction]
     fn outer(a: Vec<f64>, b: Vec<f64>) -> PyArray {
         PyArray::outer(a, b)
+    }
+
+    #[pyfunction]
+    fn ones(shape: Vec<usize>) -> PyArray {
+        PyArray::ones(shape)
+    }
+
+    #[pyfunction]
+    fn full(shape: Vec<usize>, fill_value: f64) -> PyArray {
+        PyArray::full(shape, fill_value)
+    }
+
+    #[pyfunction]
+    #[pyo3(signature = (data, shape=None))]
+    fn asarray(data: Vec<f64>, shape: Option<Vec<usize>>) -> PyResult<PyArray> {
+        PyArray::asarray(data, shape)
     }
 }

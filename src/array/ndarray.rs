@@ -473,7 +473,83 @@ impl NdArray<f64> {
         Ok(eigenvalues)
     }
 
+    pub fn sum(&self) -> f64 {
+        self.as_slice().iter().sum()
+    }
+
+    pub fn mean(&self) -> f64 {
+        if self.is_empty() {
+            return f64::NAN;
+        }
+        self.sum() / self.len() as f64
+    }
+
+    pub fn var(&self) -> f64 {
+        if self.is_empty() {
+            return f64::NAN;
+        }
+        let mean = self.mean();
+        let sum_sq_dev: f64 = self.as_slice()
+            .iter()
+            .map(|&x| (x - mean).powi(2))
+            .sum();
+        sum_sq_dev / self.len() as f64
+    }
+
+    pub fn std(&self) -> f64 {
+        self.var().sqrt()
+    }
+
+    pub fn median(&self) -> f64 {
+        if self.is_empty() {
+            return f64::NAN;
+        }
+        let mut sorted = self.as_slice().to_vec();
+        sorted.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+        let n = sorted.len();
+        if n % 2 == 1 {
+            sorted[n / 2]
+        } else {
+            (sorted[n / 2 - 1] + sorted[n / 2]) / 2.0
+        }
+    }
+
+    pub fn quantile(&self, q: f64) -> f64 {
+        assert!(q >= 0.0 && q <= 1.0, "Quantile must be between 0 and 1");
+        if self.is_empty() {
+            return f64::NAN;
+        }
+        let mut sorted = self.as_slice().to_vec();
+        sorted.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+        let pos = q * (sorted.len() - 1) as f64;
+        let lower = pos.floor() as usize;
+        let upper = pos.ceil() as usize;
+        if lower == upper {
+            sorted[lower]
+        } else {
+            let weight = pos - lower as f64;
+            sorted[lower] * (1.0 - weight) + sorted[upper] * weight
+        }
+    }
+
+    pub fn any(&self) -> bool {
+        self.as_slice().iter().any(|&x| x != 0.0)
+    }
+
+    pub fn all(&self) -> bool {
+        self.as_slice().iter().all(|&x| x != 0.0)
+    }
+
+    pub fn ones(shape: Shape) -> Self {
+        Self::filled(shape, 1.0)
+    }
+
+    pub fn full(shape: Shape, value: f64) -> Self {
+        Self::filled(shape, value)
+    }
+
 }
+
 
 #[cfg(test)]
 mod tests {
