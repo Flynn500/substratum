@@ -271,24 +271,24 @@ impl NdArray<f64> {
         if self.ndim() != 2 {
             return Err("Cholesky decomposition requires a 2D matrix");
         }
-        
+
         let n = self.shape().dims()[0];
         let m = self.shape().dims()[1];
-        
+
         if n != m {
             return Err("Cholesky decomposition requires a square matrix");
         }
-        
+
         let mut l = NdArray::zeros(Shape::d2(n, n));
-        
+
         for i in 0..n {
             for j in 0..=i {
                 let mut sum = 0.0;
-                
+
                 for k in 0..j {
                     sum += l.get(&[i, k]).unwrap() * l.get(&[j, k]).unwrap();
                 }
-                
+
                 if i == j {
                     let diag = self.get(&[i, i]).unwrap() - sum;
                     if diag <= 0.0 {
@@ -301,10 +301,177 @@ impl NdArray<f64> {
                 }
             }
         }
-        
+
         Ok(l)
     }
 
+
+    pub fn qr(&self) -> Result<(NdArray<f64>, NdArray<f64>), &'static str> {
+        if self.ndim() != 2 {
+            return Err("QR decomposition requires a 2D matrix");
+        }
+
+        let m = self.shape().dims()[0];
+        let n = self.shape().dims()[1];
+
+        let mut r = self.clone();
+        let mut q = NdArray::eye(m, None, 0);
+
+        let k_max = if m > n { n } else { m };
+
+        for k in 0..k_max {
+            let mut x = Vec::with_capacity(m - k);
+            for i in k..m {
+                x.push(*r.get(&[i, k]).unwrap());
+            }
+
+            let norm_x: f64 = x.iter().map(|&v| v * v).sum::<f64>().sqrt();
+            if norm_x < 1e-14 {
+                continue;
+            }
+
+            let sign = if x[0] >= 0.0 { 1.0 } else { -1.0 };
+            let mut v = x.clone();
+            v[0] += sign * norm_x;
+
+            let norm_v: f64 = v.iter().map(|&val| val * val).sum::<f64>().sqrt();
+            if norm_v < 1e-14 {
+                continue;
+            }
+            for val in &mut v {
+                *val /= norm_v;
+            }
+
+            let mut vt_r = vec![0.0; n - k];
+            for j in k..n {
+                let mut sum = 0.0;
+                for i in 0..(m - k) {
+                    sum += v[i] * r.get(&[k + i, j]).unwrap();
+                }
+                vt_r[j - k] = sum;
+            }
+
+            for i in 0..(m - k) {
+                for j in k..n {
+                    let old_val = *r.get(&[k + i, j]).unwrap();
+                    *r.get_mut(&[k + i, j]).unwrap() = old_val - 2.0 * v[i] * vt_r[j - k];
+                }
+            }
+
+            let mut q_v = vec![0.0; m];
+            for i in 0..m {
+                let mut sum = 0.0;
+                for j in 0..(m - k) {
+                    sum += q.get(&[i, k + j]).unwrap() * v[j];
+                }
+                q_v[i] = sum;
+            }
+
+            for i in 0..m {
+                for j in 0..(m - k) {
+                    let old_val = *q.get(&[i, k + j]).unwrap();
+                    *q.get_mut(&[i, k + j]).unwrap() = old_val - 2.0 * q_v[i] * v[j];
+                }
+            }
+        }
+
+        for i in 0..m {
+            for j in 0..n {
+                if i > j {
+                    *r.get_mut(&[i, j]).unwrap() = 0.0;
+                }
+            }
+        }
+
+        Ok((q, r))
+    }
+
+    pub fn eig(&self) -> Result<(NdArray<f64>, NdArray<f64>), &'static str> {
+        self.eig_with_params(1000, 1e-10)
+    }
+
+    pub fn eig_with_params(&self, max_iter: usize, tol: f64) -> Result<(NdArray<f64>, NdArray<f64>), &'static str> {
+        if self.ndim() != 2 {
+            return Err("Eigendecomposition requires a 2D matrix");
+        }
+
+        let n = self.shape().dims()[0];
+        let m = self.shape().dims()[1];
+
+        if n != m {
+            return Err("Eigendecomposition requires a square matrix");
+        }
+
+        if n == 0 {
+            return Ok((
+                NdArray::from_vec(Shape::d1(0), vec![]),
+                NdArray::from_vec(Shape::d2(0, 0), vec![]),
+            ));
+        }
+
+        if n == 1 {
+            let eigenvalue = *self.get(&[0, 0]).unwrap();
+            return Ok((
+                NdArray::from_vec(Shape::d1(1), vec![eigenvalue]),
+                NdArray::from_vec(Shape::d2(1, 1), vec![1.0]),
+            ));
+        }
+
+        let mut a = self.clone();
+
+        let mut v = NdArray::eye(n, None, 0);
+
+        for _ in 0..max_iter {
+            let (q, r) = a.qr()?;
+
+            a = r.matmul(&q);
+
+            v = v.matmul(&q);
+
+            let mut off_diag_sum = 0.0;
+            for i in 0..n {
+                for j in 0..n {
+                    if i != j {
+                        let val = *a.get(&[i, j]).unwrap();
+                        off_diag_sum += val * val;
+                    }
+                }
+            }
+
+            if off_diag_sum.sqrt() < tol {
+                break;
+            }
+        }
+
+        let mut eigenvalues = Vec::with_capacity(n);
+        for i in 0..n {
+            eigenvalues.push(*a.get(&[i, i]).unwrap());
+        }
+
+        let mut indices: Vec<usize> = (0..n).collect();
+        indices.sort_by(|&i, &j| {
+            eigenvalues[j].abs().partial_cmp(&eigenvalues[i].abs()).unwrap()
+        });
+
+        let sorted_eigenvalues: Vec<f64> = indices.iter().map(|&i| eigenvalues[i]).collect();
+
+        let mut sorted_eigenvectors = Vec::with_capacity(n * n);
+        for i in 0..n {
+            for &idx in &indices {
+                sorted_eigenvectors.push(*v.get(&[i, idx]).unwrap());
+            }
+        }
+
+        Ok((
+            NdArray::from_vec(Shape::d1(n), sorted_eigenvalues),
+            NdArray::from_vec(Shape::d2(n, n), sorted_eigenvectors),
+        ))
+    }
+
+    pub fn eigvals(&self) -> Result<NdArray<f64>, &'static str> {
+        let (eigenvalues, _) = self.eig()?;
+        Ok(eigenvalues)
+    }
 
 }
 
@@ -649,5 +816,203 @@ mod tests {
     fn cholesky_non_square_fails() {
         let a = NdArray::from_vec(Shape::d2(2, 3), vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0]);
         assert!(a.cholesky().is_err());
+    }
+
+    // QR decomposition tests
+    #[test]
+    fn qr_square_matrix() {
+        let a = NdArray::from_vec(Shape::d2(3, 3), vec![
+            12.0, -51.0, 4.0,
+            6.0, 167.0, -68.0,
+            -4.0, 24.0, -41.0
+        ]);
+        let (q, r) = a.qr().unwrap();
+
+        // Verify Q * R ≈ A
+        let reconstructed = q.matmul(&r);
+        for i in 0..9 {
+            assert!((reconstructed.as_slice()[i] - a.as_slice()[i]).abs() < 1e-10);
+        }
+
+        // Verify Q is orthogonal: Q^T * Q ≈ I
+        let qt_q = q.t().matmul(&q);
+        for i in 0..3 {
+            for j in 0..3 {
+                let expected = if i == j { 1.0 } else { 0.0 };
+                assert!((*qt_q.get(&[i, j]).unwrap() - expected).abs() < 1e-10);
+            }
+        }
+
+        // Verify R is upper triangular
+        for i in 0..3 {
+            for j in 0..i {
+                assert!(r.get(&[i, j]).unwrap().abs() < 1e-10);
+            }
+        }
+    }
+
+    #[test]
+    fn qr_rectangular_matrix() {
+        let a = NdArray::from_vec(Shape::d2(4, 2), vec![
+            1.0, 2.0,
+            3.0, 4.0,
+            5.0, 6.0,
+            7.0, 8.0
+        ]);
+        let (q, r) = a.qr().unwrap();
+
+        // Q should be 4x4, R should be 4x2
+        assert_eq!(q.shape().dims(), &[4, 4]);
+        assert_eq!(r.shape().dims(), &[4, 2]);
+
+        // Verify Q * R ≈ A
+        let reconstructed = q.matmul(&r);
+        for i in 0..8 {
+            assert!((reconstructed.as_slice()[i] - a.as_slice()[i]).abs() < 1e-10);
+        }
+    }
+
+    #[test]
+    fn qr_identity_matrix() {
+        let a = NdArray::eye(3, None, 0);
+        let (q, r) = a.qr().unwrap();
+
+        // For identity, Q and R should both be close to identity (or Q=-I, R=-I)
+        let reconstructed = q.matmul(&r);
+        for i in 0..3 {
+            for j in 0..3 {
+                let expected = if i == j { 1.0 } else { 0.0 };
+                assert!((*reconstructed.get(&[i, j]).unwrap() - expected).abs() < 1e-10);
+            }
+        }
+    }
+
+    // Eigendecomposition tests
+    #[test]
+    fn eig_diagonal_matrix() {
+        // Diagonal matrix: eigenvalues are the diagonal elements
+        let a = NdArray::from_vec(Shape::d2(3, 3), vec![
+            3.0, 0.0, 0.0,
+            0.0, 2.0, 0.0,
+            0.0, 0.0, 1.0
+        ]);
+        let (eigenvalues, _eigenvectors) = a.eig().unwrap();
+
+        // Eigenvalues should be 3, 2, 1 (sorted by absolute value descending)
+        assert_eq!(eigenvalues.len(), 3);
+        assert!((eigenvalues.as_slice()[0] - 3.0).abs() < 1e-8);
+        assert!((eigenvalues.as_slice()[1] - 2.0).abs() < 1e-8);
+        assert!((eigenvalues.as_slice()[2] - 1.0).abs() < 1e-8);
+    }
+
+    #[test]
+    fn eig_symmetric_matrix() {
+        // Symmetric matrix [[2, 1], [1, 2]]
+        // Eigenvalues: 3 and 1
+        let a = NdArray::from_vec(Shape::d2(2, 2), vec![2.0, 1.0, 1.0, 2.0]);
+        let (eigenvalues, eigenvectors) = a.eig().unwrap();
+
+        // Check eigenvalues (sorted by absolute value)
+        assert_eq!(eigenvalues.len(), 2);
+        let ev1 = eigenvalues.as_slice()[0];
+        let ev2 = eigenvalues.as_slice()[1];
+        assert!((ev1 - 3.0).abs() < 1e-8 || (ev1 - 1.0).abs() < 1e-8);
+        assert!((ev2 - 3.0).abs() < 1e-8 || (ev2 - 1.0).abs() < 1e-8);
+        assert!((ev1 - ev2).abs() > 1.5); // They should be different
+
+        // Verify A * v = λ * v for each eigenvector
+        for col in 0..2 {
+            let lambda = eigenvalues.as_slice()[col];
+            let v = NdArray::from_vec(Shape::d1(2), vec![
+                *eigenvectors.get(&[0, col]).unwrap(),
+                *eigenvectors.get(&[1, col]).unwrap()
+            ]);
+            let av = a.matmul(&v);
+            let lambda_v = NdArray::from_vec(Shape::d1(2), vec![
+                lambda * v.as_slice()[0],
+                lambda * v.as_slice()[1]
+            ]);
+
+            for i in 0..2 {
+                assert!((av.as_slice()[i] - lambda_v.as_slice()[i]).abs() < 1e-6);
+            }
+        }
+    }
+
+    #[test]
+    fn eig_1x1_matrix() {
+        let a = NdArray::from_vec(Shape::d2(1, 1), vec![5.0]);
+        let (eigenvalues, eigenvectors) = a.eig().unwrap();
+
+        assert_eq!(eigenvalues.len(), 1);
+        assert!((eigenvalues.as_slice()[0] - 5.0).abs() < 1e-10);
+        assert_eq!(eigenvectors.shape().dims(), &[1, 1]);
+        assert!((eigenvectors.as_slice()[0] - 1.0).abs() < 1e-10);
+    }
+
+    #[test]
+    fn eig_identity_matrix() {
+        let a = NdArray::eye(3, None, 0);
+        let (eigenvalues, _eigenvectors) = a.eig().unwrap();
+
+        // All eigenvalues of identity matrix are 1
+        assert_eq!(eigenvalues.len(), 3);
+        for &ev in eigenvalues.as_slice() {
+            assert!((ev - 1.0).abs() < 1e-8);
+        }
+    }
+
+    #[test]
+    fn eig_non_square_fails() {
+        let a = NdArray::from_vec(Shape::d2(2, 3), vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0]);
+        assert!(a.eig().is_err());
+    }
+
+    #[test]
+    fn eig_1d_fails() {
+        let a = NdArray::from_vec(Shape::d1(3), vec![1.0, 2.0, 3.0]);
+        assert!(a.eig().is_err());
+    }
+
+    #[test]
+    fn eigvals_returns_only_eigenvalues() {
+        let a = NdArray::from_vec(Shape::d2(2, 2), vec![2.0, 1.0, 1.0, 2.0]);
+        let eigenvalues = a.eigvals().unwrap();
+
+        assert_eq!(eigenvalues.ndim(), 1);
+        assert_eq!(eigenvalues.len(), 2);
+    }
+
+    #[test]
+    fn eig_larger_symmetric_matrix() {
+        // 4x4 symmetric matrix
+        let a = NdArray::from_vec(Shape::d2(4, 4), vec![
+            4.0, 1.0, 1.0, 1.0,
+            1.0, 4.0, 1.0, 1.0,
+            1.0, 1.0, 4.0, 1.0,
+            1.0, 1.0, 1.0, 4.0
+        ]);
+        let (eigenvalues, eigenvectors) = a.eig().unwrap();
+
+        assert_eq!(eigenvalues.len(), 4);
+
+        // Verify reconstruction: A * V ≈ V * diag(eigenvalues)
+        // For each eigenvector column, A * v should equal lambda * v
+        for col in 0..4 {
+            let lambda = eigenvalues.as_slice()[col];
+            let mut v_data = Vec::with_capacity(4);
+            for row in 0..4 {
+                v_data.push(*eigenvectors.get(&[row, col]).unwrap());
+            }
+            let v = NdArray::from_vec(Shape::d1(4), v_data.clone());
+            let av = a.matmul(&v);
+
+            for i in 0..4 {
+                let expected = lambda * v_data[i];
+                assert!((av.as_slice()[i] - expected).abs() < 1e-5,
+                    "Mismatch at eigenvector {}, element {}: av={}, λv={}",
+                    col, i, av.as_slice()[i], expected);
+            }
+        }
     }
 }

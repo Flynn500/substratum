@@ -64,9 +64,63 @@ class Array:
     
     def cholesky(self) -> Array:
         """Compute Cholesky decomposition.
-        
+
+        Returns lower triangular matrix L where A = L @ L.T.
+
         Raises:
             ValueError: If matrix is not square or not positive-definite.
+        """
+        ...
+
+    def qr(self) -> tuple[Array, Array]:
+        """QR decomposition.
+
+        Returns (Q, R) where A = Q @ R, Q is orthogonal and R is upper triangular.
+
+        Raises:
+            ValueError: If array is not 2D.
+        """
+        ...
+
+    def eig(self) -> tuple[Array, Array]:
+        """Compute eigenvalues and eigenvectors.
+
+        Returns:
+            Tuple of (eigenvalues, eigenvectors) where eigenvalues is a 1D array
+            and eigenvectors is a 2D array with eigenvectors as columns.
+            Eigenvalues are sorted by absolute value (descending).
+
+        Raises:
+            ValueError: If matrix is not square.
+        """
+        ...
+
+    def eig_with_params(self, max_iter: int = 1000, tol: float = 1e-10) -> tuple[Array, Array]:
+        """Eigendecomposition with custom iteration parameters.
+
+        Args:
+            max_iter: Maximum number of QR iterations.
+            tol: Convergence tolerance for off-diagonal elements.
+
+        Returns:
+            Tuple of (eigenvalues, eigenvectors).
+
+        Raises:
+            ValueError: If matrix is not square.
+        """
+        ...
+
+    def eigvals(self) -> Array:
+        """Compute eigenvalues only.
+
+        More efficient than eig() when eigenvectors are not needed.
+        Similar to numpy.linalg.eigvals.
+
+        Returns:
+            1D array of eigenvalues sorted by absolute value (descending).
+
+        Raises:
+            ValueError: If matrix is not square.
         """
         ...
 
