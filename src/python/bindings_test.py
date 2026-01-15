@@ -65,10 +65,39 @@ def test_matmul():
     arr3 = arr1 @ arr2
     print(f"output: {arr3.tolist()}")
 
+def test_ball_tree():
+    points = ss.Array(
+        shape=(6, 2),
+        data=[
+            0.0, 0.0,
+            1.0, 1.0,
+            2.0, 2.0,
+            5.0, 5.0,
+            5.0, 6.0,
+            9.0, 9.0,
+        ]
+    )
+
+    tree = ss.spatial.BallTree.from_array(points, leaf_size=2)
+    query_point = [1.0, 1.0]
+    radius = 1.5
+
+    indices = tree.query_radius(query_point, radius)
+    print("\nTesting BallTree")
+    print(f"Query point: {query_point}, radius: {radius}")
+    print(f"Neighbor indices: {indices.tolist()}")
+
+    print(f"Neighbor points:")
+    for i in range(len(indices.tolist())):
+        point_idx = int(indices.tolist()[i])
+        point = points[point_idx]
+        print(f"  Index {point_idx}: {point}")
+
 if __name__ == "__main__":
     test_array_creation()
     test_operations()
     test_math_functions()
     test_generator()
     test_matmul()
+    test_ball_tree()
     print("\n\nAll tests passed! ✓")

@@ -658,3 +658,17 @@ class spatial:
                 AssertionError: If array is not 2-dimensional.
             """
             ...
+
+        def query_radius(self, query: float | Sequence[float] | Array, radius: float) -> Array:
+            """Find all points within a given radius of the query point.
+
+            Args:
+                query: Query point as a scalar (for 1D data), list of coordinates, or Array.
+                radius: Search radius. All points with distance <= radius are returned.
+
+            Returns:
+                1D Array of row indices (as floats) for all points within the specified
+                radius of the query point. These indices can be used to look up the actual
+                points in the original data array.
+            """
+            ...

@@ -166,4 +166,36 @@ impl BallTree {
         
         node_idx
     }
+
+    pub fn query_radius(&self, query: &[f64], radius: f64) -> Vec<usize> {
+        let mut results = Vec::new();
+        self.query_radius_recursive(0, query, radius, &mut results);
+        results
+    }
+
+    pub fn query_radius_recursive(&self, node_idx: usize, query: &[f64], radius: f64, results: &mut Vec<usize>) {
+        let node = &self.nodes[node_idx];
+
+        let dist_to_centre = Self::distance(query, &node.center);
+        if dist_to_centre - node.radius > radius {
+            return;
+        }
+
+        if node.left.is_none() {
+            for i in node.start..node.end {
+                let p = self.get_point(i);
+                if Self::distance(query, p) <= radius {
+                    results.push(self.indices[i]);
+                }
+            }
+        }
+
+        if let Some(left) = node.left {
+            self.query_radius_recursive(left, query, radius, results);
+        }
+
+        if let Some(right) = node.right {
+            self.query_radius_recursive(right, query, radius, results);
+        }
+    }
 }
