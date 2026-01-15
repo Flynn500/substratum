@@ -630,3 +630,31 @@ def asarray(data: Sequence[float] | Array, shape: Sequence[int] | None = None) -
         shape: Optional shape. If None, creates a 1D array.
     """
     ...
+
+class spatial:
+    """Spatial data structures and algorithms."""
+
+    class BallTree:
+        """Ball tree for efficient nearest neighbor queries.
+
+        A ball tree recursively partitions data into nested hyperspheres (balls).
+        Each node in the tree represents a ball that contains a subset of points.
+        """
+
+        @staticmethod
+        def from_array(array: Array, leaf_size: int = 20) -> "spatial.BallTree":
+            """Construct a ball tree from a 2D array of points.
+
+            Args:
+                array: 2D array of shape (n_points, n_features) containing the data points.
+                leaf_size: Maximum number of points in a leaf node. Smaller values lead to
+                    faster queries but slower construction and more memory usage.
+                    Defaults to 20.
+
+            Returns:
+                A constructed BallTree instance.
+
+            Raises:
+                AssertionError: If array is not 2-dimensional.
+            """
+            ...

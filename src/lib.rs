@@ -1,9 +1,11 @@
 pub mod array;
 pub mod ops;
 pub mod random;
+pub mod spatial;
 
 pub use array::{NdArray, Shape, Storage, BroadcastIter};
 pub use random::Generator;
+pub use spatial::BallTree;
 
 use pyo3::prelude::*;
 use pyo3::exceptions::PyValueError;
@@ -226,7 +228,7 @@ impl PyArray {
         self.inner.median()
     }
 
-    fn quantile(&self, py: Python<'_>, q: ArrayOrScalar) -> PyResult<PyObject> {
+    fn quantile(&self, py: Python<'_>, q: ArrayOrScalar) -> PyResult<Py<PyAny>> {
         match q {
             ArrayOrScalar::Scalar(q) => Ok(self.inner.quantile(q).into_pyobject(py)?.into_any().unbind()),
             ArrayOrScalar::Array(arr) => Ok(PyArray {
@@ -360,11 +362,11 @@ impl PyArray {
         self.inner.as_slice().len()
     }
 
-    fn __getitem__(&self, py: Python<'_>, key: &Bound<'_, PyAny>) -> PyResult<PyObject> {
+    fn __getitem__(&self, py: Python<'_>, key: &Bound<'_, PyAny>) -> PyResult<Py<PyAny>> {
         let dims = self.inner.shape().dims();
         let ndim = dims.len();
 
-        if let Ok(tuple) = key.downcast::<PyTuple>() {
+        if let Ok(tuple) = key.cast::<PyTuple>() {
             let tuple_len = tuple.len();
 
             if tuple_len > ndim {
@@ -438,7 +440,7 @@ impl PyArray {
             }.into_pyobject(py)?.into_any().unbind());
         }
 
-        if let Ok(slice) = key.downcast::<PySlice>() {
+        if let Ok(slice) = key.cast::<PySlice>() {
             let len = self.inner.as_slice().len() as isize;
             let indices = slice.indices(len)?;
             let mut result = Vec::new();
@@ -462,7 +464,7 @@ impl PyArray {
         let dims = self.inner.shape().dims().to_vec();
         let ndim = dims.len();
 
-        if let Ok(tuple) = key.downcast::<PyTuple>() {
+        if let Ok(tuple) = key.cast::<PyTuple>() {
             let tuple_len = tuple.len();
 
             if tuple_len != ndim {
@@ -752,7 +754,7 @@ mod substratum {
         }
 
         #[pyfunction]
-        fn quantile(py: Python<'_>, a: &PyArray, q: ArrayOrScalar) -> PyResult<PyObject> {
+        fn quantile(py: Python<'_>, a: &PyArray, q: ArrayOrScalar) -> PyResult<Py<PyAny>> {
             match q {
                 ArrayOrScalar::Scalar(q) => Ok(a.inner.quantile(q).into_pyobject(py)?.into_any().unbind()),
                 ArrayOrScalar::Array(arr) => Ok(PyArray {
@@ -797,6 +799,27 @@ mod substratum {
         #[pyfunction]
         fn new() -> PyGenerator {
             PyGenerator::new()
+        }
+    }
+
+    #[pymodule]
+    mod spatial {
+        use super::*;
+
+        #[pyclass(name = "BallTree")]
+        pub struct PyBallTree {
+            inner: BallTree,
+        }
+
+        #[pymethods]
+        impl PyBallTree {
+            #[staticmethod]
+            #[pyo3(signature = (array, leaf_size=20))]
+            fn from_array(array: &PyArray, leaf_size: Option<usize>) -> PyResult<Self> {
+                let leaf_size = leaf_size.unwrap_or(20);
+                let tree = BallTree::from_ndarray(&array.inner, leaf_size);
+                Ok(PyBallTree { inner: tree })
+            }
         }
     }
 }

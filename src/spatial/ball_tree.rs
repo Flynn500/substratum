@@ -1,3 +1,5 @@
+use crate::{array::NdArray, ops::unary::Float};
+
 #[derive(Clone, Debug)]
 pub struct BallNode {
     pub center: Vec<f64>,
@@ -32,10 +34,16 @@ impl BallTree {
         tree
     }
 
-    fn build_recursive(&mut self, start: usize, end: usize) -> usize {
-        todo!()
+    pub fn from_ndarray(array: &NdArray<f64>, leaf_size: usize) -> Self {
+        let shape = array.shape().dims();
+        
+        assert!(shape.len() == 2, "Expected 2D array (n_points, dim)");
+        
+        let n_points = shape[0];
+        let dim = shape[1];
+        
+        Self::new(array.as_slice(), n_points, dim, leaf_size)
     }
-
     
     fn get_point(&self, i: usize) -> &[f64] {
         let idx = self.indices[i];
@@ -53,7 +61,7 @@ impl BallTree {
             sum += diff * diff;
         }
 
-        sum
+        sum.sqrt()
     }
 
     fn compute_bounding_ball(&self, start: usize, end: usize) -> (Vec<f64>, f64) {
@@ -72,16 +80,16 @@ impl BallTree {
             *c /= n;
         }
 
-        let mut max_dist: f64 = 0;
+        let mut max_dist: f64 = 0.0;
         for i in start..end {
             let p = self.get_point(i);
-            let dist = Self::ssquared_dist(p, centroid);
+            let dist = Self::distance(p, &centroid);
 
             if  dist > max_dist {
                 max_dist = dist;
             }
         }
-        (centroid, max_dist.sqrt()) //REMOVE SQRT IF WE SWAP DISTANCE METHODS TO ALLOW MORE
+        (centroid, max_dist)
     }
 
     fn select_split_dim(&self, start: usize, end: usize) -> usize {
@@ -142,7 +150,7 @@ impl BallTree {
         }
 
         let dim = self.select_split_dim(start, end);
-        let mid = self.partition(start, end, dim);
+        let mut mid = self.partition(start, end, dim);
 
         if mid == start {
             mid = start + 1;
