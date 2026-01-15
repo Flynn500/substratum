@@ -840,6 +840,26 @@ mod substratum {
                     inner: NdArray::from_vec(Shape::d1(indices_f64.len()), indices_f64),
                 })
             }
+
+            fn query_knn(&self, query: &Bound<'_, PyAny>, k: usize) -> PyResult<PyArray> {
+                let query_vec = if let Ok(scalar) = query.extract::<f64>() {
+                    vec![scalar]
+                } else if let Ok(vec_data) = query.extract::<Vec<f64>>() {
+                    vec_data
+                } else if let Ok(arr) = query.extract::<PyArray>() {
+                    arr.inner.as_slice().to_vec()
+                } else {
+                    return Err(PyValueError::new_err("query must be a scalar, list, or Array"));
+                };
+
+                let indices = self.inner.query_knn(&query_vec, k);
+
+                let indices_f64: Vec<f64> = indices.iter().map(|&i| i as f64).collect();
+
+                Ok(PyArray {
+                    inner: NdArray::from_vec(Shape::d1(indices_f64.len()), indices_f64),
+                })
+            }
         }
     }
 }

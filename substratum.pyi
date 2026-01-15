@@ -672,3 +672,17 @@ class spatial:
                 points in the original data array.
             """
             ...
+
+        def query_knn(self, query: float | Sequence[float] | Array, k: int) -> Array:
+            """Find the k nearest neighbors to the query point.
+
+            Args:
+                query: Query point as a scalar (for 1D data), list of coordinates, or Array.
+                k: Number of nearest neighbors to return.
+
+            Returns:
+                1D Array of row indices (as floats) for the k nearest neighbors,
+                sorted by distance (closest first). These indices can be used to look up
+                the actual points in the original data array.
+            """
+            ...

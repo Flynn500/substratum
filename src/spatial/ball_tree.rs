@@ -1,4 +1,5 @@
-use crate::{array::NdArray, ops::unary::Float};
+use std::{cmp::Ordering, collections::BinaryHeap};
+use crate::{array::NdArray};
 
 #[derive(Clone, Debug)]
 pub struct BallNode {
@@ -10,6 +11,7 @@ pub struct BallNode {
     pub right: Option<usize>,
 }
 
+#[derive(Debug, Clone)]
 pub struct BallTree {
     pub nodes: Vec<BallNode>,
     pub indices: Vec<usize>,
@@ -17,6 +19,31 @@ pub struct BallTree {
     pub n_points: usize,
     pub dim: usize,
     pub leaf_size: usize,
+}
+
+//for knn search
+struct HeapItem {
+        pub distance: f64,
+        pub index: usize,
+}
+impl PartialEq for HeapItem {
+    fn eq(&self, other: &Self) -> bool {
+        self.distance == other.distance
+    }
+}
+
+impl Eq for HeapItem {}
+
+impl PartialOrd for HeapItem {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for HeapItem {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.distance.partial_cmp(&other.distance).unwrap_or(Ordering::Equal)
+    }
 }
 
 impl BallTree {
@@ -197,5 +224,57 @@ impl BallTree {
         if let Some(right) = node.right {
             self.query_radius_recursive(right, query, radius, results);
         }
+    }
+
+    pub fn query_knn(&self, query: &[f64], k: usize) -> Vec<usize> {
+        if k == 0 || self.n_points == 0 {
+            return Vec::new();
+        }
+        
+        let mut heap = BinaryHeap::with_capacity(k);
+        self.query_knn_recursive(0, query, &mut heap, k);
+        heap.into_sorted_vec().into_iter().map(|item| item.index).collect()
+    }
+
+    fn query_knn_recursive(&self, node_idx: usize, query: &[f64], heap: &mut BinaryHeap<HeapItem>, k: usize,) {
+        let node = &self.nodes[node_idx];
+
+        let dist_to_centre = Self::distance(query, &node.center);
+
+        if heap.len() == k {
+            if dist_to_centre - node.radius > heap.peek().unwrap().distance {
+                return;
+            }
+        }
+
+
+        if node.left.is_none() {
+            for i in node.start..node.end {
+                let dist = Self::distance(query, self.get_point(i));
+                
+                if heap.len() < k {
+                    heap.push(HeapItem { distance: dist, index: self.indices[i] });
+                } else if dist < heap.peek().unwrap().distance {
+                    heap.pop();
+                    heap.push(HeapItem { distance: dist, index: self.indices[i] });
+                }
+            }
+            return;
+        }
+        
+        let left_idx = node.left.unwrap();
+        let right_idx = node.right.unwrap();
+
+        let left_dist = Self::distance(query, &self.nodes[left_idx].center);
+        let right_dist = Self::distance(query, &self.nodes[right_idx].center);
+
+        if left_dist <= right_dist {
+            self.query_knn_recursive(left_idx, query, heap, k);
+            self.query_knn_recursive(right_idx, query, heap, k);
+        } else {
+            self.query_knn_recursive(right_idx, query, heap, k);
+            self.query_knn_recursive(left_idx, query, heap, k);
+        }
+
     }
 }
