@@ -121,9 +121,24 @@ class stats:
         """Median of all elements."""
         ...
 
+    @overload
     @staticmethod
     def quantile(a: Array, q: float) -> float:
         """q-th quantile of all elements (q in [0, 1])."""
+        ...
+
+    @overload
+    @staticmethod
+    def quantile(a: Array, q: Array) -> Array:
+        """Compute multiple quantiles at once (vectorized).
+
+        Args:
+            a: Input array.
+            q: Array of quantile values, each in [0, 1].
+
+        Returns:
+            1D array of quantile values corresponding to each q.
+        """
         ...
 
     @staticmethod
@@ -176,6 +191,11 @@ class random:
         @staticmethod
         def from_seed(seed: int) -> Generator:
             """Create generator with explicit seed."""
+            ...
+        
+        @staticmethod
+        def new() -> Generator:
+            """Create a generator."""
             ...
 
         def uniform(self, low: float, high: float, shape: Sequence[int]) -> Array: ...
@@ -248,11 +268,11 @@ class Array:
         ...
 
     @staticmethod
-    def asarray(data: Sequence[float], shape: Sequence[int] | None = None) -> Array:
-        """Create array from a flat list of data.
+    def asarray(data: Sequence[float] | Array, shape: Sequence[int] | None = None) -> Array:
+        """Create array from data with optional reshape.
 
         Args:
-            data: Flat list of float values.
+            data: Flat list of float values or existing Array.
             shape: Optional shape. If None, creates a 1D array.
         """
         ...
@@ -263,13 +283,23 @@ class Array:
         ...
 
     @staticmethod
-    def diag(v: Sequence[float], k: int | None = None) -> Array:
-        """Create a 2D array with v on the k-th diagonal."""
+    def diag(v: Sequence[float] | Array, k: int | None = None) -> Array:
+        """Create a 2D array with v on the k-th diagonal.
+
+        Args:
+            v: 1D array or list of diagonal values.
+            k: Diagonal offset (0=main, >0=upper, <0=lower).
+        """
         ...
 
     @staticmethod
-    def outer(a: Sequence[float], b: Sequence[float]) -> Array:
-        """Compute the outer product of two 1D arrays."""
+    def outer(a: Sequence[float] | Array, b: Sequence[float] | Array) -> Array:
+        """Compute the outer product of two 1D arrays.
+
+        Args:
+            a: First 1D array or list.
+            b: Second 1D array or list.
+        """
         ...
 
     @property
@@ -407,8 +437,20 @@ class Array:
     def median(self) -> float:
         """Median of all elements."""
         ...
+    @overload
     def quantile(self, q: float) -> float:
         """q-th quantile of all elements (q in [0, 1])."""
+        ...
+    @overload
+    def quantile(self, q: Array) -> Array:
+        """Compute multiple quantiles at once (vectorized).
+
+        Args:
+            q: Array of quantile values, each in [0, 1].
+
+        Returns:
+            1D array of quantile values corresponding to each q.
+        """
         ...
 
     # Logical reductions
@@ -554,12 +596,22 @@ def eye(n: int, m: int | None = None, k: int | None = None) -> Array:
     """Create a 2D identity matrix with ones on the k-th diagonal."""
     ...
 
-def diag(v: Sequence[float], k: int | None = None) -> Array:
-    """Create a 2D array with v on the k-th diagonal."""
+def diag(v: Sequence[float] | Array, k: int | None = None) -> Array:
+    """Create a 2D array with v on the k-th diagonal.
+
+    Args:
+        v: 1D array or list of diagonal values.
+        k: Diagonal offset (0=main, >0=upper, <0=lower).
+    """
     ...
 
-def outer(a: Sequence[float], b: Sequence[float]) -> Array:
-    """Compute the outer product of two 1D arrays."""
+def outer(a: Sequence[float] | Array, b: Sequence[float] | Array) -> Array:
+    """Compute the outer product of two 1D arrays.
+
+    Args:
+        a: First 1D array or list.
+        b: Second 1D array or list.
+    """
     ...
 
 def ones(shape: Sequence[int]) -> Array:
@@ -570,11 +622,11 @@ def full(shape: Sequence[int], fill_value: float) -> Array:
     """Create array filled with a specified value."""
     ...
 
-def asarray(data: Sequence[float], shape: Sequence[int] | None = None) -> Array:
-    """Create array from a flat list of data.
+def asarray(data: Sequence[float] | Array, shape: Sequence[int] | None = None) -> Array:
+    """Create array from data with optional reshape.
 
     Args:
-        data: Flat list of float values.
+        data: Flat list of float values or existing Array.
         shape: Optional shape. If None, creates a 1D array.
     """
     ...

@@ -1,5 +1,5 @@
 use crate::array::ndarray::{self, NdArray};
-
+use crate::array::shape::Shape;
 impl NdArray<f64> {
     pub fn sum(&self) -> f64 {
         self.as_slice().iter().sum()
@@ -66,6 +66,30 @@ impl NdArray<f64> {
             let weight = pos - lower as f64;
             sorted[lower] * (1.0 - weight) + sorted[upper] * weight
         }
+    }
+
+    pub fn quantiles(&self, qs: &[f64]) -> NdArray<f64> {
+        for &q in qs {
+            assert!(q >= 0.0 && q <= 1.0, "Quantile must be between 0 and 1");
+        }
+        if self.is_empty() {
+            return NdArray::from_vec(Shape::d1(qs.len()), vec![f64::NAN; qs.len()]);
+        }
+        let mut sorted = self.as_slice().to_vec();
+        sorted.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+        let n = sorted.len();
+        let results: Vec<f64> = qs.iter().map(|&q| {
+            let pos = q * (n - 1) as f64;
+            let lower = pos.floor() as usize;
+            let upper = pos.ceil() as usize;
+            if lower == upper {
+                sorted[lower]
+            } else {
+                let weight = pos - lower as f64;
+                sorted[lower] * (1.0 - weight) + sorted[upper] * weight
+            }
+        }).collect();
+        NdArray::from_vec(Shape::d1(results.len()), results)
     }
 
     fn _pearson(x: &NdArray<f64>, y: &NdArray<f64>) -> f64 {

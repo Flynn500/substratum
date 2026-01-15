@@ -15,6 +15,32 @@ enum ArrayOrScalar {
     Scalar(f64),
 }
 
+/// Accepts either a Python list (Vec<f64>) or a PyArray, extracting the flat data.
+#[derive(FromPyObject)]
+enum VecOrArray {
+    Array(PyArray),
+    Vec(Vec<f64>),
+}
+
+impl VecOrArray {
+    fn into_vec(self) -> Vec<f64> {
+        match self {
+            VecOrArray::Array(arr) => arr.inner.as_slice().to_vec(),
+            VecOrArray::Vec(v) => v,
+        }
+    }
+
+    fn into_ndarray(self) -> NdArray<f64> {
+        match self {
+            VecOrArray::Array(arr) => arr.inner,
+            VecOrArray::Vec(v) => {
+                let len = v.len();
+                NdArray::from_vec(Shape::d1(len), v)
+            }
+        }
+    }
+}
+
 #[pyclass(name = "Array")]
 #[derive(Clone)]
 pub struct PyArray {
@@ -46,22 +72,24 @@ impl PyArray {
 
     #[staticmethod]
     #[pyo3(signature = (data, shape=None))]
-    fn asarray(data: Vec<f64>, shape: Option<Vec<usize>>) -> PyResult<Self> {
+    fn asarray(data: VecOrArray, shape: Option<Vec<usize>>) -> PyResult<Self> {
+        // If it's already an Array and no reshape is requested, return a clone
+        let data_vec = data.into_vec();
         let shape = if let Some(s) = shape {
             let expected_size: usize = s.iter().product();
-            if data.len() != expected_size {
+            if data_vec.len() != expected_size {
                 return Err(PyValueError::new_err(format!(
                     "Data length {} doesn't match shape {:?} (expected {})",
-                    data.len(), s, expected_size
+                    data_vec.len(), s, expected_size
                 )));
             }
             Shape::new(s)
         } else {
-            Shape::d1(data.len())
+            Shape::d1(data_vec.len())
         };
 
         Ok(PyArray {
-            inner: NdArray::from_vec(shape, data),
+            inner: NdArray::from_vec(shape, data_vec),
         })
     }
 
@@ -75,17 +103,17 @@ impl PyArray {
 
     #[staticmethod]
     #[pyo3(signature = (v, k=None))]
-    fn diag(v: Vec<f64>, k: Option<isize>) -> Self {
-        let v_arr = NdArray::from_vec(Shape::d1(v.len()), v);
+    fn diag(v: VecOrArray, k: Option<isize>) -> Self {
+        let v_arr = v.into_ndarray();
         PyArray {
             inner: NdArray::from_diag(&v_arr, k.unwrap_or(0)),
         }
     }
 
     #[staticmethod]
-    fn outer(a: Vec<f64>, b: Vec<f64>) -> Self {
-        let a_arr = NdArray::from_vec(Shape::d1(a.len()), a);
-        let b_arr = NdArray::from_vec(Shape::d1(b.len()), b);
+    fn outer(a: VecOrArray, b: VecOrArray) -> Self {
+        let a_arr = a.into_ndarray();
+        let b_arr = b.into_ndarray();
         PyArray {
             inner: NdArray::outer(&a_arr, &b_arr),
         }
@@ -198,8 +226,13 @@ impl PyArray {
         self.inner.median()
     }
 
-    fn quantile(&self, q: f64) -> f64 {
-        self.inner.quantile(q)
+    fn quantile(&self, py: Python<'_>, q: ArrayOrScalar) -> PyResult<PyObject> {
+        match q {
+            ArrayOrScalar::Scalar(q) => Ok(self.inner.quantile(q).into_pyobject(py)?.into_any().unbind()),
+            ArrayOrScalar::Array(arr) => Ok(PyArray {
+                inner: self.inner.quantiles(arr.inner.as_slice()),
+            }.into_pyobject(py)?.into_any().unbind()),
+        }
     }
 
     fn any(&self) -> bool {
@@ -597,12 +630,12 @@ mod substratum {
 
     #[pyfunction]
     #[pyo3(signature = (v, k=None))]
-    fn diag(v: Vec<f64>, k: Option<isize>) -> PyArray {
+    fn diag(v: VecOrArray, k: Option<isize>) -> PyArray {
         PyArray::diag(v, k)
     }
 
     #[pyfunction]
-    fn outer(a: Vec<f64>, b: Vec<f64>) -> PyArray {
+    fn outer(a: VecOrArray, b: VecOrArray) -> PyArray {
         PyArray::outer(a, b)
     }
 
@@ -618,7 +651,7 @@ mod substratum {
 
     #[pyfunction]
     #[pyo3(signature = (data, shape=None))]
-    fn asarray(data: Vec<f64>, shape: Option<Vec<usize>>) -> PyResult<PyArray> {
+    fn asarray(data: VecOrArray, shape: Option<Vec<usize>>) -> PyResult<PyArray> {
         PyArray::asarray(data, shape)
     }
 
@@ -719,8 +752,13 @@ mod substratum {
         }
 
         #[pyfunction]
-        fn quantile(a: &PyArray, q: f64) -> f64 {
-            a.inner.quantile(q)
+        fn quantile(py: Python<'_>, a: &PyArray, q: ArrayOrScalar) -> PyResult<PyObject> {
+            match q {
+                ArrayOrScalar::Scalar(q) => Ok(a.inner.quantile(q).into_pyobject(py)?.into_any().unbind()),
+                ArrayOrScalar::Array(arr) => Ok(PyArray {
+                    inner: a.inner.quantiles(arr.inner.as_slice()),
+                }.into_pyobject(py)?.into_any().unbind()),
+            }
         }
 
         #[pyfunction]
@@ -754,6 +792,11 @@ mod substratum {
         #[pyfunction]
         fn seed(seed: u64) -> PyGenerator {
             PyGenerator::from_seed(seed)
+        }
+
+        #[pyfunction]
+        fn new() -> PyGenerator {
+            PyGenerator::new()
         }
     }
 }
