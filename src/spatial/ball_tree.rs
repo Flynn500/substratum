@@ -92,7 +92,7 @@ impl BallTree {
     }
 
     fn compute_bounding_ball(&self, start: usize, end: usize) -> (Vec<f64>, f64) {
-        let n = (start - end) as f64;
+        let n = (end - start) as f64;
         let mut centroid = vec![0.0; self.dim];
 
         for i in start..end {
