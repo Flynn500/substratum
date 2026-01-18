@@ -77,7 +77,6 @@ impl PyArray {
     #[staticmethod]
     #[pyo3(signature = (data, shape=None))]
     fn asarray(data: VecOrArray, shape: Option<Vec<usize>>) -> PyResult<Self> {
-        // If it's already an Array and no reshape is requested, return a clone
         let data_vec = data.into_vec();
         let shape = if let Some(s) = shape {
             let expected_size: usize = s.iter().product();
@@ -313,6 +312,10 @@ impl PyArray {
 
     fn t(&self) -> Self {
         PyArray { inner: self.inner.t() }
+    }
+
+    fn take(&self, indices: Vec<usize>) -> Self {
+        PyArray { inner: self.inner.take(&indices) }
     }
 
     fn __repr__(&self) -> String {

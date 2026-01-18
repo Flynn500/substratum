@@ -109,6 +109,14 @@ impl<T: Copy> NdArray<T> {
         let result_data: Vec<U> = self.as_slice().iter().map(|&x| f(x)).collect();
         NdArray::new(self.shape().clone(), Storage::from_vec(result_data))
     }
+
+    pub fn take(&self, indices: &[usize]) -> NdArray<T> {
+        let data: Vec<T> = indices.iter()
+            .map(|&i| self.as_slice()[i])
+            .collect();
+
+        NdArray::from_vec(Shape::d1(data.len()), data)
+    }
 }
 
 

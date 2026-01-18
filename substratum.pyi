@@ -327,6 +327,18 @@ class Array:
         """Transpose (alias for transpose())."""
         ...
 
+    def take(self, indices: Sequence[int]) -> Array:
+        """Take elements from the array at specified flat indices.
+
+        Args:
+            indices: List of flat (1D) indices to select from the array.
+                These indices index into the flattened array.
+
+        Returns:
+            A new 1D array containing the elements at the specified indices.
+        """
+        ...
+
     def matmul(self, other: Array) -> Array:
         """Matrix multiplication."""
         ...
