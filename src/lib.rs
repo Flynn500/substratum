@@ -2,10 +2,12 @@ pub mod array;
 pub mod ops;
 pub mod random;
 pub mod spatial;
+pub mod stats;
 
 pub use array::{NdArray, Shape, Storage, BroadcastIter};
 pub use random::Generator;
-pub use spatial::{BallTree, DistanceMetric};
+pub use spatial::{BallTree, DistanceMetric, KernelType};
+
 
 use pyo3::prelude::*;
 use pyo3::exceptions::PyValueError;
@@ -795,6 +797,19 @@ mod substratum {
             }
         }
 
+        fn parse_kernel(kernel: &str) -> PyResult<KernelType> {
+            match kernel.to_lowercase().as_str() {
+                "gaussian" => Ok(KernelType::Gaussian),
+                "epanechnikov" => Ok(KernelType::Epanechnikov),
+                "uniform" => Ok(KernelType::Uniform),
+                "triangular" => Ok(KernelType::Triangular),
+                _ => Err(PyValueError::new_err(format!(
+                    "Unknown kernel type '{}'. Valid options: 'gaussian', 'epanechnikov', 'uniform', 'triangular'",
+                    kernel
+                ))),
+            }
+        }
+
         #[pyclass(name = "BallTree")]
         pub struct PyBallTree {
             inner: BallTree,
@@ -850,6 +865,77 @@ mod substratum {
                 Ok(PyArray {
                     inner: NdArray::from_vec(Shape::d1(indices_f64.len()), indices_f64),
                 })
+            }
+
+            #[pyo3(signature = (queries=None, bandwidth=1.0, kernel="gaussian"))]
+            fn kernel_density(
+                &self,
+                py: Python<'_>,
+                queries: Option<&Bound<'_, PyAny>>,
+                bandwidth: Option<f64>,
+                kernel: Option<&str>,
+            ) -> PyResult<Py<PyAny>> {
+                let bandwidth = bandwidth.unwrap_or(1.0);
+                let kernel_type = parse_kernel(kernel.unwrap_or("gaussian"))?;
+
+                let queries_arr = if let Some(q) = queries {
+                    if let Ok(scalar) = q.extract::<f64>() {
+                        NdArray::from_vec(Shape::new(vec![1, 1]), vec![scalar])
+                    } else if let Ok(arr) = q.extract::<PyArray>() {
+                        let shape = arr.inner.shape().dims();
+                        if shape.len() == 1 {
+                            if shape[0] != self.inner.dim {
+                                return Err(PyValueError::new_err(format!(
+                                    "Query dimension {} doesn't match tree dimension {}",
+                                    shape[0], self.inner.dim
+                                )));
+                            }
+                            NdArray::from_vec(
+                                Shape::new(vec![1, shape[0]]),
+                                arr.inner.as_slice().to_vec()
+                            )
+                        } else if shape.len() == 2 {
+                            if shape[1] != self.inner.dim {
+                                return Err(PyValueError::new_err(format!(
+                                    "Query dimension {} doesn't match tree dimension {}",
+                                    shape[1], self.inner.dim
+                                )));
+                            }
+                            arr.inner.clone()
+                        } else {
+                            return Err(PyValueError::new_err(
+                                "queries must be 1D or 2D array"
+                            ));
+                        }
+                    } else if let Ok(vec_data) = q.extract::<Vec<f64>>() {
+                        let n = vec_data.len();
+                        if n == self.inner.dim {
+                            NdArray::from_vec(Shape::new(vec![1, n]), vec_data)
+                        } else {
+                            return Err(PyValueError::new_err(format!(
+                                "Query vector length {} doesn't match tree dimension {}",
+                                n, self.inner.dim
+                            )));
+                        }
+                    } else {
+                        return Err(PyValueError::new_err(
+                            "queries must be a scalar, list, or Array"
+                        ));
+                    }
+                } else {
+                    NdArray::from_vec(
+                        Shape::new(vec![self.inner.n_points, self.inner.dim]),
+                        self.inner.data.clone()
+                    )
+                };
+
+                let result = self.inner.kernel_density(&queries_arr, bandwidth, kernel_type);
+
+                if result.shape().dims()[0] == 1 {
+                    Ok(result.as_slice()[0].into_pyobject(py)?.into_any().unbind())
+                } else {
+                    Ok(PyArray { inner: result }.into_pyobject(py)?.into_any().unbind())
+                }
             }
         }
     }

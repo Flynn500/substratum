@@ -558,3 +558,76 @@ class spatial:
                 the actual points in the original data array.
             """
             ...
+
+        @overload
+        def kernel_density(
+            self,
+            queries: float | Sequence[float],
+            bandwidth: float = 1.0,
+            kernel: Literal["gaussian", "epanechnikov", "uniform", "triangular"] = "gaussian"
+        ) -> float:
+            """Estimate kernel density at a single query point.
+
+            Args:
+                queries: Single query point as a scalar (for 1D data) or list of coordinates.
+                bandwidth: Bandwidth (smoothing parameter) for the kernel. Larger values
+                    produce smoother estimates. Defaults to 1.0.
+                kernel: Kernel function to use for density estimation. Options are:
+                    - "gaussian": Gaussian (normal) kernel (default)
+                    - "epanechnikov": Epanechnikov kernel
+                    - "uniform": Uniform (rectangular) kernel
+                    - "triangular": Triangular kernel
+
+            Returns:
+                Density estimate at the query point (float).
+            """
+            ...
+
+        @overload
+        def kernel_density(
+            self,
+            queries: Array,
+            bandwidth: float = 1.0,
+            kernel: Literal["gaussian", "epanechnikov", "uniform", "triangular"] = "gaussian"
+        ) -> Array:
+            """Estimate kernel density at multiple query points.
+
+            Args:
+                queries: 2D array of query points with shape (n_queries, n_features),
+                    or 1D array representing a single point.
+                bandwidth: Bandwidth (smoothing parameter) for the kernel. Larger values
+                    produce smoother estimates. Defaults to 1.0.
+                kernel: Kernel function to use for density estimation. Options are:
+                    - "gaussian": Gaussian (normal) kernel (default)
+                    - "epanechnikov": Epanechnikov kernel
+                    - "uniform": Uniform (rectangular) kernel
+                    - "triangular": Triangular kernel
+
+            Returns:
+                1D Array of density estimates, one for each query point.
+            """
+            ...
+
+        @overload
+        def kernel_density(
+            self,
+            queries: None = None,
+            bandwidth: float = 1.0,
+            kernel: Literal["gaussian", "epanechnikov", "uniform", "triangular"] = "gaussian"
+        ) -> Array:
+            """Estimate kernel density at all training points (leave-one-out).
+
+            Args:
+                queries: If None, computes density at each training point.
+                bandwidth: Bandwidth (smoothing parameter) for the kernel. Larger values
+                    produce smoother estimates. Defaults to 1.0.
+                kernel: Kernel function to use for density estimation. Options are:
+                    - "gaussian": Gaussian (normal) kernel (default)
+                    - "epanechnikov": Epanechnikov kernel
+                    - "uniform": Uniform (rectangular) kernel
+                    - "triangular": Triangular kernel
+
+            Returns:
+                1D Array of density estimates at each training point.
+            """
+            ...

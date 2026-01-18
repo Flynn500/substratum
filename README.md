@@ -29,7 +29,7 @@ Output:
 - Pearson and Spearman correlation
 - matrix methods and constructors
 - cholesky, qr and eigen decomposition
-- Ball Tree with knn and radius queries
+- Ball Tree with knn radius and KDE queries
 
 ### Top-level
 - `substratum.Array`
@@ -84,4 +84,4 @@ Standard normal: [-0.0008585765206425146, 1.4733334715623352, -1.16180050645278,
 - Pearson and Spearman correlation.
 
 ### Spatial
-`BallTree` Ball tree object with a kNN and radius queries.
+`BallTree` Ball tree object with kNN, Kernel Density Estimation and radius queries. 

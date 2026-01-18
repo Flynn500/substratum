@@ -141,6 +141,69 @@ def test_column_stack():
     print(f"  result shape: {result3.shape}")
     print(f"  result: {result3.tolist()}")
 
+def test_kernel_density():
+    print("\n\nTesting kernel density estimation...")
+
+    # Create a simple 2D dataset
+    points = ss.Array(
+        shape=[10, 2],
+        data=[
+            0.0, 0.0,
+            0.1, 0.1,
+            0.2, 0.0,
+            1.0, 1.0,
+            1.1, 1.0,
+            1.0, 1.1,
+            5.0, 5.0,
+            5.1, 5.1,
+            5.0, 5.2,
+            5.2, 5.0,
+        ]
+    )
+
+    print("Building BallTree with 10 points in 2D...")
+    tree = ss.spatial.BallTree.from_array(points, leaf_size=3, metric="euclidean")
+
+    # Test 1: Single point query (should return float)
+    print("\nTest 1: Single point query [0.5, 0.5]")
+    density_single = tree.kernel_density([0.5, 0.5], bandwidth=0.5, kernel="gaussian")
+    print(f"  Type: {type(density_single)}")
+    print(f"  Density: {density_single}")
+
+    # Test 2: Multiple points query (should return Array)
+    print("\nTest 2: Multiple points query")
+    query_points = ss.Array(
+        shape=[3, 2],
+        data=[
+            0.0, 0.0,   # Near first cluster
+            1.0, 1.0,   # Near second cluster
+            5.0, 5.0,   # Near third cluster
+        ]
+    )
+    densities = tree.kernel_density(query_points, bandwidth=0.5, kernel="gaussian")
+    print(f"  Type: {type(densities)}")
+    print(f"  Shape: {densities.shape}")
+    print(f"  Densities: {densities.tolist()}")
+
+    # Test 3: Different kernels
+    print("\nTest 3: Testing different kernel types at point [1.0, 1.0]")
+    for kernel in ["gaussian", "epanechnikov", "uniform", "triangular"]:
+        density = tree.kernel_density([1.0, 1.0], bandwidth=0.5, kernel=kernel)
+        print(f"  {kernel:15s}: {density:.6f}")
+
+    # Test 4: Different bandwidths
+    print("\nTest 4: Testing different bandwidths at point [0.0, 0.0]")
+    for bandwidth in [0.1, 0.5, 1.0, 2.0]:
+        density = tree.kernel_density([0.0, 0.0], bandwidth=bandwidth, kernel="gaussian")
+        print(f"  bandwidth={bandwidth:.1f}: {density:.6f}")
+
+    # Test 5: 1D array as single point
+    print("\nTest 5: Using 1D array as single point")
+    point_1d = ss.Array([2], [0.0, 0.0])
+    density_1d = tree.kernel_density(point_1d, bandwidth=0.5, kernel="gaussian")
+    print(f"  Type: {type(density_1d)}")
+    print(f"  Density: {density_1d}")
+
 if __name__ == "__main__":
     test_array_creation()
     test_operations()
@@ -149,5 +212,5 @@ if __name__ == "__main__":
     test_matmul()
     test_ball_tree()
     test_column_stack()
-    print("\n\nAll tests passed! ✓")
+    test_kernel_density()
 

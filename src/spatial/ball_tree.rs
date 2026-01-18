@@ -1,5 +1,5 @@
 use std::{cmp::Ordering, collections::BinaryHeap};
-use crate::{array::NdArray};
+use crate::{array::{NdArray, Shape}};
 
 #[derive(Debug, Clone, Copy)]
 pub enum DistanceMetric {
@@ -16,6 +16,32 @@ impl DistanceMetric {
             DistanceMetric::Euclidean => euclidean(a, b),
             DistanceMetric::Manhattan => manhattan(a, b),
             DistanceMetric::Chebyshev => chebyshev(a, b),
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug)]
+pub enum KernelType {
+    Gaussian,
+    Epanechnikov,
+    Uniform,
+    Triangular,
+}
+
+impl KernelType {
+    pub fn evaluate(&self, dist: f64, h: f64) -> f64 {
+        let u = dist / h;
+        match self {
+            KernelType::Gaussian => (-0.5 * u * u).exp(),
+            KernelType::Epanechnikov => {
+                if u < 1.0 { 0.75 * (1.0 - u * u) } else { 0.0 }
+            }
+            KernelType::Uniform => {
+                if u < 1.0 { 0.5 } else { 0.0 }
+            }
+            KernelType::Triangular => {
+                if u < 1.0 { 1.0 - u } else { 0.0 }
+            }
         }
     }
 }
@@ -290,7 +316,6 @@ impl BallTree {
             }
         }
 
-
         if node.left.is_none() {
             for i in node.start..node.end {
                 let dist = self.metric.distance(query, self.get_point(i));
@@ -319,5 +344,50 @@ impl BallTree {
             self.query_knn_recursive(left_idx, query, heap, k);
         }
 
+    }
+
+    pub fn kernel_density(&self, queries: &NdArray<f64>, bandwidth: f64, kernel: KernelType) -> NdArray<f64> {
+        let shape = queries.shape().dims();
+        assert!(shape.len() == 2, "Expected 2D array (n_queries, dim)");
+
+        let n_queries = shape[0];
+        let dim = shape[1];
+        assert_eq!(dim, self.dim, "Query dimension must match tree dimension");
+
+        let mut results = vec![0.0; n_queries];
+
+        for i in 0..n_queries {
+            let query = &queries.as_slice()[i * dim..(i + 1) * dim];
+            let mut density = 0.0;
+            self.kde_recursive(0, query, bandwidth, &mut density, kernel);
+            results[i] = density;
+        }
+
+        NdArray::from_vec(Shape::new(vec![n_queries]), results)
+    }
+
+    fn kde_recursive(&self, node_idx: usize, query: &[f64], h: f64, density: &mut f64, kernel: KernelType) {
+        let node = &self.nodes[node_idx];
+        let dist_to_center = self.metric.distance(query, &node.center);
+
+        let min_dist = (dist_to_center - node.radius).max(0.0);
+        if kernel.evaluate(min_dist, h) < 1e-10 {
+            return;
+        }
+
+        if node.left.is_none() {
+            for i in node.start..node.end {
+                let dist = self.metric.distance(query, self.get_point(i));
+                *density += kernel.evaluate(dist, h);
+            }
+            return;
+        }
+
+        if let Some(left) = node.left {
+            self.kde_recursive(left, query, h, density, kernel);
+        }
+        if let Some(right) = node.right {
+            self.kde_recursive(right, query, h, density, kernel);
+        }
     }
 }
