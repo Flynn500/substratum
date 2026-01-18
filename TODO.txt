@@ -1,4 +1,0 @@
-np.mean(), np.var(), np.quantile(), np.median()
-np.log(), np.tan(), np.arcsin(), np.arccos(), np.arctan()
-np.asarray(), np.full(), np.any(), np.sign(), np.abs()
-np.lognormal()

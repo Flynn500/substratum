@@ -1,4 +1,4 @@
-use crate::array::ndarray::{self, NdArray};
+use crate::array::ndarray::{NdArray};
 use crate::array::shape::Shape;
 impl NdArray<f64> {
     pub fn sum(&self) -> f64 {
