@@ -6,7 +6,7 @@ pub fn register_module(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(sum, m)?)?;
     m.add_function(wrap_pyfunction!(mean, m)?)?;
     m.add_function(wrap_pyfunction!(var, m)?)?;
-    m.add_function(wrap_pyfunction!(std_dev, m)?)?;
+    m.add_function(wrap_pyfunction!(std_dev, m)?)?; //to avoid conflict added _dev
     m.add_function(wrap_pyfunction!(median, m)?)?;
     m.add_function(wrap_pyfunction!(quantile, m)?)?;
     m.add_function(wrap_pyfunction!(any, m)?)?;
