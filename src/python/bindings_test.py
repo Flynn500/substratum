@@ -85,11 +85,11 @@ def test_ball_tree():
 
     indices = tree.query_radius(query_point, radius)
     print(f"Query point: {query_point}, radius: {radius}")
-    print(f"Neighbor indices: {indices.tolist()}")
+    print(f"Neighbor indices: {indices}")
 
     print(f"Neighbor points:")
-    for i in range(len(indices.tolist())):
-        point_idx = int(indices.tolist()[i])
+    for i in range(len(indices)):
+        point_idx = int(indices[i])
         point = points[point_idx]
         print(f"  Index {point_idx}: {point}")
 
@@ -97,14 +97,14 @@ def test_ball_tree():
     tree_manhattan = ss.spatial.BallTree.from_array(points, leaf_size=2, metric="manhattan")
     indices_manhattan = tree_manhattan.query_radius(query_point, radius)
     print(f"Query point: {query_point}, radius: {radius}")
-    print(f"Neighbor indices (Manhattan): {indices_manhattan.tolist()}")
+    print(f"Neighbor indices (Manhattan): {indices_manhattan}")
 
     print("\nTesting BallTree KNN with Chebyshev metric")
     tree_chebyshev = ss.spatial.BallTree.from_array(points, leaf_size=2, metric="chebyshev")
     k = 3
     knn_indices = tree_chebyshev.query_knn(query_point, k)
     print(f"Query point: {query_point}, k: {k}")
-    print(f"KNN indices (Chebyshev): {knn_indices.tolist()}")
+    print(f"KNN indices (Chebyshev): {knn_indices}")
 
 def test_column_stack():
     print("\n\nTesting column_stack...")
@@ -182,13 +182,14 @@ def test_kernel_density():
     )
     densities = tree.kernel_density(query_points, bandwidth=0.5, kernel="gaussian")
     print(f"  Type: {type(densities)}")
-    print(f"  Shape: {densities.shape}")
-    print(f"  Densities: {densities.tolist()}")
+    print(f"  Shape: {densities}")
+    print(f"  Densities: {densities}")
 
     # Test 3: Different kernels
+    point = [1.0, 1.0]
     print("\nTest 3: Testing different kernel types at point [1.0, 1.0]")
     for kernel in ["gaussian", "epanechnikov", "uniform", "triangular"]:
-        density = tree.kernel_density([1.0, 1.0], bandwidth=0.5, kernel=kernel)
+        density = tree.kernel_density(point, bandwidth=0.5, kernel=kernel)
         print(f"  {kernel:15s}: {density:.6f}")
 
     # Test 4: Different bandwidths

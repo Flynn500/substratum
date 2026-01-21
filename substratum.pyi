@@ -559,7 +559,7 @@ class spatial:
             """
             ...
 
-        def query_radius(self, query: float | Sequence[float] | Array, radius: float) -> Array:
+        def query_radius(self, query: float | Sequence[float] | Array, radius: float) -> List:
             """Find all points within a given radius of the query point.
 
             Args:
@@ -573,7 +573,7 @@ class spatial:
             """
             ...
 
-        def query_knn(self, query: float | Sequence[float] | Array, k: int) -> Array:
+        def query_knn(self, query: float | Sequence[float] | Array, k: int) -> List:
             """Find the k nearest neighbors to the query point.
 
             Args:
@@ -617,7 +617,7 @@ class spatial:
             queries: Array,
             bandwidth: float = 1.0,
             kernel: Literal["gaussian", "epanechnikov", "uniform", "triangular"] = "gaussian"
-        ) -> Array:
+        ) -> List:
             """Estimate kernel density at multiple query points.
 
             Args:
@@ -642,7 +642,7 @@ class spatial:
             queries: None = None,
             bandwidth: float = 1.0,
             kernel: Literal["gaussian", "epanechnikov", "uniform", "triangular"] = "gaussian"
-        ) -> Array:
+        ) -> List:
             """Estimate kernel density at all training points (leave-one-out).
 
             Args:
@@ -696,7 +696,7 @@ class spatial:
             """
             ...
 
-        def query_radius(self, query: float | Sequence[float] | Array, radius: float) -> Array:
+        def query_radius(self, query: float | Sequence[float] | Array, radius: float) -> List:
             """Find all points within a given radius of the query point.
 
             Args:
@@ -710,7 +710,7 @@ class spatial:
             """
             ...
 
-        def query_knn(self, query: float | Sequence[float] | Array, k: int) -> Array:
+        def query_knn(self, query: float | Sequence[float] | Array, k: int) -> List:
             """Find the k nearest neighbors to the query point.
 
             Args:
@@ -754,7 +754,7 @@ class spatial:
             queries: Array,
             bandwidth: float = 1.0,
             kernel: Literal["gaussian", "epanechnikov", "uniform", "triangular"] = "gaussian"
-        ) -> Array:
+        ) -> List:
             """Estimate kernel density at multiple query points.
 
             Args:
@@ -779,7 +779,7 @@ class spatial:
             queries: None = None,
             bandwidth: float = 1.0,
             kernel: Literal["gaussian", "epanechnikov", "uniform", "triangular"] = "gaussian"
-        ) -> Array:
+        ) -> List:
             """Estimate kernel density at all training points (leave-one-out).
 
             Args:
@@ -897,7 +897,7 @@ class spatial:
             queries: Array,
             bandwidth: float = 1.0,
             kernel: Literal["gaussian", "epanechnikov", "uniform", "triangular"] = "gaussian"
-        ) -> Array:
+        ) -> List:
             """Estimate kernel density at multiple query points.
 
             Args:
@@ -922,7 +922,7 @@ class spatial:
             queries: None = None,
             bandwidth: float = 1.0,
             kernel: Literal["gaussian", "epanechnikov", "uniform", "triangular"] = "gaussian"
-        ) -> Array:
+        ) -> List:
             """Estimate kernel density at all training points (leave-one-out).
 
             Args:
