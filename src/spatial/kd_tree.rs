@@ -83,19 +83,26 @@ impl KDTree {
         (min, max, best_dim)        
     }
 
-    fn partition(&mut self, start: usize, end: usize, dim: usize) -> usize {
-        let mut vals: Vec<(f64, usize)> = (start..end)
-            .map(|i| (self.get_point(i)[dim], i))
-            .collect();
+fn partition(&mut self, start: usize, end: usize, dim: usize) -> usize {
+    let mut slots: Vec<(f64, usize)> = (start..end)
+        .map(|slot| (self.get_point(slot)[dim], slot))
+        .collect();
 
-        let mid_offset = (end - start) / 2;
-        vals.select_nth_unstable_by(mid_offset, |a, b| a.0.partial_cmp(&b.0).unwrap());
+    let mid_offset = (end - start) / 2;
 
-        let new_order: Vec<usize> = vals.iter().map(|&(_, i)| self.indices[i]).collect();
-        self.indices[start..end].copy_from_slice(&new_order);
-        
-        start + mid_offset
-    }
+    slots.select_nth_unstable_by(mid_offset, |a, b| {
+        a.0.partial_cmp(&b.0).unwrap()
+    });
+
+    let new_order: Vec<usize> = slots
+        .iter()
+        .map(|&(_val, slot)| self.indices[slot])
+        .collect();
+
+    self.indices[start..end].copy_from_slice(&new_order);
+
+    start + mid_offset
+}
 
 
     fn build_recursive(&mut self, start: usize, end: usize) -> usize {
