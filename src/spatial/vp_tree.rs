@@ -28,7 +28,6 @@ pub struct VPNode {
     pub left: Option<usize>,
     pub right: Option<usize>, 
 
-    pub vantage: usize,
     pub radius: f64,
 
     pub min_dist: f64,
@@ -81,13 +80,17 @@ impl VPTree {
         &self.data[idx * self.dim..(idx + 1) * self.dim]
     }
 
-    fn init_node(&mut self, start: usize, end: usize, vantage_idx: usize) -> (f64, f64, f64, usize) {
+    fn init_node(&mut self, start: usize, end: usize) -> (f64, f64, f64, usize) {
+        let vantage_idx = self.selection_method.select_vantage(start, end); 
+        self.indices.swap(start, vantage_idx);
+
+
         let mut min = f64::INFINITY;
         let mut max = f64::NEG_INFINITY;
 
-        let vantage_point = self.get_point(vantage_idx).to_vec();
+        let vantage_point = self.get_point(start).to_vec();
 
-        let mut idx_dist: Vec<(usize, f64)> = (start..end)
+        let mut idx_dist: Vec<(usize, f64)> = (start + 1..end)
             .map(|i| {
                 let p = self.get_point(i);
                 let dist = self.metric.distance(p, &vantage_point);
@@ -121,7 +124,7 @@ impl VPTree {
     }
 
     fn min_dist_to_node(&self, query: &[f64], node: &VPNode) -> f64 {
-        let vantage_point = self.get_point(node.vantage);
+        let vantage_point = self.get_point(node.start);
         let d_qv = self.metric.distance(query, vantage_point);
 
         let l1 = d_qv - node.max_dist;
@@ -131,8 +134,7 @@ impl VPTree {
     }
 
     fn build_recursive(&mut self, start: usize, end: usize) -> usize {
-        let vantage_idx = self.selection_method.select_vantage(start, end); 
-        let (radius, min_dist, max_dist, mid) = self.init_node(start, end, vantage_idx);
+        let (radius, min_dist, max_dist, mid) = self.init_node(start, end);
     
         let node_idx = self.nodes.len();
 
@@ -141,7 +143,6 @@ impl VPTree {
             end, 
             left: None, 
             right: None, 
-            vantage: vantage_idx,
             radius, 
             min_dist, 
             max_dist, 
@@ -233,7 +234,7 @@ impl VPTree {
         let left_idx = node.left.unwrap();
         let right_idx = node.right.unwrap();
 
-        let vantage_point = self.get_point(node.vantage);
+        let vantage_point = self.get_point(node.start);
         let dist_to_vantage = self.metric.distance(query, vantage_point);
 
         let (first, second) = if dist_to_vantage < node.radius {

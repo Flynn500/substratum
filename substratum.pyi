@@ -659,3 +659,283 @@ class spatial:
                 1D Array of density estimates at each training point.
             """
             ...
+
+    class KDTree:
+        """KD-tree for efficient nearest neighbor queries.
+
+        A KD-tree (k-dimensional tree) recursively partitions data by splitting along
+        coordinate axes. Each node represents a hyperrectangular region and splits
+        data along the axis with the largest spread.
+        """
+
+        @staticmethod
+        def from_array(
+            array: Array,
+            leaf_size: int = 20,
+            metric: Literal["euclidean", "manhattan", "chebyshev"] = "euclidean"
+        ) -> "spatial.KDTree":
+            """Construct a KD-tree from a 2D array of points.
+
+            Args:
+                array: 2D array of shape (n_points, n_features) containing the data points.
+                leaf_size: Maximum number of points in a leaf node. Smaller values lead to
+                    faster queries but slower construction and more memory usage.
+                    Defaults to 20.
+                metric: Distance metric to use for measuring distances between points.
+                    Options are:
+                    - "euclidean": Standard Euclidean (L2) distance (default)
+                    - "manhattan": Manhattan (L1) distance (taxicab distance)
+                    - "chebyshev": Chebyshev (L∞) distance (maximum coordinate difference)
+
+            Returns:
+                A constructed KDTree instance.
+
+            Raises:
+                AssertionError: If array is not 2-dimensional.
+                ValueError: If metric is not one of the valid options.
+            """
+            ...
+
+        def query_radius(self, query: float | Sequence[float] | Array, radius: float) -> Array:
+            """Find all points within a given radius of the query point.
+
+            Args:
+                query: Query point as a scalar (for 1D data), list of coordinates, or Array.
+                radius: Search radius. All points with distance <= radius are returned.
+
+            Returns:
+                1D Array of row indices (as floats) for all points within the specified
+                radius of the query point. These indices can be used to look up the actual
+                points in the original data array.
+            """
+            ...
+
+        def query_knn(self, query: float | Sequence[float] | Array, k: int) -> Array:
+            """Find the k nearest neighbors to the query point.
+
+            Args:
+                query: Query point as a scalar (for 1D data), list of coordinates, or Array.
+                k: Number of nearest neighbors to return.
+
+            Returns:
+                1D Array of row indices (as floats) for the k nearest neighbors,
+                sorted by distance (closest first). These indices can be used to look up
+                the actual points in the original data array.
+            """
+            ...
+
+        @overload
+        def kernel_density(
+            self,
+            queries: float | Sequence[float],
+            bandwidth: float = 1.0,
+            kernel: Literal["gaussian", "epanechnikov", "uniform", "triangular"] = "gaussian"
+        ) -> float:
+            """Estimate kernel density at a single query point.
+
+            Args:
+                queries: Single query point as a scalar (for 1D data) or list of coordinates.
+                bandwidth: Bandwidth (smoothing parameter) for the kernel. Larger values
+                    produce smoother estimates. Defaults to 1.0.
+                kernel: Kernel function to use for density estimation. Options are:
+                    - "gaussian": Gaussian (normal) kernel (default)
+                    - "epanechnikov": Epanechnikov kernel
+                    - "uniform": Uniform (rectangular) kernel
+                    - "triangular": Triangular kernel
+
+            Returns:
+                Density estimate at the query point (float).
+            """
+            ...
+
+        @overload
+        def kernel_density(
+            self,
+            queries: Array,
+            bandwidth: float = 1.0,
+            kernel: Literal["gaussian", "epanechnikov", "uniform", "triangular"] = "gaussian"
+        ) -> Array:
+            """Estimate kernel density at multiple query points.
+
+            Args:
+                queries: 2D array of query points with shape (n_queries, n_features),
+                    or 1D array representing a single point.
+                bandwidth: Bandwidth (smoothing parameter) for the kernel. Larger values
+                    produce smoother estimates. Defaults to 1.0.
+                kernel: Kernel function to use for density estimation. Options are:
+                    - "gaussian": Gaussian (normal) kernel (default)
+                    - "epanechnikov": Epanechnikov kernel
+                    - "uniform": Uniform (rectangular) kernel
+                    - "triangular": Triangular kernel
+
+            Returns:
+                1D Array of density estimates, one for each query point.
+            """
+            ...
+
+        @overload
+        def kernel_density(
+            self,
+            queries: None = None,
+            bandwidth: float = 1.0,
+            kernel: Literal["gaussian", "epanechnikov", "uniform", "triangular"] = "gaussian"
+        ) -> Array:
+            """Estimate kernel density at all training points (leave-one-out).
+
+            Args:
+                queries: If None, computes density at each training point.
+                bandwidth: Bandwidth (smoothing parameter) for the kernel. Larger values
+                    produce smoother estimates. Defaults to 1.0.
+                kernel: Kernel function to use for density estimation. Options are:
+                    - "gaussian": Gaussian (normal) kernel (default)
+                    - "epanechnikov": Epanechnikov kernel
+                    - "uniform": Uniform (rectangular) kernel
+                    - "triangular": Triangular kernel
+
+            Returns:
+                1D Array of density estimates at each training point.
+            """
+            ...
+
+    class VPTree:
+        """Vantage-point tree for efficient nearest neighbor queries.
+
+        A vantage-point tree recursively partitions data by selecting vantage points
+        and partitioning based on distances to those points. Each node selects a point
+        as a vantage point and splits remaining points by their median distance to it.
+        This structure can be more efficient than KD-trees for high-dimensional data.
+        """
+
+        @staticmethod
+        def from_array(
+            array: Array,
+            leaf_size: int = 20,
+            metric: Literal["euclidean", "manhattan", "chebyshev"] = "euclidean",
+            selection: Literal["first", "random"] = "first"
+        ) -> "spatial.VPTree":
+            """Construct a vantage-point tree from a 2D array of points.
+
+            Args:
+                array: 2D array of shape (n_points, n_features) containing the data points.
+                leaf_size: Maximum number of points in a leaf node. Smaller values lead to
+                    faster queries but slower construction and more memory usage.
+                    Defaults to 20.
+                metric: Distance metric to use for measuring distances between points.
+                    Options are:
+                    - "euclidean": Standard Euclidean (L2) distance (default)
+                    - "manhattan": Manhattan (L1) distance (taxicab distance)
+                    - "chebyshev": Chebyshev (L∞) distance (maximum coordinate difference)
+                selection: Method for selecting vantage points during tree construction.
+                    Options are:
+                    - "first": Always select the first point in the partition (default)
+                    - "random": Randomly select a point from the partition
+
+            Returns:
+                A constructed VPTree instance.
+
+            Raises:
+                AssertionError: If array is not 2-dimensional.
+                ValueError: If metric or selection is not one of the valid options.
+            """
+            ...
+
+        def query_radius(self, query: float | Sequence[float] | Array, radius: float) -> Array:
+            """Find all points within a given radius of the query point.
+
+            Args:
+                query: Query point as a scalar (for 1D data), list of coordinates, or Array.
+                radius: Search radius. All points with distance <= radius are returned.
+
+            Returns:
+                1D Array of row indices (as floats) for all points within the specified
+                radius of the query point. These indices can be used to look up the actual
+                points in the original data array.
+            """
+            ...
+
+        def query_knn(self, query: float | Sequence[float] | Array, k: int) -> Array:
+            """Find the k nearest neighbors to the query point.
+
+            Args:
+                query: Query point as a scalar (for 1D data), list of coordinates, or Array.
+                k: Number of nearest neighbors to return.
+
+            Returns:
+                1D Array of row indices (as floats) for the k nearest neighbors,
+                sorted by distance (closest first). These indices can be used to look up
+                the actual points in the original data array.
+            """
+            ...
+
+        @overload
+        def kernel_density(
+            self,
+            queries: float | Sequence[float],
+            bandwidth: float = 1.0,
+            kernel: Literal["gaussian", "epanechnikov", "uniform", "triangular"] = "gaussian"
+        ) -> float:
+            """Estimate kernel density at a single query point.
+
+            Args:
+                queries: Single query point as a scalar (for 1D data) or list of coordinates.
+                bandwidth: Bandwidth (smoothing parameter) for the kernel. Larger values
+                    produce smoother estimates. Defaults to 1.0.
+                kernel: Kernel function to use for density estimation. Options are:
+                    - "gaussian": Gaussian (normal) kernel (default)
+                    - "epanechnikov": Epanechnikov kernel
+                    - "uniform": Uniform (rectangular) kernel
+                    - "triangular": Triangular kernel
+
+            Returns:
+                Density estimate at the query point (float).
+            """
+            ...
+
+        @overload
+        def kernel_density(
+            self,
+            queries: Array,
+            bandwidth: float = 1.0,
+            kernel: Literal["gaussian", "epanechnikov", "uniform", "triangular"] = "gaussian"
+        ) -> Array:
+            """Estimate kernel density at multiple query points.
+
+            Args:
+                queries: 2D array of query points with shape (n_queries, n_features),
+                    or 1D array representing a single point.
+                bandwidth: Bandwidth (smoothing parameter) for the kernel. Larger values
+                    produce smoother estimates. Defaults to 1.0.
+                kernel: Kernel function to use for density estimation. Options are:
+                    - "gaussian": Gaussian (normal) kernel (default)
+                    - "epanechnikov": Epanechnikov kernel
+                    - "uniform": Uniform (rectangular) kernel
+                    - "triangular": Triangular kernel
+
+            Returns:
+                1D Array of density estimates, one for each query point.
+            """
+            ...
+
+        @overload
+        def kernel_density(
+            self,
+            queries: None = None,
+            bandwidth: float = 1.0,
+            kernel: Literal["gaussian", "epanechnikov", "uniform", "triangular"] = "gaussian"
+        ) -> Array:
+            """Estimate kernel density at all training points (leave-one-out).
+
+            Args:
+                queries: If None, computes density at each training point.
+                bandwidth: Bandwidth (smoothing parameter) for the kernel. Larger values
+                    produce smoother estimates. Defaults to 1.0.
+                kernel: Kernel function to use for density estimation. Options are:
+                    - "gaussian": Gaussian (normal) kernel (default)
+                    - "epanechnikov": Epanechnikov kernel
+                    - "uniform": Uniform (rectangular) kernel
+                    - "triangular": Triangular kernel
+
+            Returns:
+                1D Array of density estimates at each training point.
+            """
+            ...

@@ -1,4 +1,5 @@
 use std::{cmp::Ordering};
+use crate::array::NdArray;
 
 #[derive(Debug, Clone, Copy)]
 pub enum DistanceMetric {
