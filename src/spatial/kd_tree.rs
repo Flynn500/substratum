@@ -39,6 +39,7 @@ impl KDTree {
         };
 
         tree.build_recursive(0, n_points);
+        tree.reorder_data();
         tree
     }
 
@@ -53,11 +54,22 @@ impl KDTree {
         Self::new(array.as_slice(), n_points, dim, leaf_size, metric)
     }
 
-    fn get_point(&self, i: usize) -> &[f64] {
-        let idx = self.indices[i];
-        &self.data[idx * self.dim..(idx + 1) * self.dim]
+    fn reorder_data(&mut self) {
+        let mut new_data = vec![0.0; self.data.len()];
+        
+        for (new_idx, &old_idx) in self.indices.iter().enumerate() {
+            let src = old_idx * self.dim;
+            let dst = new_idx * self.dim;
+            new_data[dst..dst + self.dim].copy_from_slice(&self.data[src..src + self.dim]);
+        }
+        
+        self.data = new_data;
     }
 
+    fn get_point(&self, i: usize) -> &[f64] {
+        &self.data[i * self.dim..(i + 1) * self.dim]
+    }
+    
     fn init_node(&self, start: usize, end: usize) -> (Vec<f64>, Vec<f64>, usize) {
         let mut min = vec![f64::INFINITY; self.dim];
         let mut max = vec![f64::NEG_INFINITY; self.dim];

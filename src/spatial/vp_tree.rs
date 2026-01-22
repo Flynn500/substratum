@@ -61,6 +61,7 @@ impl VPTree {
         };
 
         tree.build_recursive(0, n_points);
+        tree.reorder_data();
         tree
     }
 
@@ -76,8 +77,19 @@ impl VPTree {
     }
 
     fn get_point(&self, i: usize) -> &[f64] {
-        let idx = self.indices[i];
-        &self.data[idx * self.dim..(idx + 1) * self.dim]
+        &self.data[i * self.dim..(i + 1) * self.dim]
+    }
+
+    fn reorder_data(&mut self) {
+        let mut new_data = vec![0.0; self.data.len()];
+        
+        for (new_idx, &old_idx) in self.indices.iter().enumerate() {
+            let src = old_idx * self.dim;
+            let dst = new_idx * self.dim;
+            new_data[dst..dst + self.dim].copy_from_slice(&self.data[src..src + self.dim]);
+        }
+        
+        self.data = new_data;
     }
 
     fn init_node(&mut self, start: usize, end: usize) -> (f64, f64, f64, usize) {
