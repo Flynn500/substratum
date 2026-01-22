@@ -1,5 +1,5 @@
 use std::{cmp::Ordering, collections::BinaryHeap};
-use crate::{array::{NdArray, Shape}, spatial::common::{DistanceMetric, KernelType, HeapItem}};
+use crate::{array::{NdArray, Shape}, spatial::common::{DistanceMetric, KernelType, HeapItem, ApproxCriterion}};
 use crate::random::Generator;
 #[derive(Clone, Copy, Debug, Default)]
 pub enum VantagePointSelection {
@@ -20,6 +20,7 @@ impl VantagePointSelection{
         }
     }
 }
+
 
 #[derive(Debug, Clone)]
 pub struct VPNode {
@@ -273,18 +274,87 @@ impl VPTree {
         for i in 0..n_queries {
             let query = &queries.as_slice()[i * dim..(i + 1) * dim];
             let mut density = 0.0;
-            self.kde_recursive(0, query, bandwidth, &mut density, kernel);
+            self.kde_recursive(0, query, bandwidth, &mut density, kernel, &ApproxCriterion::None);
             results[i] = density;
         }
 
         NdArray::from_vec(Shape::new(vec![n_queries]), results)
     }
 
-    fn kde_recursive(&self, node_idx: usize, query: &[f64], h: f64, density: &mut f64, kernel: KernelType) {
+    pub fn kernel_density_approx(&self, queries: &NdArray<f64>, bandwidth: f64, kernel: KernelType, criterion: ApproxCriterion) -> NdArray<f64> {
+        let shape = queries.shape().dims();
+        assert!(shape.len() == 2, "Expected 2D array (n_queries, dim)");
+
+        let n_queries = shape[0];
+        let dim = shape[1];
+        assert_eq!(dim, self.dim, "Query dimension must match tree dimension");
+        
+        let mut results = vec![0.0; n_queries];
+        
+        for i in 0..n_queries {
+            let query = &queries.as_slice()[i * dim..(i + 1) * dim];
+            let mut density = 0.0;
+            self.kde_recursive(0, query, bandwidth, &mut density, kernel, &criterion);
+            results[i] = density;
+        }
+        
+        NdArray::from_vec(Shape::new(vec![n_queries]), results)
+    }
+
+    fn approx_kde_for_node(&self, query: &[f64], node: &VPNode, h: f64, kernel: KernelType) -> f64 {
+        let vantage_point = self.get_point(node.start);
+        let dist_to_vantage = self.metric.distance(query, vantage_point);
+        
+        let n_points = (node.end - node.start) as f64;
+        
+        let min_possible = (dist_to_vantage - node.max_dist).max(0.0);
+        let max_possible = dist_to_vantage + node.max_dist;
+
+
+
+        let k_min = kernel.evaluate(min_possible, h);
+        let k_max = kernel.evaluate(max_possible, h);
+        let k_avg = (k_min + k_max) / 2.0;
+        
+        n_points * k_avg
+    }
+
+    fn should_approximate(&self, node: &VPNode, criterion: &ApproxCriterion) -> bool {
+        if node.left.is_none() {
+            return false;
+        }
+        
+        match criterion {
+            ApproxCriterion::None => false,
+            
+            ApproxCriterion::MinSamples(threshold) => {
+                let node_count = node.end - node.start;
+                node_count >= *threshold
+            },
+            
+            ApproxCriterion::MaxSpan(threshold) => {
+                let span = node.max_dist - node.min_dist;
+                span <= *threshold
+            },
+            
+            ApproxCriterion::Combined(min_samples, max_radius) => {
+                let node_count = node.end - node.start;
+                let span = node.max_dist - node.min_dist;
+                node_count >= *min_samples && span <= *max_radius
+            },
+        }
+    }
+
+    fn kde_recursive(&self, node_idx: usize, query: &[f64], h: f64, density: &mut f64, kernel: KernelType, criterion: &ApproxCriterion) {
         let node = &self.nodes[node_idx];
         let min_dist = self.min_dist_to_node(query, &node);
 
         if kernel.evaluate(min_dist, h) < 1e-10 {
+            return;
+        }
+
+        if self.should_approximate(node, criterion) {
+            *density += self.approx_kde_for_node(query, node, h, kernel);
             return;
         }
 
@@ -297,10 +367,10 @@ impl VPTree {
         }
 
         if let Some(left) = node.left {
-            self.kde_recursive(left, query, h, density, kernel);
+            self.kde_recursive(left, query, h, density, kernel, &criterion);
         }
         if let Some(right) = node.right {
-            self.kde_recursive(right, query, h, density, kernel);
+            self.kde_recursive(right, query, h, density, kernel, &criterion);
         }
     }
 }

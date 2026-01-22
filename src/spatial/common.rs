@@ -20,6 +20,13 @@ impl DistanceMetric {
     }
 }
 
+pub enum ApproxCriterion {
+    None,
+    MinSamples(usize),
+    MaxSpan(f64),
+    Combined(usize, f64),
+}
+
 #[derive(Clone, Copy, Debug)]
 pub enum KernelType {
     Gaussian,

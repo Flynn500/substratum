@@ -1,5 +1,5 @@
 use std::collections::BinaryHeap;
-use crate::{array::{NdArray, Shape}, spatial::common::{DistanceMetric, KernelType, HeapItem}};
+use crate::{array::{NdArray, Shape}, spatial::common::{ApproxCriterion, DistanceMetric, HeapItem, KernelType}};
 
 
 #[derive(Clone, Debug)]
@@ -118,26 +118,26 @@ impl BallTree {
         best_dim
     }
 
-fn partition(&mut self, start: usize, end: usize, dim: usize) -> usize {
-    let mut slots_by_key: Vec<(f64, usize)> = (start..end)
-        .map(|slot| (self.get_point(slot)[dim], slot))
-        .collect();
+    fn partition(&mut self, start: usize, end: usize, dim: usize) -> usize {
+        let mut slots_by_key: Vec<(f64, usize)> = (start..end)
+            .map(|slot| (self.get_point(slot)[dim], slot))
+            .collect();
 
-    let mid_offset = (end - start) / 2;
+        let mid_offset = (end - start) / 2;
 
-    slots_by_key.select_nth_unstable_by(mid_offset, |a, b| {
-        a.0.partial_cmp(&b.0).unwrap()
-    });
+        slots_by_key.select_nth_unstable_by(mid_offset, |a, b| {
+            a.0.partial_cmp(&b.0).unwrap()
+        });
 
-    let new_order: Vec<usize> = slots_by_key
-        .iter()
-        .map(|&(_key, slot)| self.indices[slot])
-        .collect();
+        let new_order: Vec<usize> = slots_by_key
+            .iter()
+            .map(|&(_key, slot)| self.indices[slot])
+            .collect();
 
-    self.indices[start..end].copy_from_slice(&new_order);
+        self.indices[start..end].copy_from_slice(&new_order);
 
-    start + mid_offset
-}
+        start + mid_offset
+    }
 
 
     fn build_recursive(&mut self, start: usize, end: usize) -> usize {
@@ -274,14 +274,75 @@ fn partition(&mut self, start: usize, end: usize, dim: usize) -> usize {
         for i in 0..n_queries {
             let query = &queries.as_slice()[i * dim..(i + 1) * dim];
             let mut density = 0.0;
-            self.kde_recursive(0, query, bandwidth, &mut density, kernel);
+            self.kde_recursive(0, query, bandwidth, &mut density, kernel, &ApproxCriterion::None);
             results[i] = density;
         }
 
         NdArray::from_vec(Shape::new(vec![n_queries]), results)
     }
 
-    fn kde_recursive(&self, node_idx: usize, query: &[f64], h: f64, density: &mut f64, kernel: KernelType) {
+    pub fn kernel_density_approx(&self, queries: &NdArray<f64>, bandwidth: f64, kernel: KernelType, criterion: &ApproxCriterion) -> NdArray<f64> {
+        let shape = queries.shape().dims();
+        assert!(shape.len() == 2, "Expected 2D array (n_queries, dim)");
+
+        let n_queries = shape[0];
+        let dim = shape[1];
+        assert_eq!(dim, self.dim, "Query dimension must match tree dimension");
+
+        let mut results = vec![0.0; n_queries];
+
+        for i in 0..n_queries {
+            let query = &queries.as_slice()[i * dim..(i + 1) * dim];
+            let mut density = 0.0;
+            self.kde_recursive(0, query, bandwidth, &mut density, kernel, criterion);
+            results[i] = density;
+        }
+
+        NdArray::from_vec(Shape::new(vec![n_queries]), results)
+    }
+
+    fn approx_kde_for_node(&self, query: &[f64], node: &BallNode, h: f64, kernel: KernelType) -> f64 {
+        let n_points = (node.end - node.start) as f64;
+
+        let dist_to_center = self.metric.distance(query, &node.center);
+
+        let min_possible = (dist_to_center - node.radius).max(0.0);
+        let max_possible = dist_to_center + node.radius;
+        
+        let k_min = kernel.evaluate(min_possible, h);
+        let k_max = kernel.evaluate(max_possible, h);
+        let k_avg = (k_min + k_max) / 2.0;
+        
+        n_points * k_avg
+    }
+
+    fn should_approximate(&self, node: &BallNode, criterion: &ApproxCriterion) -> bool {
+        if node.left.is_none() {
+            return false;
+        }
+        
+        match criterion {
+            ApproxCriterion::None => false,
+            
+            ApproxCriterion::MinSamples(threshold) => {
+                let node_count = node.end - node.start;
+                node_count >= *threshold
+            },
+            
+            ApproxCriterion::MaxSpan(threshold) => {
+                let span = 2.0 * node.radius;
+                span <= *threshold
+            },
+            
+            ApproxCriterion::Combined(min_samples, max_span) => {
+                let node_count = node.end - node.start;
+                let span = 2.0 * node.radius;
+                node_count >= *min_samples && span <= *max_span
+            },
+        }
+    }
+
+    fn kde_recursive(&self, node_idx: usize, query: &[f64], h: f64, density: &mut f64, kernel: KernelType, criterion: &ApproxCriterion) {
         let node = &self.nodes[node_idx];
         let dist_to_center = self.metric.distance(query, &node.center);
 
@@ -299,10 +360,10 @@ fn partition(&mut self, start: usize, end: usize, dim: usize) -> usize {
         }
 
         if let Some(left) = node.left {
-            self.kde_recursive(left, query, h, density, kernel);
+            self.kde_recursive(left, query, h, density, kernel, &criterion);
         }
         if let Some(right) = node.right {
-            self.kde_recursive(right, query, h, density, kernel);
+            self.kde_recursive(right, query, h, density, kernel, &criterion);
         }
     }
 }
