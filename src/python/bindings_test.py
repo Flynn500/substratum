@@ -206,6 +206,9 @@ def test_kernel_density():
     print(f"  Density: {density_1d}")
 
 if __name__ == "__main__":
+
+    print(ss.Array([2,2], [0.0, 0.0,1.0,1.0]).tolist())
+
     test_array_creation()
     test_operations()
     test_math_functions()

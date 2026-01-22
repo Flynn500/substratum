@@ -1,6 +1,6 @@
 use pyo3::prelude::*;
 use pyo3::exceptions::PyValueError;
-use pyo3::types::{PySlice, PyTuple, PyAny};
+use pyo3::types::{PyAny, PyFloat, PyList, PySlice, PyTuple};
 use numpy::{PyArrayDyn, PyReadonlyArrayDyn, PyUntypedArrayMethods, PyArrayMethods, IntoPyArray};
 use crate::array::{NdArray, Shape};
 use super::{PyArray, VecOrArray, ArrayOrScalar};
@@ -111,8 +111,33 @@ impl PyArray {
             .ok_or_else(|| PyValueError::new_err("Index out of bounds"))
     }
 
-    fn tolist(&self) -> Vec<f64> {
-        self.inner.as_slice().to_vec()
+    pub fn tolist(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {
+        if self.inner.shape().ndim() == 0 {
+            return Ok(PyFloat::new(py, self.inner.as_slice()[0]).unbind().into_any());
+        }
+        
+        self.to_pylist_recursive(py, 0, 0)
+    }
+
+    fn to_pylist_recursive(&self, py: Python<'_>, dim: usize, offset: usize) -> PyResult<Py<PyAny>> {
+        let data = self.inner.as_slice();
+        let dim_size = self.inner.shape().dim(dim).unwrap();
+
+        if dim == self.inner.ndim() - 1 {
+            let list = PyList::new(py, (0..dim_size).map(|i| {
+                data[offset + i * self.inner.strides()[dim]]
+            }))?;
+            return Ok(list.into());
+        }
+        
+        let items: Vec<Py<PyAny>> = (0..dim_size)
+            .map(|i| {
+                let new_offset = offset + i * self.inner.strides()[dim];
+                self.to_pylist_recursive(py, dim + 1, new_offset)
+            })
+            .collect::<PyResult<_>>()?;
+        
+        Ok(PyList::new(py, items)?.into())
     }
 
     fn sin(&self) -> Self {
