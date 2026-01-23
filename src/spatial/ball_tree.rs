@@ -351,6 +351,11 @@ impl BallTree {
             return;
         }
 
+        if self.should_approximate(node, criterion) {
+            *density += self.approx_kde_for_node(query, node, h, kernel);
+            return;
+        }
+
         if node.left.is_none() {
             for i in node.start..node.end {
                 let dist = self.metric.distance(query, self.get_point(i));
