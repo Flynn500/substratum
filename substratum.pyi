@@ -349,6 +349,10 @@ class Array(Sequence[float]):
             A new 1D array containing the elements at the specified indices.
         """
         ...
+    
+    def item(self) -> float:
+        """Convert a single-element array into a float."""
+        ...
 
     def matmul(self, other: Array) -> Array:
         """Matrix multiplication."""
