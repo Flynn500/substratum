@@ -13,3 +13,4 @@ readme = "README.md"
 features = ["pyo3/extension-module"]
 include = ["substratum.pyi"]
 module-name = "substratum"
+python-source = "python"

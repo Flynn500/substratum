@@ -297,6 +297,16 @@ impl PyArray {
         PyArray { inner: self.inner.take(&indices) }
     }
 
+    fn item(&self) -> PyResult<f64> {
+        if self.inner.len() != 1 {
+            return Err(PyValueError::new_err(format!(
+                "item() can only be called on arrays with exactly one element, got {} elements",
+                self.inner.len()
+            )));
+        }
+        Ok(self.inner.item())
+    }
+
     #[staticmethod]
     fn from_numpy(_py: Python<'_>, arr: &Bound<'_, PyAny>) -> PyResult<Self> {
         let numpy_arr: PyReadonlyArrayDyn<f64> = arr.extract()?;

@@ -14,6 +14,7 @@ pub fn register_module(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(eigvals, m)?)?;
     m.add_function(wrap_pyfunction!(diagonal, m)?)?;
     m.add_function(wrap_pyfunction!(outer, m)?)?;
+    m.add_function(wrap_pyfunction!(least_squares, m)?)?;
     Ok(())
 }
 
@@ -86,4 +87,11 @@ fn outer(a: VecOrArray, b: VecOrArray) -> PyArray {
     PyArray {
         inner: NdArray::outer(&a_arr, &b_arr),
     }
+}
+
+#[pyfunction]
+fn least_squares(a: &PyArray, b: &PyArray) -> PyResult<PyArray> {
+    a.inner.least_squares(&b.inner)
+        .map(|x| PyArray { inner: x })
+        .map_err(|e| PyValueError::new_err(e))
 }

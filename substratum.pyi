@@ -41,6 +41,17 @@ class linalg:
             ValueError: If array is not 2D.
         """
         ...
+    
+    @staticmethod
+    def lstsq(a: Array) -> tuple[Array, Array]:
+        """Return the least-squares solution to a linear matrix equation.
+
+        Returns Least squares solution.
+
+        Raises:
+            ValueError: If array is not 2D.
+        """
+        ...
 
     @staticmethod
     def eig(a: Array) -> tuple[Array, Array]:
