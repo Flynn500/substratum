@@ -14,7 +14,8 @@ pub fn register_module(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(eigvals, m)?)?;
     m.add_function(wrap_pyfunction!(diagonal, m)?)?;
     m.add_function(wrap_pyfunction!(outer, m)?)?;
-    m.add_function(wrap_pyfunction!(least_squares, m)?)?;
+    m.add_function(wrap_pyfunction!(lstsq, m)?)?;
+    m.add_function(wrap_pyfunction!(weighted_lstsq, m)?)?;
     Ok(())
 }
 
@@ -90,8 +91,45 @@ fn outer(a: VecOrArray, b: VecOrArray) -> PyArray {
 }
 
 #[pyfunction]
-fn least_squares(a: &PyArray, b: &PyArray) -> PyResult<PyArray> {
-    a.inner.least_squares(&b.inner)
-        .map(|x| PyArray { inner: x })
-        .map_err(|e| PyValueError::new_err(e))
+fn lstsq(a: &PyArray, b: &PyArray) -> PyResult<(PyArray, PyArray)> {
+    let x = a.inner.least_squares(&b.inner)
+        .map_err(|e| PyValueError::new_err(e))?;
+
+    let ax = a.inner.matmul(&x);
+    let residuals = &b.inner - &ax;
+
+    Ok((PyArray { inner: x }, PyArray { inner: residuals }))
+}
+
+#[pyfunction]
+fn weighted_lstsq(a: &PyArray, b: &PyArray, weights: &PyArray) -> PyResult<(PyArray, PyArray)> {
+    let x = a.inner.weighted_least_squares(&b.inner, &weights.inner)
+        .map_err(|e| PyValueError::new_err(e))?;
+
+    let ax = a.inner.matmul(&x);
+    let diff = &b.inner - &ax;
+
+    let sqrt_w: Vec<f64> = weights.inner.as_slice()
+        .iter()
+        .map(|&w| w.sqrt())
+        .collect();
+
+    let m = diff.shape().dims()[0];
+    let weighted_res = if diff.ndim() == 1 {
+        let res: Vec<f64> = (0..m)
+            .map(|i| diff.get(&[i]).unwrap() * sqrt_w[i])
+            .collect();
+        NdArray::from_vec(crate::array::shape::Shape::d1(m), res)
+    } else {
+        let b_cols = diff.shape().dims()[1];
+        let mut res = vec![0.0; m * b_cols];
+        for i in 0..m {
+            for j in 0..b_cols {
+                res[i * b_cols + j] = diff.get(&[i, j]).unwrap() * sqrt_w[i];
+            }
+        }
+        NdArray::from_vec(crate::array::shape::Shape::d2(m, b_cols), res)
+    };
+
+    Ok((PyArray { inner: x }, PyArray { inner: weighted_res }))
 }

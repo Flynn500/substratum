@@ -12,5 +12,5 @@ readme = "README.md"
 [tool.maturin]
 features = ["pyo3/extension-module"]
 include = ["substratum.pyi"]
-module-name = "substratum"
+module-name = "substratum._core"
 python-source = "python"

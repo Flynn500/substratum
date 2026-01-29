@@ -214,6 +214,24 @@ if __name__ == "__main__":
 
     print(ss.Array([2,2], [0.0, 0.0,1.0,1.0]).tolist())
 
+    # Simple linear relationship: y = 2x + 1 with some noise
+    # Points: (1, 3), (2, 5), (3, 7), (4, 9)
+    A = ss.Array([4, 2], [1.0, 1.0,  # [1, 1]
+                        2.0, 1.0,  # [2, 1]
+                        3.0, 1.0,  # [3, 1]
+                        4.0, 1.0]) # [4, 1]
+    b = ss.Array([4], [3.0, 5.0, 7.0, 9.0])
+
+    # Equal weights - should give same result as ordinary least squares
+    weights = ss.Array([4], [1.0, 1.0, 1.0, 1.0])
+    x = ss.linalg.weighted_lstsq(A, b, weights)#A.weighted_least_squares(b, weights)
+    print("Solution:", x[0].tolist())  # Should be close to [2.0, 1.0]
+    
+    # Now give more weight to first and last points
+    weights2 = ss.Array([4], [10.0, 1.0, 1.0, 10.0])
+    x2 = ss.linalg.weighted_lstsq(A, b, weights2)
+    print("Weighted:", x2[0].tolist())  # Should still be close to [2.0, 1.0] since data is perfect
+
     test_array_creation()
     test_operations()
     test_math_functions()

@@ -54,7 +54,7 @@ pub use random::PyGenerator;
 
 // Main Python module
 #[pymodule]
-fn substratum(m: &Bound<'_, PyModule>) -> PyResult<()> {
+fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     // Register main types
     m.add_class::<PyArray>()?;
     m.add_class::<PyArrayIter>()?;

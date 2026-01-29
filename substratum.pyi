@@ -43,13 +43,42 @@ class linalg:
         ...
     
     @staticmethod
-    def lstsq(a: Array) -> tuple[Array, Array]:
+    def lstsq(a: Array, b: Array) -> tuple[Array, Array]:
         """Return the least-squares solution to a linear matrix equation.
 
-        Returns Least squares solution.
+        Solves the equation ax = b by computing a vector x that minimizes
+        the Euclidean 2-norm ||b - ax||^2.
+
+        Args:
+            a: Coefficient matrix of shape (M, N).
+            b: Ordinate or "dependent variable" values of shape (M,) or (M, K).
+
+        Returns:
+            Tuple of (x, residuals) where x is the least squares solution.
 
         Raises:
             ValueError: If array is not 2D.
+        """
+        ...
+
+    @staticmethod
+    def weighted_lstsq(a: Array, b: Array, weights: Array) -> tuple[Array, Array]:
+        """Return the weighted least-squares solution to a linear matrix equation.
+
+        Solves the equation ax = b by computing a vector x that minimizes
+        the weighted Euclidean norm sum(w_i * (b_i - (ax)_i)^2).
+
+        Args:
+            a: Coefficient matrix of shape (M, N).
+            b: Ordinate or "dependent variable" values of shape (M,) or (M, K).
+            weights: Weight array of shape (M,) with non-negative values.
+
+        Returns:
+            Tuple of (x, weighted_residuals) where x is the weighted least squares solution
+            and weighted_residuals = sqrt(W) * (b - a @ x).
+
+        Raises:
+            ValueError: If arrays have incompatible dimensions or weights are negative.
         """
         ...
 

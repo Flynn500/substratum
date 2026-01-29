@@ -1,5 +1,5 @@
-use substratum::{NdArray, Shape};
-use substratum::random::Generator;
+use _core::{NdArray, Shape};
+use _core::random::Generator;
 
 //cargo run --bin playground
 fn main() {

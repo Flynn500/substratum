@@ -85,4 +85,27 @@ impl NdArray<f64> {
             Ok(NdArray::from_vec(Shape::d2(n, b_cols), x))
         }
     }
+
+pub fn weighted_least_squares(&self, b: &NdArray<f64>, weights: &NdArray<f64>,) -> Result<NdArray<f64>, &'static str> {
+        if weights.ndim() != 1 {
+            return Err("Weights must be 1D");
+        }
+        
+        let m = self.shape().dims()[0];
+        let sqrt_w: Vec<f64> = weights.as_slice()
+            .iter()
+            .map(|&w| {
+                if w < 0.0 {
+                    return Err("Weights must be non-negative");
+                }
+                Ok(w.sqrt())
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+
+        let sqrt_w_col = NdArray::from_vec(Shape::d2(m, 1), sqrt_w);
+        let weighted_a = self * &sqrt_w_col;
+        let weighted_b = b * &sqrt_w_col;
+        
+        weighted_a.least_squares(&weighted_b)
+    }
 }
