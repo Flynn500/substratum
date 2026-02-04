@@ -1,4 +1,4 @@
-from substratum import Array, linalg, column_stack
+from ironforest import Array, linalg, column_stack
 
 class LinearRegression:
     """Linear regression model using least squares."""

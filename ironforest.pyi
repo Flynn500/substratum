@@ -1,27 +1,31 @@
 """A library for array-based computation."""
 
-from typing import Iterator, List, Literal, Sequence, Tuple, overload, Any
+from typing import Iterator, List, Literal, Sequence, Tuple, overload, Any, Union
+
+# Type alias for array-like inputs that can be converted to Array
+# Accepts: Array, NumPy arrays, Python lists/nested lists, or scalar floats
+ArrayLike = Union['Array', Sequence[float], Sequence[Sequence[float]], float, Any]
 
 class linalg:
     """Linear algebra functions."""
 
     @staticmethod
-    def matmul(a: Array, b: Array) -> Array:
+    def matmul(a: ArrayLike, b: ArrayLike) -> Array:
         """Matrix multiplication."""
         ...
 
     @staticmethod
-    def dot(a: Array, b: Array) -> Array:
+    def dot(a: ArrayLike, b: ArrayLike) -> Array:
         """Dot/matrix product."""
         ...
 
     @staticmethod
-    def transpose(a: Array) -> Array:
+    def transpose(a: ArrayLike) -> Array:
         """Transpose a 2D matrix."""
         ...
 
     @staticmethod
-    def cholesky(a: Array) -> Array:
+    def cholesky(a: ArrayLike) -> Array:
         """Compute Cholesky decomposition.
 
         Returns lower triangular matrix L where A = L @ L.T.
@@ -32,7 +36,7 @@ class linalg:
         ...
 
     @staticmethod
-    def qr(a: Array) -> tuple[Array, Array]:
+    def qr(a: ArrayLike) -> tuple[Array, Array]:
         """QR decomposition.
 
         Returns (Q, R) where A = Q @ R, Q is orthogonal and R is upper triangular.
@@ -41,9 +45,9 @@ class linalg:
             ValueError: If array is not 2D.
         """
         ...
-    
+
     @staticmethod
-    def lstsq(a: Array, b: Array) -> tuple[Array, Array]:
+    def lstsq(a: ArrayLike, b: ArrayLike) -> tuple[Array, Array]:
         """Return the least-squares solution to a linear matrix equation.
 
         Solves the equation ax = b by computing a vector x that minimizes
@@ -62,7 +66,7 @@ class linalg:
         ...
 
     @staticmethod
-    def weighted_lstsq(a: Array, b: Array, weights: Array) -> tuple[Array, Array]:
+    def weighted_lstsq(a: ArrayLike, b: ArrayLike, weights: ArrayLike) -> tuple[Array, Array]:
         """Return the weighted least-squares solution to a linear matrix equation.
 
         Solves the equation ax = b by computing a vector x that minimizes
@@ -83,7 +87,7 @@ class linalg:
         ...
 
     @staticmethod
-    def eig(a: Array) -> tuple[Array, Array]:
+    def eig(a: ArrayLike) -> tuple[Array, Array]:
         """Compute eigenvalues and eigenvectors.
 
         Returns:
@@ -97,7 +101,7 @@ class linalg:
         ...
 
     @staticmethod
-    def eig_with_params(a: Array, max_iter: int = 1000, tol: float = 1e-10) -> tuple[Array, Array]:
+    def eig_with_params(a: ArrayLike, max_iter: int = 1000, tol: float = 1e-10) -> tuple[Array, Array]:
         """Eigendecomposition with custom iteration parameters.
 
         Args:
@@ -114,7 +118,7 @@ class linalg:
         ...
 
     @staticmethod
-    def eigvals(a: Array) -> Array:
+    def eigvals(a: ArrayLike) -> Array:
         """Compute eigenvalues only.
 
         More efficient than eig() when eigenvectors are not needed.
@@ -128,7 +132,7 @@ class linalg:
         ...
 
     @staticmethod
-    def diagonal(a: Array, k: int | None = None) -> Array:
+    def diagonal(a: ArrayLike, k: int | None = None) -> Array:
         """Extract the k-th diagonal from a 2D array."""
         ...
 
@@ -137,39 +141,39 @@ class stats:
     """Statistical functions."""
 
     @staticmethod
-    def sum(a: Array) -> float:
+    def sum(a: ArrayLike) -> float:
         """Sum of all elements."""
         ...
 
     @staticmethod
-    def mean(a: Array) -> float:
+    def mean(a: ArrayLike) -> float:
         """Mean of all elements."""
         ...
 
     @staticmethod
-    def var(a: Array) -> float:
+    def var(a: ArrayLike) -> float:
         """Variance of all elements (population variance)."""
         ...
 
     @staticmethod
-    def std(a: Array) -> float:
+    def std(a: ArrayLike) -> float:
         """Standard deviation of all elements."""
         ...
 
     @staticmethod
-    def median(a: Array) -> float:
+    def median(a: ArrayLike) -> float:
         """Median of all elements."""
         ...
 
     @overload
     @staticmethod
-    def quantile(a: Array, q: float) -> float:
+    def quantile(a: ArrayLike, q: float) -> float:
         """q-th quantile of all elements (q in [0, 1])."""
         ...
 
     @overload
     @staticmethod
-    def quantile(a: Array, q: Array) -> Array:
+    def quantile(a: ArrayLike, q: ArrayLike) -> Array:
         """Compute multiple quantiles at once (vectorized).
 
         Args:
@@ -182,17 +186,17 @@ class stats:
         ...
 
     @staticmethod
-    def any(a: Array) -> bool:
+    def any(a: ArrayLike) -> bool:
         """True if any element is non-zero."""
         ...
 
     @staticmethod
-    def all(a: Array) -> bool:
+    def all(a: ArrayLike) -> bool:
         """True if all elements are non-zero."""
         ...
 
     @staticmethod
-    def pearson(a: Array, b: Array) -> float:
+    def pearson(a: ArrayLike, b: ArrayLike) -> float:
         """Compute Pearson correlation coefficient between two arrays.
 
         Args:
@@ -205,7 +209,7 @@ class stats:
         ...
 
     @staticmethod
-    def spearman(a: Array, b: Array) -> float:
+    def spearman(a: ArrayLike, b: ArrayLike) -> float:
         """Compute Spearman rank correlation coefficient between two arrays.
 
         Args:
@@ -308,11 +312,11 @@ class Array(Sequence[float]):
         ...
 
     @staticmethod
-    def asarray(data: Sequence[float] | Array, shape: Sequence[int] | None = None) -> Array:
+    def asarray(data: ArrayLike, shape: Sequence[int] | None = None) -> Array:
         """Create array from data with optional reshape.
 
         Args:
-            data: Flat list of float values or existing Array.
+            data: Array-like data (Array, NumPy array, list, nested list, or scalar).
             shape: Optional shape. If None, creates a 1D array.
         """
         ...
@@ -323,22 +327,22 @@ class Array(Sequence[float]):
         ...
 
     @staticmethod
-    def diag(v: Sequence[float] | Array, k: int | None = None) -> Array:
+    def diag(v: ArrayLike, k: int | None = None) -> Array:
         """Create a 2D array with v on the k-th diagonal.
 
         Args:
-            v: 1D array or list of diagonal values.
+            v: 1D array-like of diagonal values.
             k: Diagonal offset (0=main, >0=upper, <0=lower).
         """
         ...
 
     @staticmethod
-    def outer(a: Sequence[float] | Array, b: Sequence[float] | Array) -> Array:
+    def outer(a: ArrayLike, b: ArrayLike) -> Array:
         """Compute the outer product of two 1D arrays.
 
         Args:
-            a: First 1D array or list.
-            b: Second 1D array or list.
+            a: First 1D array-like.
+            b: Second 1D array-like.
         """
         ...
 

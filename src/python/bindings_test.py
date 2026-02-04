@@ -1,4 +1,4 @@
-import substratum as ss
+import ironforest as ss
 
 def test_array_creation():
     """Test array creation methods"""
@@ -194,7 +194,7 @@ def test_kernel_density():
     point = [1.0, 1.0]
     print("\nTest 3: Testing different kernel types at point [1.0, 1.0]")
     for kernel in ["gaussian", "epanechnikov", "uniform", "triangular"]:
-        density = tree.kernel_density(point, bandwidth=0.5, kernel=kernel)
+        density = tree.kernel_density(point, bandwidth=0.5, kernel=kernel) # type: ignore
         print(f"  {kernel:15s}: {density:.6f}")
 
     # Test 4: Different bandwidths

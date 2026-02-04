@@ -3,7 +3,7 @@ requires = ["maturin>=1.0,<2.0"]
 build-backend = "maturin"
 
 [project]
-name = "substratumx"
+name = "ironforest"
 version = "0.1.6"
 requires-python = ">=3.8"
 description = "An NdArray library supporting numerical computation and spatial analysis."
@@ -11,6 +11,6 @@ readme = "README.md"
 
 [tool.maturin]
 features = ["pyo3/extension-module"]
-include = ["substratum.pyi"]
-module-name = "substratum._core"
+include = ["ironforest.pyi"]
+module-name = "ironforest._core"
 python-source = "python"

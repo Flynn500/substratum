@@ -1,5 +1,5 @@
 import time
-import substratum as ss
+import ironforest as irn
 import numpy as np
 from sklearn.neighbors import KDTree, BallTree
 
@@ -14,7 +14,7 @@ def benchmark_tree(
     runs=5,
     seed=42,
 ):
-    gen = ss.random.Generator.from_seed(seed)
+    gen = irn.random.Generator.from_seed(seed)
 
     points = gen.uniform(0.0, 1.0, [n_points, dim])
     queries = gen.uniform(0.0, 1.0, [n_queries, dim])
@@ -24,7 +24,7 @@ def benchmark_tree(
 
     for _ in range(runs):
         t0 = time.perf_counter()
-        tree = ss.spatial.KDTree.from_array(
+        tree = irn.spatial.KDTree.from_array(
             points,
             leaf_size=leaf_size,
             metric="euclidean",
@@ -33,18 +33,18 @@ def benchmark_tree(
         build_times.append(t1 - t0)
 
         t0 = time.perf_counter()
-        _ = tree.kernel_density_approx(
-            queries,
-            bandwidth=bandwidth,
-            kernel="gaussian",
-            criterion="min_samples",
-            min_samples=100
-        )
-        # _ = tree.kernel_density(
+        # _ = tree.kernel_density_approx(
         #     queries,
         #     bandwidth=bandwidth,
         #     kernel="gaussian",
+        #     criterion="min_samples",
+        #     min_samples=100
         # )
+        _ = tree.kernel_density(
+            queries,
+            bandwidth=bandwidth,
+            kernel="gaussian",
+        )
         t1 = time.perf_counter()
         query_times.append(t1 - t0)
 
@@ -55,11 +55,59 @@ def benchmark_tree(
         "query_mean": sum(query_times) / runs,
     }
 
+
+
+def benchmark_tree_sklearn(
+    n_points=100_000,
+    n_queries=500,
+    dim=2,
+    leaf_size=32,
+    bandwidth=0.5,
+    runs=5,
+    seed=42,
+):
+    rng = np.random.default_rng(seed)
+
+    points = rng.uniform(0.0, 1.0, size=(n_points, dim))
+    queries = rng.uniform(0.0, 1.0, size=(n_queries, dim))
+
+    build_times = []
+    query_times = []
+
+    for _ in range(runs):
+        # Build
+        t0 = time.perf_counter()
+        tree = KDTree(
+            points,
+            leaf_size=leaf_size,
+            metric="euclidean",
+        )
+        t1 = time.perf_counter()
+        build_times.append(t1 - t0)
+
+        # Query (exact KDE)
+        t0 = time.perf_counter()
+        _ = tree.kernel_density(
+            queries,
+            h=bandwidth,
+            kernel="gaussian",
+        )
+        t1 = time.perf_counter()
+        query_times.append(t1 - t0)
+
+    return {
+        "build_min": min(build_times),
+        "build_mean": sum(build_times) / runs,
+        "query_min": min(query_times),
+        "query_mean": sum(query_times) / runs,
+    }
+
+
 if __name__ == "__main__":
     result = benchmark_tree(
         n_points=100_000,
         n_queries=500,
-        dim=2,
+        dim=10,
         leaf_size=32,
         runs=10,
     )
@@ -67,6 +115,21 @@ if __name__ == "__main__":
     print(" benchmark results:")
     for k, v in result.items():
         print(f"{k:>12}: {v:.6f} sec")
+
+    result = benchmark_tree_sklearn(
+        n_points=100_000,
+        n_queries=500,
+        dim=10,
+        leaf_size=32,
+        runs=10,
+    )
+
+    print(" benchmark results:")
+    for k, v in result.items():
+        print(f"{k:>12}: {v:.6f} sec")
+
+
+
 
 """
 

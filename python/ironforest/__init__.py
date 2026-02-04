@@ -1,6 +1,6 @@
 """Substratum: N-dimensional array library for numerical computation and spatial analysis."""
 
-from substratum._core import (
+from ironforest._core import (
     Array,
     zeros,
     ones,
