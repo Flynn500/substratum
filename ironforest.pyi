@@ -463,11 +463,11 @@ class Array(Sequence[float]):
         """q-th quantile of all elements (q in [0, 1])."""
         ...
     @overload
-    def quantile(self, q: Array) -> Array:
+    def quantile(self, q: ArrayLike) -> Array:
         """Compute multiple quantiles at once (vectorized).
 
         Args:
-            q: Array of quantile values, each in [0, 1].
+            q: Array-like of quantile values, each in [0, 1].
 
         Returns:
             1D array of quantile values corresponding to each q.
@@ -505,28 +505,16 @@ class Array(Sequence[float]):
     def __contains__(self, value: float) -> bool: ...
 
 
-    @overload
-    def __add__(self, other: Array) -> Array: ...
-    @overload
-    def __add__(self, other: float) -> Array: ...
+    def __add__(self, other: ArrayLike) -> Array: ...
     def __radd__(self, other: float) -> Array: ...
 
-    @overload
-    def __sub__(self, other: Array) -> Array: ...
-    @overload
-    def __sub__(self, other: float) -> Array: ...
+    def __sub__(self, other: ArrayLike) -> Array: ...
     def __rsub__(self, other: float) -> Array: ...
 
-    @overload
-    def __mul__(self, other: Array) -> Array: ...
-    @overload
-    def __mul__(self, other: float) -> Array: ...
+    def __mul__(self, other: ArrayLike) -> Array: ...
     def __rmul__(self, other: float) -> Array: ...
 
-    @overload
-    def __truediv__(self, other: Array) -> Array: ...
-    @overload
-    def __truediv__(self, other: float) -> Array: ...
+    def __truediv__(self, other: ArrayLike) -> Array: ...
     def __rtruediv__(self, other: float) -> Array: ...
 
     def __neg__(self) -> Array: ...
@@ -542,21 +530,21 @@ def eye(n: int, m: int | None = None, k: int | None = None) -> Array:
     """Create a 2D identity matrix with ones on the k-th diagonal."""
     ...
 
-def diag(v: Sequence[float] | Array, k: int | None = None) -> Array:
+def diag(v: ArrayLike, k: int | None = None) -> Array:
     """Create a 2D array with v on the k-th diagonal.
 
     Args:
-        v: 1D array or list of diagonal values.
+        v: 1D array-like of diagonal values.
         k: Diagonal offset (0=main, >0=upper, <0=lower).
     """
     ...
 
-def outer(a: Sequence[float] | Array, b: Sequence[float] | Array) -> Array:
+def outer(a: ArrayLike, b: ArrayLike) -> Array:
     """Compute the outer product of two 1D arrays.
 
     Args:
-        a: First 1D array or list.
-        b: Second 1D array or list.
+        a: First 1D array-like.
+        b: Second 1D array-like.
     """
     ...
 
@@ -583,14 +571,89 @@ def full(shape: Sequence[int], fill_value: float) -> Array:
     """Create array filled with a specified value."""
     ...
 
-def asarray(data: Sequence[float] | Array, shape: Sequence[int] | None = None) -> Array:
+def asarray(data: ArrayLike, shape: Sequence[int] | None = None) -> Array:
     """Create array from data with optional reshape.
 
     Args:
-        data: Flat list of float values or existing Array.
+        data: Array-like data (Array, NumPy array, list, nested list, or scalar).
         shape: Optional shape. If None, creates a 1D array.
     """
     ...
+
+class models:
+    """Machine learning models built on top of ironforest."""
+
+    class LinearRegression:
+        """Linear regression model using least squares."""
+
+        fit_intercept: bool
+        coef_: Array | None
+        intercept_: float | None
+
+        def __init__(self, fit_intercept: bool = True) -> None:
+            """Initialize linear regression model.
+
+            Args:
+                fit_intercept: Whether to calculate the intercept for this model.
+            """
+            ...
+
+        def fit(self, X: Array, y: Array) -> "models.LinearRegression":
+            """Fit linear model.
+
+            Args:
+                X: Training data of shape (n_samples, n_features).
+                y: Target values of shape (n_samples,) or (n_samples, n_targets).
+
+            Returns:
+                self: Fitted estimator.
+            """
+            ...
+
+        def predict(self, X: Array) -> Array:
+            """Predict using the linear model.
+
+            Args:
+                X: Samples of shape (n_samples, n_features).
+
+            Returns:
+                Predicted values of shape (n_samples,) or (n_samples, n_targets).
+
+            Raises:
+                RuntimeError: If model hasn't been fitted yet.
+            """
+            ...
+
+        def score(self, X: Array, y: Array) -> float:
+            """Return the coefficient of determination (R²) of the prediction.
+
+            Args:
+                X: Test samples of shape (n_samples, n_features).
+                y: True values of shape (n_samples,) or (n_samples, n_targets).
+
+            Returns:
+                R² score.
+
+            Raises:
+                RuntimeError: If model hasn't been fitted yet.
+            """
+            ...
+
+        def residuals(self, X: Array, y: Array) -> Array:
+            """Calculate residuals (y - y_pred).
+
+            Args:
+                X: Samples of shape (n_samples, n_features).
+                y: True values of shape (n_samples,) or (n_samples, n_targets).
+
+            Returns:
+                Residuals array.
+
+            Raises:
+                RuntimeError: If model hasn't been fitted yet.
+            """
+            ...
+
 
 class spatial:
     """Spatial data structures and algorithms."""
@@ -630,11 +693,11 @@ class spatial:
             """
             ...
 
-        def query_radius(self, query: float | Sequence[float] | Array, radius: float) -> List:
+        def query_radius(self, query: ArrayLike, radius: float) -> List:
             """Find all points within a given radius of the query point.
 
             Args:
-                query: Query point as a scalar (for 1D data), list of coordinates, or Array.
+                query: Query point (scalar, list, or array-like).
                 radius: Search radius. All points with distance <= radius are returned.
 
             Returns:
@@ -644,11 +707,11 @@ class spatial:
             """
             ...
 
-        def query_knn(self, query: float | Sequence[float] | Array, k: int) -> List[Tuple[int, float]]:
+        def query_knn(self, query: ArrayLike, k: int) -> List[Tuple[int, float]]:
             """Find the k nearest neighbors to the query point.
 
             Args:
-                query: Query point as a scalar (for 1D data), list of coordinates, or Array.
+                query: Query point (scalar, list, or array-like).
                 k: Number of nearest neighbors to return.
 
             Returns:
@@ -661,14 +724,14 @@ class spatial:
         @overload
         def kernel_density(
             self,
-            queries: float | Sequence[float],
+            queries: ArrayLike,
             bandwidth: float = 1.0,
             kernel: Literal["gaussian", "epanechnikov", "uniform", "triangular"] = "gaussian"
         ) -> float:
             """Estimate kernel density at a single query point.
 
             Args:
-                queries: Single query point as a scalar (for 1D data) or list of coordinates.
+                queries: Single query point (scalar, list, or array-like).
                 bandwidth: Bandwidth (smoothing parameter) for the kernel. Larger values
                     produce smoother estimates. Defaults to 1.0.
                 kernel: Kernel function to use for density estimation. Options are:
@@ -685,15 +748,15 @@ class spatial:
         @overload
         def kernel_density(
             self,
-            queries: Array,
+            queries: ArrayLike,
             bandwidth: float = 1.0,
             kernel: Literal["gaussian", "epanechnikov", "uniform", "triangular"] = "gaussian"
         ) -> List:
             """Estimate kernel density at multiple query points.
 
             Args:
-                queries: 2D array of query points with shape (n_queries, n_features),
-                    or 1D array representing a single point.
+                queries: 2D array-like of query points with shape (n_queries, n_features),
+                    or 1D array-like representing a single point.
                 bandwidth: Bandwidth (smoothing parameter) for the kernel. Larger values
                     produce smoother estimates. Defaults to 1.0.
                 kernel: Kernel function to use for density estimation. Options are:
@@ -734,7 +797,7 @@ class spatial:
         @overload
         def kernel_density_approx(
             self,
-            queries: float | Sequence[float],
+            queries: ArrayLike,
             bandwidth: float = 1.0,
             kernel: Literal["gaussian", "epanechnikov", "uniform", "triangular"] = "gaussian",
             criterion: Literal["none", "min_samples", "max_span", "combined"] = "none",
@@ -747,7 +810,7 @@ class spatial:
             from groups of points, controlled by the approximation criterion.
 
             Args:
-                queries: Single query point as a scalar (for 1D data) or list of coordinates.
+                queries: Single query point (scalar, list, or array-like).
                 bandwidth: Bandwidth (smoothing parameter) for the kernel. Larger values
                     produce smoother estimates. Defaults to 1.0.
                 kernel: Kernel function to use for density estimation. Options are:
@@ -771,7 +834,7 @@ class spatial:
         @overload
         def kernel_density_approx(
             self,
-            queries: Array,
+            queries: ArrayLike,
             bandwidth: float = 1.0,
             kernel: Literal["gaussian", "epanechnikov", "uniform", "triangular"] = "gaussian",
             criterion: Literal["none", "min_samples", "max_span", "combined"] = "none",
@@ -784,8 +847,8 @@ class spatial:
             from groups of points, controlled by the approximation criterion.
 
             Args:
-                queries: 2D array of query points with shape (n_queries, n_features),
-                    or 1D array representing a single point.
+                queries: 2D array-like of query points with shape (n_queries, n_features),
+                    or 1D array-like representing a single point.
                 bandwidth: Bandwidth (smoothing parameter) for the kernel. Larger values
                     produce smoother estimates. Defaults to 1.0.
                 kernel: Kernel function to use for density estimation. Options are:
@@ -879,11 +942,11 @@ class spatial:
             """
             ...
 
-        def query_radius(self, query: float | Sequence[float] | Array, radius: float) -> List:
+        def query_radius(self, query: ArrayLike, radius: float) -> List:
             """Find all points within a given radius of the query point.
 
             Args:
-                query: Query point as a scalar (for 1D data), list of coordinates, or Array.
+                query: Query point (scalar, list, or array-like).
                 radius: Search radius. All points with distance <= radius are returned.
 
             Returns:
@@ -893,11 +956,11 @@ class spatial:
             """
             ...
 
-        def query_knn(self, query: float | Sequence[float] | Array, k: int) -> List[Tuple[int, float]]:
+        def query_knn(self, query: ArrayLike, k: int) -> List[Tuple[int, float]]:
             """Find the k nearest neighbors to the query point.
 
             Args:
-                query: Query point as a scalar (for 1D data), list of coordinates, or Array.
+                query: Query point (scalar, list, or array-like).
                 k: Number of nearest neighbors to return.
 
             Returns:
@@ -910,14 +973,14 @@ class spatial:
         @overload
         def kernel_density(
             self,
-            queries: float | Sequence[float],
+            queries: ArrayLike,
             bandwidth: float = 1.0,
             kernel: Literal["gaussian", "epanechnikov", "uniform", "triangular"] = "gaussian"
         ) -> float:
             """Estimate kernel density at a single query point.
 
             Args:
-                queries: Single query point as a scalar (for 1D data) or list of coordinates.
+                queries: Single query point (scalar, list, or array-like).
                 bandwidth: Bandwidth (smoothing parameter) for the kernel. Larger values
                     produce smoother estimates. Defaults to 1.0.
                 kernel: Kernel function to use for density estimation. Options are:
@@ -934,15 +997,15 @@ class spatial:
         @overload
         def kernel_density(
             self,
-            queries: Array,
+            queries: ArrayLike,
             bandwidth: float = 1.0,
             kernel: Literal["gaussian", "epanechnikov", "uniform", "triangular"] = "gaussian"
         ) -> List:
             """Estimate kernel density at multiple query points.
 
             Args:
-                queries: 2D array of query points with shape (n_queries, n_features),
-                    or 1D array representing a single point.
+                queries: 2D array-like of query points with shape (n_queries, n_features),
+                    or 1D array-like representing a single point.
                 bandwidth: Bandwidth (smoothing parameter) for the kernel. Larger values
                     produce smoother estimates. Defaults to 1.0.
                 kernel: Kernel function to use for density estimation. Options are:
@@ -983,7 +1046,7 @@ class spatial:
         @overload
         def kernel_density_approx(
             self,
-            queries: float | Sequence[float],
+            queries: ArrayLike,
             bandwidth: float = 1.0,
             kernel: Literal["gaussian", "epanechnikov", "uniform", "triangular"] = "gaussian",
             criterion: Literal["none", "min_samples", "max_span", "combined"] = "none",
@@ -996,7 +1059,7 @@ class spatial:
             from groups of points, controlled by the approximation criterion.
 
             Args:
-                queries: Single query point as a scalar (for 1D data) or list of coordinates.
+                queries: Single query point (scalar, list, or array-like).
                 bandwidth: Bandwidth (smoothing parameter) for the kernel. Larger values
                     produce smoother estimates. Defaults to 1.0.
                 kernel: Kernel function to use for density estimation. Options are:
@@ -1020,7 +1083,7 @@ class spatial:
         @overload
         def kernel_density_approx(
             self,
-            queries: Array,
+            queries: ArrayLike,
             bandwidth: float = 1.0,
             kernel: Literal["gaussian", "epanechnikov", "uniform", "triangular"] = "gaussian",
             criterion: Literal["none", "min_samples", "max_span", "combined"] = "none",
@@ -1033,8 +1096,8 @@ class spatial:
             from groups of points, controlled by the approximation criterion.
 
             Args:
-                queries: 2D array of query points with shape (n_queries, n_features),
-                    or 1D array representing a single point.
+                queries: 2D array-like of query points with shape (n_queries, n_features),
+                    or 1D array-like representing a single point.
                 bandwidth: Bandwidth (smoothing parameter) for the kernel. Larger values
                     produce smoother estimates. Defaults to 1.0.
                 kernel: Kernel function to use for density estimation. Options are:
@@ -1134,11 +1197,11 @@ class spatial:
             """
             ...
 
-        def query_radius(self, query: float | Sequence[float] | Array, radius: float) -> Array:
+        def query_radius(self, query: ArrayLike, radius: float) -> Array:
             """Find all points within a given radius of the query point.
 
             Args:
-                query: Query point as a scalar (for 1D data), list of coordinates, or Array.
+                query: Query point (scalar, list, or array-like).
                 radius: Search radius. All points with distance <= radius are returned.
 
             Returns:
@@ -1148,11 +1211,11 @@ class spatial:
             """
             ...
 
-        def query_knn(self, query: float | Sequence[float] | Array, k: int) -> List[Tuple[int, float]]:
+        def query_knn(self, query: ArrayLike, k: int) -> List[Tuple[int, float]]:
             """Find the k nearest neighbors to the query point.
 
             Args:
-                query: Query point as a scalar (for 1D data), list of coordinates, or Array.
+                query: Query point (scalar, list, or array-like).
                 k: Number of nearest neighbors to return.
 
             Returns:
@@ -1165,14 +1228,14 @@ class spatial:
         @overload
         def kernel_density(
             self,
-            queries: float | Sequence[float],
+            queries: ArrayLike,
             bandwidth: float = 1.0,
             kernel: Literal["gaussian", "epanechnikov", "uniform", "triangular"] = "gaussian"
         ) -> float:
             """Estimate kernel density at a single query point.
 
             Args:
-                queries: Single query point as a scalar (for 1D data) or list of coordinates.
+                queries: Single query point (scalar, list, or array-like).
                 bandwidth: Bandwidth (smoothing parameter) for the kernel. Larger values
                     produce smoother estimates. Defaults to 1.0.
                 kernel: Kernel function to use for density estimation. Options are:
@@ -1189,15 +1252,15 @@ class spatial:
         @overload
         def kernel_density(
             self,
-            queries: Array,
+            queries: ArrayLike,
             bandwidth: float = 1.0,
             kernel: Literal["gaussian", "epanechnikov", "uniform", "triangular"] = "gaussian"
         ) -> List:
             """Estimate kernel density at multiple query points.
 
             Args:
-                queries: 2D array of query points with shape (n_queries, n_features),
-                    or 1D array representing a single point.
+                queries: 2D array-like of query points with shape (n_queries, n_features),
+                    or 1D array-like representing a single point.
                 bandwidth: Bandwidth (smoothing parameter) for the kernel. Larger values
                     produce smoother estimates. Defaults to 1.0.
                 kernel: Kernel function to use for density estimation. Options are:
@@ -1238,7 +1301,7 @@ class spatial:
         @overload
         def kernel_density_approx(
             self,
-            queries: float | Sequence[float],
+            queries: ArrayLike,
             bandwidth: float = 1.0,
             kernel: Literal["gaussian", "epanechnikov", "uniform", "triangular"] = "gaussian",
             criterion: Literal["none", "min_samples", "max_span", "combined"] = "none",
@@ -1251,7 +1314,7 @@ class spatial:
             from groups of points, controlled by the approximation criterion.
 
             Args:
-                queries: Single query point as a scalar (for 1D data) or list of coordinates.
+                queries: Single query point (scalar, list, or array-like).
                 bandwidth: Bandwidth (smoothing parameter) for the kernel. Larger values
                     produce smoother estimates. Defaults to 1.0.
                 kernel: Kernel function to use for density estimation. Options are:
@@ -1275,7 +1338,7 @@ class spatial:
         @overload
         def kernel_density_approx(
             self,
-            queries: Array,
+            queries: ArrayLike,
             bandwidth: float = 1.0,
             kernel: Literal["gaussian", "epanechnikov", "uniform", "triangular"] = "gaussian",
             criterion: Literal["none", "min_samples", "max_span", "combined"] = "none",
@@ -1288,8 +1351,8 @@ class spatial:
             from groups of points, controlled by the approximation criterion.
 
             Args:
-                queries: 2D array of query points with shape (n_queries, n_features),
-                    or 1D array representing a single point.
+                queries: 2D array-like of query points with shape (n_queries, n_features),
+                    or 1D array-like representing a single point.
                 bandwidth: Bandwidth (smoothing parameter) for the kernel. Larger values
                     produce smoother estimates. Defaults to 1.0.
                 kernel: Kernel function to use for density estimation. Options are:

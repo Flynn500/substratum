@@ -1,5 +1,5 @@
-# Substratum
-IronForest is a rust package designed for the dubious python library. Dubious was a project with the personal constraint that no libraries can be used other than numpy. Substratum is my attempt to rewrite some of numpy's features to replace numpy as dubious's lone dependency. I also intend to expand IronForest to include more features, although it is not intended to be a full fledged numpy replacement.
+# IronForest
+IronForest is a rust-powered python package designed for the dubious python library. Dubious was a project with the personal constraint that no libraries can be used other than numpy. IronForest is my attempt to rewrite some of numpy's features to replace numpy as dubious's lone dependency. I also intend to expand IronForest to include more features, although it is not intended to be a full fledged numpy replacement.
 
 The core rational behind this library was to get a better grasp of how libraries I use on a regular basis work, and learn how to write python bindings to offload computationally expensive tasks to tools better suited. I chose rust because I have read the book around a year prior to this project, and pyo3 bindings are relitively easy to get working.
 

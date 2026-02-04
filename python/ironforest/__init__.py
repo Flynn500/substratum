@@ -15,6 +15,9 @@ from ironforest._core import (
     spatial,
 )
 
+# Import pure Python modules
+from . import models
+
 __all__ = [
     "Array",
     "zeros",
@@ -28,6 +31,7 @@ __all__ = [
     "stats",
     "random",
     "spatial",
+    "models",
 ]
 
 __version__ = "0.2"
