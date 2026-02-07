@@ -1,4 +1,4 @@
-from ironforest import Array, linalg, column_stack
+from ironforest._core import Array, linalg, column_stack, asarray
 
 class LinearRegression:
     """Linear regression model using least squares."""
@@ -15,7 +15,7 @@ class LinearRegression:
         self.intercept_ = None
         self._is_fitted = False
     
-    def fit(self, X: Array, y: Array) -> 'LinearRegression':
+    def fit(self, X, y) -> 'LinearRegression':
         """
         Fit linear model.
         
@@ -26,6 +26,11 @@ class LinearRegression:
         Returns:
             self: Fitted estimator
         """
+        if not isinstance(X, Array):
+            X = asarray(X)
+        if not isinstance(y, Array):
+            y = asarray(y)
+        
         if self.fit_intercept:
             ones = Array.ones((X.shape[0], 1))
             X_design = column_stack([ones, X])
@@ -45,7 +50,7 @@ class LinearRegression:
         self._is_fitted = True
         return self
     
-    def predict(self, X: Array) -> Array:
+    def predict(self, X) -> Array:
         """
         Predict using the linear model.
         
@@ -58,6 +63,9 @@ class LinearRegression:
         Raises:
             RuntimeError: If model hasn't been fitted yet
         """
+        if not isinstance(X, Array):
+            X = asarray(X)
+
         if not self._is_fitted:
             raise RuntimeError("Model must be fitted before calling predict")
         
@@ -68,7 +76,7 @@ class LinearRegression:
         
         return y_pred
     
-    def score(self, X: Array, y: Array) -> float:
+    def score(self, X, y) -> float:
         """
         Return the coefficient of determination (R²) of the prediction.
         
@@ -79,6 +87,11 @@ class LinearRegression:
         Returns:
             R² score
         """
+        if not isinstance(X, Array):
+            X = asarray(X)
+        if not isinstance(y, Array):
+            y = asarray(y)
+
         if not self._is_fitted:
             raise RuntimeError("Model must be fitted before calling score")
         
@@ -92,7 +105,7 @@ class LinearRegression:
         
         return 1.0 - (ss_res / ss_tot)
     
-    def residuals(self, X: Array, y: Array) -> Array:
+    def residuals(self, X, y) -> Array:
         """
         Calculate residuals (y - y_pred).
         
@@ -103,7 +116,14 @@ class LinearRegression:
         Returns:
             Residuals array
         """
+        if not isinstance(X, Array):
+            X = asarray(X)
+        if not isinstance(y, Array):
+            y = asarray(y)
+
         if not self._is_fitted:
             raise RuntimeError("Model must be fitted before calculating residuals")
         
         return y - self.predict(X)
+
+

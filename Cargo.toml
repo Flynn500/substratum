@@ -1,6 +1,6 @@
 [package]
 name = "ironforest"
-version = "0.2.1"
+version = "0.2.2"
 edition = "2024"
 
 [lib]
@@ -14,3 +14,4 @@ path = "src/bin/playground.rs"
 [dependencies]
 pyo3 = "0.27.2"
 numpy = "0.27"
+rayon = "1.10"

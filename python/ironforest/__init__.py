@@ -1,4 +1,4 @@
-"""Substratum: N-dimensional array library for numerical computation and spatial analysis."""
+"""IronForest: N-dimensional array library for numerical computation and spatial analysis."""
 
 from ironforest._core import (
     Array,
@@ -33,4 +33,4 @@ __all__ = [
     "models",
 ]
 
-__version__ = "0.2"
+__version__ = "0.2.2"

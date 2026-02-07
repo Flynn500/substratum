@@ -61,6 +61,11 @@ impl NdArray<f64> {
         self.transpose()
     }
 
+    pub fn ravel(&self) -> Self {
+        // Flatten the array to 1D, returning a copy
+        let data = self.as_slice().to_vec();
+        NdArray::from_vec(Shape::d1(data.len()), data)
+    }
 
     pub fn matmul(&self, other: &NdArray<f64>) -> Self {
         match (self.ndim(), other.ndim()) {

@@ -4,13 +4,13 @@ build-backend = "maturin"
 
 [project]
 name = "ironforest"
-version = "0.2.1"
+version = "0.2.2"
 requires-python = ">=3.8"
 description = "An library supporting numerical computation and spatial analysis."
 readme = "README.md"
 
 [tool.maturin]
 features = ["pyo3/extension-module"]
-include = ["ironforest.pyi", "python/ironforest/py.typed"]
+include = ["python/ironforest/__init__.pyi", "python/ironforest/py.typed"]
 module-name = "ironforest._core"
 python-source = "python"

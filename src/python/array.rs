@@ -31,23 +31,24 @@ impl PyArray {
     #[staticmethod]
     #[pyo3(signature = (data, shape=None))]
     fn asarray(data: ArrayLike, shape: Option<Vec<usize>>) -> PyResult<Self> {
-        let data_vec = data.into_vec().unwrap();
-        let shape = if let Some(s) = shape {
+        let arr = data.into_ndarray()?;
+
+        if let Some(s) = shape {
             let expected_size: usize = s.iter().product();
-            if data_vec.len() != expected_size {
+            if arr.len() != expected_size {
                 return Err(PyValueError::new_err(format!(
                     "Data length {} doesn't match shape {:?} (expected {})",
-                    data_vec.len(), s, expected_size
+                    arr.len(), s, expected_size
                 )));
             }
-            Shape::new(s)
+            Ok(PyArray {
+                inner: NdArray::from_vec(Shape::new(s), arr.as_slice().to_vec()),
+            })
         } else {
-            Shape::d1(data_vec.len())
-        };
-
-        Ok(PyArray {
-            inner: NdArray::from_vec(shape, data_vec),
-        })
+            Ok(PyArray {
+                inner: arr,
+            })
+        }
     }
 
     #[staticmethod]
@@ -103,6 +104,11 @@ impl PyArray {
     #[getter]
     fn shape(&self) -> Vec<usize> {
         self.inner.shape().dims().to_vec()
+    }
+
+    #[getter]
+    fn ndim(&self) -> usize {
+        self.inner.ndim()
     }
 
     fn get(&self, indices: Vec<usize>) -> PyResult<f64> {
@@ -208,6 +214,14 @@ impl PyArray {
         self.inner.median()
     }
 
+    fn max(&self) -> f64 {
+        self.inner.max()
+    }
+
+    fn min(&self) -> f64 {
+        self.inner.min()
+    }
+
     fn quantile(&self, py: Python<'_>, q: ArrayLike) -> PyResult<Py<PyAny>> {
         match q {
             ArrayLike::Scalar(q_val) => {
@@ -308,6 +322,10 @@ impl PyArray {
 
     fn t(&self) -> Self {
         PyArray { inner: self.inner.t() }
+    }
+
+    fn ravel(&self) -> Self {
+        PyArray { inner: self.inner.ravel() }
     }
 
     fn take(&self, indices: Vec<usize>) -> Self {

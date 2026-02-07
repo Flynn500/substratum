@@ -31,6 +31,18 @@ impl Generator {
         
         Self { state }
     }
+
+    pub fn usize_below(&mut self, upper: usize) -> usize {
+        (self.next_u64() % upper as u64) as usize
+    }
+
+    pub fn partial_shuffle(&mut self, indices: &mut [usize], k: usize) {
+        let n = indices.len();
+        for i in 0..k.min(n) {
+            let j = i + self.usize_below(n - i);
+            indices.swap(i, j);
+        }
+    }
     
     pub fn next_u64(&mut self) -> u64 {
         let result = (self.state[1].wrapping_mul(5))

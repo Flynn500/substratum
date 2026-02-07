@@ -1,3 +1,211 @@
+"""Type stubs for ironforest._core module.
+
+This file provides type hints for the Rust-based _core module, including
+tree_engine classes and other core functionality.
+"""
+
+from typing import Optional
+
+class TaskType:
+    """Task type for tree algorithms."""
+
+    @staticmethod
+    def classification() -> TaskType: ...
+
+    @staticmethod
+    def regression() -> TaskType: ...
+
+    @staticmethod
+    def anomaly_detection() -> TaskType: ...
+
+    def __repr__(self) -> str: ...
+
+
+class SplitCriterion:
+    """Criterion for evaluating splits."""
+
+    @staticmethod
+    def gini() -> SplitCriterion: ...
+
+    @staticmethod
+    def entropy() -> SplitCriterion: ...
+
+    @staticmethod
+    def mse() -> SplitCriterion: ...
+
+    @staticmethod
+    def random() -> SplitCriterion: ...
+
+    def __repr__(self) -> str: ...
+
+
+class TreeConfig:
+    """Configuration for a single decision tree."""
+
+    def __init__(
+        self,
+        task_type: TaskType,
+        n_classes: int = 2,
+        max_depth: Optional[int] = None,
+        min_samples_split: int = 2,
+        min_samples_leaf: int = 1,
+        max_features: Optional[int] = None,
+        criterion: Optional[SplitCriterion] = None,
+        seed: int = 42,
+    ) -> None: ...
+
+    @staticmethod
+    def classification(n_classes: int) -> TreeConfig: ...
+
+    @staticmethod
+    def regression() -> TreeConfig: ...
+
+    @staticmethod
+    def isolation(max_samples: int) -> TreeConfig: ...
+
+    @property
+    def max_depth(self) -> Optional[int]: ...
+    @max_depth.setter
+    def max_depth(self, value: Optional[int]) -> None: ...
+
+    @property
+    def min_samples_split(self) -> int: ...
+    @min_samples_split.setter
+    def min_samples_split(self, value: int) -> None: ...
+
+    @property
+    def min_samples_leaf(self) -> int: ...
+    @min_samples_leaf.setter
+    def min_samples_leaf(self, value: int) -> None: ...
+
+    @property
+    def max_features(self) -> Optional[int]: ...
+    @max_features.setter
+    def max_features(self, value: Optional[int]) -> None: ...
+
+    @property
+    def seed(self) -> int: ...
+    @seed.setter
+    def seed(self, value: int) -> None: ...
+
+    def __repr__(self) -> str: ...
+
+
+class Tree:
+    """A single decision tree."""
+
+    @staticmethod
+    def fit(
+        config: TreeConfig,
+        data: object,
+        labels: object,
+        n_samples: int,
+        n_features: int,
+    ) -> Tree: ...
+
+    def predict(
+        self,
+        data: object,
+        n_samples: int,
+    ) -> object: ...
+
+    def predict_anomaly_scores(
+        self,
+        data: object,
+        n_samples: int,
+    ) -> object: ...
+
+    def predict_path_lengths(
+        self,
+        data: object,
+        n_samples: int,
+    ) -> object: ...
+
+    @property
+    def n_nodes(self) -> int: ...
+
+    @property
+    def n_features(self) -> int: ...
+
+    @property
+    def max_depth_reached(self) -> int: ...
+
+    @property
+    def n_training_samples(self) -> int: ...
+
+    def __repr__(self) -> str: ...
+
+
+class EnsembleConfig:
+    """Configuration for an ensemble of trees."""
+
+    def __init__(
+        self,
+        n_trees: int,
+        tree_config: TreeConfig,
+        bootstrap: bool = True,
+        max_samples: Optional[int] = None,
+        seed: int = 42,
+    ) -> None: ...
+
+    @staticmethod
+    def random_forest_classifier(n_trees: int, n_classes: int) -> EnsembleConfig: ...
+
+    @staticmethod
+    def random_forest_regressor(n_trees: int) -> EnsembleConfig: ...
+
+    @staticmethod
+    def isolation_forest(n_trees: int, max_samples: int) -> EnsembleConfig: ...
+
+    @property
+    def n_trees(self) -> int: ...
+    @n_trees.setter
+    def n_trees(self, value: int) -> None: ...
+
+    @property
+    def bootstrap(self) -> bool: ...
+    @bootstrap.setter
+    def bootstrap(self, value: bool) -> None: ...
+
+    @property
+    def max_samples(self) -> Optional[int]: ...
+    @max_samples.setter
+    def max_samples(self, value: Optional[int]) -> None: ...
+
+    @property
+    def seed(self) -> int: ...
+    @seed.setter
+    def seed(self, value: int) -> None: ...
+
+    def __repr__(self) -> str: ...
+
+
+class Ensemble:
+    """An ensemble of decision trees."""
+
+    @staticmethod
+    def fit(
+        config: EnsembleConfig,
+        data: object,
+        labels: object,
+        n_samples: int,
+        n_features: int,
+    ) -> Ensemble: ...
+
+    def predict(
+        self,
+        data: object,
+        n_samples: int,
+    ) -> object: ...
+
+    @property
+    def n_trees(self) -> int: ...
+
+    @property
+    def n_training_samples(self) -> int: ...
+
+    def __repr__(self) -> str: ...
+
 """A library for array-based computation."""
 
 from typing import Iterator, List, Literal, Sequence, Tuple, overload, Any, Union
@@ -350,6 +558,10 @@ class Array(Sequence[float]):
     def shape(self) -> List[int]:
         """Get the shape as a list."""
         ...
+    
+    @property
+    def ndim(self) -> int:
+        """Get the number of dimensions."""
 
     def get(self, indices: Sequence[int]) -> float:
         """Get element at indices."""
@@ -369,6 +581,10 @@ class Array(Sequence[float]):
 
     def t(self) -> Array:
         """Transpose (alias for transpose())."""
+        ...
+
+    def ravel(self) -> Array:
+        """Flatten the array to 1D (returns a copy)."""
         ...
 
     def take(self, indices: Sequence[int]) -> Array:
@@ -458,6 +674,11 @@ class Array(Sequence[float]):
     def median(self) -> float:
         """Median of all elements."""
         ...
+    def max(self) -> float:
+        """Maximum of all elements."""
+        ...
+    def min(self) -> float:
+        """Minimum of all elements."""
     @overload
     def quantile(self, q: float) -> float:
         """q-th quantile of all elements (q in [0, 1])."""

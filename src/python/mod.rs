@@ -137,6 +137,7 @@ pub mod linalg;
 pub mod stats;
 pub mod random;
 pub mod spatial;
+pub mod tree_engine;
 
 // Re-export for convenience
 pub use array::PyArrayIter;
@@ -177,6 +178,9 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     let spatial_module = PyModule::new(m.py(), "spatial")?;
     spatial::register_module(&spatial_module)?;
     m.add_submodule(&spatial_module)?;
+
+    // Register tree engine classes
+    tree_engine::register_classes(m)?;
 
     Ok(())
 }

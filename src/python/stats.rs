@@ -8,6 +8,8 @@ pub fn register_module(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(var, m)?)?;
     m.add_function(wrap_pyfunction!(std_dev, m)?)?; //to avoid conflict added _dev
     m.add_function(wrap_pyfunction!(median, m)?)?;
+    m.add_function(wrap_pyfunction!(max, m)?)?;
+    m.add_function(wrap_pyfunction!(min, m)?)?;
     m.add_function(wrap_pyfunction!(quantile, m)?)?;
     m.add_function(wrap_pyfunction!(any, m)?)?;
     m.add_function(wrap_pyfunction!(all, m)?)?;
@@ -40,6 +42,16 @@ fn std_dev(a: ArrayLike) -> f64 {
 #[pyfunction]
 fn median(a: ArrayLike) -> f64 {
     a.into_ndarray().unwrap().median()
+}
+
+#[pyfunction]
+fn max(a: ArrayLike) -> f64 {
+    a.into_ndarray().unwrap().max()
+}
+
+#[pyfunction]
+fn min(a: ArrayLike) -> f64 {
+    a.into_ndarray().unwrap().min()
 }
 
 #[pyfunction]

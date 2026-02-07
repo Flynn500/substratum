@@ -35,11 +35,8 @@ Output:
 - KDTree, BallTree & VPTree with knn radius KDE and KDE approx queries
 - Linear and Local Regression
 - Decision trees, Random Forest and Isolation Forest
-- cholesky, qr and eigen decomposition
-- Least Squares & Weighted Least Squares Solver
 - Random sampling from uniform, normal lognormal, gamma and beta distributions.
-- Statistical methods (mean, median, var, std, quantile)
-- Pearson and Spearman correlation
+- Statistical methods (mean, median, var, std, quantile, Pearson and Spearman correlation)
 
 ## Rationale
 The core rational behind this project was to get a better grasp of how libraries I use on a regular basis work, and learn how to write python bindings to offload computationally expensive tasks to tools better suited. Like dubious, I focused on building things from the ground up. I didn't want to glue dependecies together to get something functional, I wanted to understand from input to output how these algorithms worked under the hood. I chose rust because I had read the book around a year prior to starting this project, and pyo3 bindings are relitively easy to get working. This library is only exposed through python as that's where I've actually use its features. I don't intend to package this as a rust create at this stage.
@@ -100,6 +97,18 @@ The core rational behind this project was to get a better grasp of how libraries
 
 ## Modules
 
+### Spatial
+- `KDTree` kNN, Kernel Density Estimation and radius queries. 
+- `BallTree` with kNN, Kernel Density Estimation and radius queries. 
+- `VPTree` with kNN, Kernel Density Estimation and radius queries.
+
+### Model
+- Linear Regression
+- Local Regression
+- Decision Trees
+- Random Forest (soon)
+- Isolation Forest (soon)
+
 ### Random
 `Generator` object that can sample from uniform, normal, lognormal, gamma and beta distributions. Support for additional distributions is planned.
 
@@ -111,15 +120,3 @@ The core rational behind this project was to get a better grasp of how libraries
 ### Stats
 - Basic statistical methods for `Array` objects, mean, var and quantile.
 - Pearson and Spearman correlation.
-
-### Spatial
-- `KDTree` kNN, Kernel Density Estimation and radius queries. 
-- `BallTree` with kNN, Kernel Density Estimation and radius queries. 
-- `VPTree` with kNN, Kernel Density Estimation and radius queries.
-
-### Model
-- Linear Regression
-- Local Regression
-- Decision Trees (soon)
-- Random Forest (soon)
-- Isolation Forest (soon)

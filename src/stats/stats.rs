@@ -91,4 +91,24 @@ impl NdArray<f64> {
         }).collect();
         NdArray::from_vec(Shape::d1(results.len()), results)
     }
+
+    pub fn max(&self) -> f64 {
+        if self.is_empty() {
+            return f64::NAN;
+        }
+        self.as_slice()
+            .iter()
+            .copied()
+            .fold(f64::NEG_INFINITY, f64::max)
+    }
+
+    pub fn min(&self) -> f64 {
+        if self.is_empty() {
+            return f64::NAN;
+        }
+        self.as_slice()
+            .iter()
+            .copied()
+            .fold(f64::INFINITY, f64::min)
+    }
 }
