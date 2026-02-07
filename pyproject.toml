@@ -11,6 +11,13 @@ readme = "README.md"
 
 [tool.maturin]
 features = ["pyo3/extension-module"]
-include = ["python/ironforest/__init__.pyi", "python/ironforest/py.typed"]
+include = [
+    "py/ironforest/_core.pyi",
+    "py/ironforest/__init__.pyi",
+    "py/ironforest/decision_tree.pyi",
+    "py/ironforest/linear_regression.pyi",
+    "py/ironforest/models.pyi",
+    "py/ironforest/py.typed"
+]
 module-name = "ironforest._core"
-python-source = "python"
+python-source = "py"

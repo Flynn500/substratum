@@ -3,8 +3,6 @@ import ironforest as irn
 import numpy as np
 from sklearn.neighbors import KDTree, BallTree
 
-
-
 def benchmark_tree(
     n_points=100_000,
     n_queries=500,
