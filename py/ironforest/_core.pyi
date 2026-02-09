@@ -344,6 +344,19 @@ class linalg:
         """Extract the k-th diagonal from a 2D array."""
         ...
 
+    @staticmethod
+    def outer(a: ArrayLike, b: ArrayLike) -> Array:
+        """Compute the outer product of two 1D arrays.
+
+        Args:
+            a: First 1D array-like.
+            b: Second 1D array-like.
+
+        Returns:
+            2D array representing the outer product.
+        """
+        ...
+
 
 class stats:
     """Statistical functions."""
