@@ -4,9 +4,9 @@ build-backend = "maturin"
 
 [project]
 name = "ironforest"
-version = "0.2.2"
+version = "0.3.0"
 requires-python = ">=3.8"
-description = "An library supporting numerical computation and spatial analysis."
+description = "An library supporting array-based computation, spatial analysis and tree-based machine learning."
 readme = "README.md"
 
 [tool.maturin]
@@ -16,6 +16,8 @@ include = [
     "py/ironforest/__init__.pyi",
     "py/ironforest/decision_tree.pyi",
     "py/ironforest/linear_regression.pyi",
+    "py/ironforest/random_forest.pyi",
+    "py/ironforest/isolation_forest.pyi",
     "py/ironforest/models.pyi",
     "py/ironforest/py.typed"
 ]
