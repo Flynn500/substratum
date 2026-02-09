@@ -6,10 +6,10 @@ I started this project to support my previous python library dubious, a project 
 ## Status
 This is largely a learning project and the API is subject to change. We achieve similar performance to numpy (beating them in a rare few) across most operations but basic broadcasting arithmetic is around 4x slower in most cases. 
 
-On the spatial indexing front we comeout ahead of Sci-Py and Scitkit-Learn but only because our pruning logic is cruder and far more aggressive. Our KDE approximation in particular is much faster but can easily lead to incorrect results with poor tuning. 
+On the spatial indexing front we comeout ahead of Sci-Py and Scitkit-Learn but only because our pruning logic is far more aggressive, see src/spatial/spatial.md for more details on this. 
 
-Expect less new features going forwards. I intend to expand my tree engine to support a wider variety of decision-tree type ML algorithms, as well as adding a few additional spatial indexing trees but my core focus for the forseeable future is ironing out the kinks of what's already here and documenting what my data structures and models are capable of and where they fall short.
-
+Expect less new features going forwards. I intend to expand my tree engine to support a wider variety of decision-tree type ML algorithms, as well as adding a few additional nicher spatial indexing trees but my core focus for the forseeable future is ironing out the kinks of what's already here and documenting what we are capable of and where we fall short.
+  
 ## Installation
 `pip install ironforest`
 
@@ -45,7 +45,7 @@ Output:
 ## Rationale
 The core rational behind this project was to deepen my understanding of how libraries I use on a regular basis work, and learn how to write python bindings to offload computationally expensive tasks to tools better suited. Like dubious, I focused on building things from the ground up. I didn't want to glue dependecies together to get something functional, I wanted to understand from input to output how these algorithms worked under the hood. I chose rust because I had read the book around a year prior to starting this project, and pyo3 bindings are relitively easy to get working. This library is only exposed through python as that's where I've actually use its features. I don't intend to package this as a rust create at this stage. 
 
-Because of the nature of this project I don't intend to bring on any other contributors, I am however always open to suggestions and criticism. 
+Because of the nature of this project I don't intend to bring on any other contributors at this point, I am however always open to suggestions and criticism. 
 
 ### Top-level
 - `ironforest.Array`
