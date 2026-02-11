@@ -90,7 +90,7 @@ impl BallTree {
 
         let mut max_dist: f64 = 0.0;
         for i in start..end {
-            let p = self.get_point(i);
+            let p = self.get_point_from_idx(i);
             let dist = self.metric.distance(p, &centroid);
 
             if  dist > max_dist {
