@@ -113,7 +113,7 @@ Because of the nature of this project I don't intend to bring on any other contr
 - Local Regression (soon)
 - Decision Trees
 - Random Forest
-- Isolation Forest (soon)
+- Isolation Forest
 
 ### Random
 `Generator` object that can sample from uniform, normal, lognormal, gamma and beta distributions. Support for additional distributions is planned.
