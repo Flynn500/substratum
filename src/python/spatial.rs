@@ -2,7 +2,7 @@ use pyo3::prelude::*;
 use pyo3::exceptions::PyValueError;
 use pyo3::types::PyAny;
 use crate::array::{NdArray, Shape};
-use crate::spatial::{BallTree, KDTree, VPTree, VantagePointSelection, DistanceMetric, KernelType, ApproxCriterion};
+use crate::spatial::{BallTree, KDTree, VPTree, VantagePointSelection, DistanceMetric, KernelType, SpatialQuery};
 use super::{PyArray, ArrayLike};
 
 pub fn register_module(m: &Bound<'_, PyModule>) -> PyResult<()> {
@@ -103,67 +103,6 @@ fn parse_metric(metric: &str) -> PyResult<DistanceMetric> {
                     Ok(PyArray { inner: result }.into_pyobject(py)?.into_any().unbind())
                 }
             }
-
-            #[pyo3(signature = (queries=None, bandwidth=1.0, kernel="gaussian", criterion="none", min_samples=None, max_span=None))]
-            fn kernel_density_approx(
-                &self,
-                py: Python<'_>,
-                queries: Option<ArrayLike>,
-                bandwidth: Option<f64>,
-                kernel: Option<&str>,
-                criterion: Option<&str>,
-                min_samples: Option<usize>,
-                max_span: Option<f64>,
-            ) -> PyResult<Py<PyAny>> {
-                let bandwidth = bandwidth.unwrap_or(1.0);
-                let kernel_type = parse_kernel(kernel.unwrap_or("gaussian"))?;
-
-                let approx_criterion = match criterion.unwrap_or("none").to_lowercase().as_str() {
-                    "none" => ApproxCriterion::None,
-                    "min_samples" => {
-                        let samples = min_samples.ok_or_else(||
-                            PyValueError::new_err("min_samples parameter required for 'min_samples' criterion")
-                        )?;
-                        ApproxCriterion::MinSamples(samples)
-                    },
-                    "max_span" => {
-                        let span = max_span.ok_or_else(||
-                            PyValueError::new_err("max_span parameter required for 'max_span' criterion")
-                        )?;
-                        ApproxCriterion::MaxSpan(span)
-                    },
-                    "combined" => {
-                        let samples = min_samples.ok_or_else(||
-                            PyValueError::new_err("min_samples parameter required for 'combined' criterion")
-                        )?;
-                        let span = max_span.ok_or_else(||
-                            PyValueError::new_err("max_span parameter required for 'combined' criterion")
-                        )?;
-                        ApproxCriterion::Combined(samples, span)
-                    },
-                    _ => return Err(PyValueError::new_err(format!(
-                        "Unknown approximation criterion '{}'. Valid options: 'none', 'min_samples', 'max_span', 'combined'",
-                        criterion.unwrap_or("none")
-                    ))),
-                };
-
-                let queries_arr = if let Some(q) = queries {
-                q.into_spatial_query_ndarray(self.inner.dim)?
-                } else {
-                    NdArray::from_vec(
-                        Shape::new(vec![self.inner.n_points, self.inner.dim]),
-                        self.inner.data.clone()
-                    )
-                };
-
-                let result = self.inner.kernel_density_approx(&queries_arr, bandwidth, kernel_type, &approx_criterion);
-
-                if result.shape().dims()[0] == 1 {
-                    Ok(result.as_slice()[0].into_pyobject(py)?.into_any().unbind())
-                } else {
-                    Ok(PyArray { inner: result }.into_pyobject(py)?.into_any().unbind())
-                }
-            }
         }
 
         #[pyclass(name = "KDTree")]
@@ -215,67 +154,6 @@ fn parse_metric(metric: &str) -> PyResult<DistanceMetric> {
                 
                 let result = self.inner.kernel_density(&queries_arr, bandwidth, kernel_type);
                 
-                if result.shape().dims()[0] == 1 {
-                    Ok(result.as_slice()[0].into_pyobject(py)?.into_any().unbind())
-                } else {
-                    Ok(PyArray { inner: result }.into_pyobject(py)?.into_any().unbind())
-                }
-            }
-
-            #[pyo3(signature = (queries=None, bandwidth=1.0, kernel="gaussian", criterion="none", min_samples=None, max_span=None))]
-            fn kernel_density_approx(
-                &self,
-                py: Python<'_>,
-                queries: Option<ArrayLike>,
-                bandwidth: Option<f64>,
-                kernel: Option<&str>,
-                criterion: Option<&str>,
-                min_samples: Option<usize>,
-                max_span: Option<f64>,
-            ) -> PyResult<Py<PyAny>> {
-                let bandwidth = bandwidth.unwrap_or(1.0);
-                let kernel_type = parse_kernel(kernel.unwrap_or("gaussian"))?;
-
-                let approx_criterion = match criterion.unwrap_or("none").to_lowercase().as_str() {
-                    "none" => ApproxCriterion::None,
-                    "min_samples" => {
-                        let samples = min_samples.ok_or_else(||
-                            PyValueError::new_err("min_samples parameter required for 'min_samples' criterion")
-                        )?;
-                        ApproxCriterion::MinSamples(samples)
-                    },
-                    "max_span" => {
-                        let span = max_span.ok_or_else(||
-                            PyValueError::new_err("max_span parameter required for 'max_span' criterion")
-                        )?;
-                        ApproxCriterion::MaxSpan(span)
-                    },
-                    "combined" => {
-                        let samples = min_samples.ok_or_else(||
-                            PyValueError::new_err("min_samples parameter required for 'combined' criterion")
-                        )?;
-                        let span = max_span.ok_or_else(||
-                            PyValueError::new_err("max_span parameter required for 'combined' criterion")
-                        )?;
-                        ApproxCriterion::Combined(samples, span)
-                    },
-                    _ => return Err(PyValueError::new_err(format!(
-                        "Unknown approximation criterion '{}'. Valid options: 'none', 'min_samples', 'max_span', 'combined'",
-                        criterion.unwrap_or("none")
-                    ))),
-                };
-
-                let queries_arr = if let Some(q) = queries {
-                q.into_spatial_query_ndarray(self.inner.dim)?
-                } else {
-                    NdArray::from_vec(
-                        Shape::new(vec![self.inner.n_points, self.inner.dim]),
-                        self.inner.data.clone()
-                    )
-                };
-
-                let result = self.inner.kernel_density_approx(&queries_arr, bandwidth, kernel_type, &approx_criterion);
-
                 if result.shape().dims()[0] == 1 {
                     Ok(result.as_slice()[0].into_pyobject(py)?.into_any().unbind())
                 } else {
@@ -335,67 +213,6 @@ fn parse_metric(metric: &str) -> PyResult<DistanceMetric> {
                 
                 let result = self.inner.kernel_density(&queries_arr, bandwidth, kernel_type);
                 
-                if result.shape().dims()[0] == 1 {
-                    Ok(result.as_slice()[0].into_pyobject(py)?.into_any().unbind())
-                } else {
-                    Ok(PyArray { inner: result }.into_pyobject(py)?.into_any().unbind())
-                }
-            }
-
-            #[pyo3(signature = (queries=None, bandwidth=1.0, kernel="gaussian", criterion="none", min_samples=None, max_span=None))]
-            fn kernel_density_approx(
-                &self,
-                py: Python<'_>,
-                queries: Option<ArrayLike>,
-                bandwidth: Option<f64>,
-                kernel: Option<&str>,
-                criterion: Option<&str>,
-                min_samples: Option<usize>,
-                max_span: Option<f64>,
-            ) -> PyResult<Py<PyAny>> {
-                let bandwidth = bandwidth.unwrap_or(1.0);
-                let kernel_type = parse_kernel(kernel.unwrap_or("gaussian"))?;
-
-                let approx_criterion = match criterion.unwrap_or("none").to_lowercase().as_str() {
-                    "none" => ApproxCriterion::None,
-                    "min_samples" => {
-                        let samples = min_samples.ok_or_else(||
-                            PyValueError::new_err("min_samples parameter required for 'min_samples' criterion")
-                        )?;
-                        ApproxCriterion::MinSamples(samples)
-                    },
-                    "max_span" => {
-                        let span = max_span.ok_or_else(||
-                            PyValueError::new_err("max_span parameter required for 'max_span' criterion")
-                        )?;
-                        ApproxCriterion::MaxSpan(span)
-                    },
-                    "combined" => {
-                        let samples = min_samples.ok_or_else(||
-                            PyValueError::new_err("min_samples parameter required for 'combined' criterion")
-                        )?;
-                        let span = max_span.ok_or_else(||
-                            PyValueError::new_err("max_span parameter required for 'combined' criterion")
-                        )?;
-                        ApproxCriterion::Combined(samples, span)
-                    },
-                    _ => return Err(PyValueError::new_err(format!(
-                        "Unknown approximation criterion '{}'. Valid options: 'none', 'min_samples', 'max_span', 'combined'",
-                        criterion.unwrap_or("none")
-                    ))),
-                };
-
-                let queries_arr = if let Some(q) = queries {
-                q.into_spatial_query_ndarray(self.inner.dim)?
-                } else {
-                    NdArray::from_vec(
-                        Shape::new(vec![self.inner.n_points, self.inner.dim]),
-                        self.inner.data.clone()
-                    )
-                };
-
-                let result = self.inner.kernel_density_approx(&queries_arr, bandwidth, kernel_type, approx_criterion);
-
                 if result.shape().dims()[0] == 1 {
                     Ok(result.as_slice()[0].into_pyobject(py)?.into_any().unbind())
                 } else {

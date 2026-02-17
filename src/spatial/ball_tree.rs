@@ -1,5 +1,5 @@
-use std::collections::BinaryHeap;
-use crate::{array::{NdArray, Shape}, spatial::common::{ApproxCriterion, DistanceMetric, HeapItem, KernelType}};
+use crate::{array::NdArray, spatial::common::DistanceMetric};
+use super::spatial_query::{SpatialQuery};
 
 
 #[derive(Clone, Debug)]
@@ -11,6 +11,7 @@ pub struct BallNode {
     pub left: Option<usize>,
     pub right: Option<usize>,
 }
+
 
 #[derive(Debug, Clone)]
 pub struct BallTree {
@@ -63,9 +64,6 @@ impl BallTree {
         self.data = new_data;
     }
 
-    fn get_point(&self, i: usize) -> &[f64] {
-        &self.data[i * self.dim..(i + 1) * self.dim]
-    }
 
     fn get_point_from_idx(&self, i: usize) -> &[f64] {
         let original_idx = self.indices[i];
@@ -182,198 +180,33 @@ impl BallTree {
         
         node_idx
     }
+}
 
-    pub fn query_radius(&self, query: &[f64], radius: f64) -> Vec<usize> {
-        let mut results = Vec::new();
-        self.query_radius_recursive(0, query, radius, &mut results);
-        results
-    }
+impl SpatialQuery for BallTree {
+    type Node = BallNode;
 
-    pub fn query_radius_recursive(&self, node_idx: usize, query: &[f64], radius: f64, results: &mut Vec<usize>) {
+    fn nodes(&self) -> &[BallNode] { &self.nodes }
+    fn indices(&self) -> &[usize] { &self.indices }
+    fn data(&self) -> &[f64] { &self.data }
+    fn dim(&self) -> usize { self.dim }
+    fn metric(&self) -> &DistanceMetric { &self.metric }
+
+    fn node_start(&self, idx: usize) -> usize { self.nodes[idx].start }
+    fn node_end(&self, idx: usize) -> usize { self.nodes[idx].end }
+    fn node_left(&self, idx: usize) -> Option<usize> { self.nodes[idx].left }
+    fn node_right(&self, idx: usize) -> Option<usize> { self.nodes[idx].right }
+
+    fn min_distance_to_node(&self, node_idx: usize, query: &[f64]) -> f64 {
         let node = &self.nodes[node_idx];
-
-        let dist_to_centre = self.metric.distance(query, &node.center);
-        if dist_to_centre - node.radius > radius {
-            return;
-        }
-
-        if node.left.is_none() {
-            for i in node.start..node.end {
-                let p = self.get_point(i);
-                if self.metric.distance(query, p) <= radius {
-                    results.push(self.indices[i]);
-                }
-            }
-        }
-
-        if let Some(left) = node.left {
-            self.query_radius_recursive(left, query, radius, results);
-        }
-
-        if let Some(right) = node.right {
-            self.query_radius_recursive(right, query, radius, results);
-        }
+        let d = self.metric.distance(query, &node.center);
+        (d - node.radius).max(0.0)
     }
 
-    pub fn query_knn(&self, query: &[f64], k: usize) -> Vec<(usize, f64)> {
-        if k == 0 || self.n_points == 0 {
-            return Vec::new();
-        }
-
-        let mut heap = BinaryHeap::with_capacity(k);
-        self.query_knn_recursive(0, query, &mut heap, k);
-        heap.into_sorted_vec().into_iter().map(|item| (item.index, item.distance)).collect()
-    }
-
-    fn query_knn_recursive(&self, node_idx: usize, query: &[f64], heap: &mut BinaryHeap<HeapItem>, k: usize,) {
+    fn knn_child_order(&self, node_idx: usize, query: &[f64]) -> (usize, usize) {
         let node = &self.nodes[node_idx];
-
-        let dist_to_centre = self.metric.distance(query, &node.center);
-
-        if heap.len() == k {
-            if dist_to_centre - node.radius > heap.peek().unwrap().distance {
-                return;
-            }
-        }
-
-        if node.left.is_none() {
-            for i in node.start..node.end {
-                let dist = self.metric.distance(query, self.get_point(i));
-                
-                if heap.len() < k {
-                    heap.push(HeapItem { distance: dist, index: self.indices[i] });
-                } else if dist < heap.peek().unwrap().distance {
-                    heap.pop();
-                    heap.push(HeapItem { distance: dist, index: self.indices[i] });
-                }
-            }
-            return;
-        }
-        
-        let left_idx = node.left.unwrap();
-        let right_idx = node.right.unwrap();
-
-        let left_dist = self.metric.distance(query, &self.nodes[left_idx].center);
-        let right_dist = self.metric.distance(query, &self.nodes[right_idx].center);
-
-        if left_dist <= right_dist {
-            self.query_knn_recursive(left_idx, query, heap, k);
-            self.query_knn_recursive(right_idx, query, heap, k);
-        } else {
-            self.query_knn_recursive(right_idx, query, heap, k);
-            self.query_knn_recursive(left_idx, query, heap, k);
-        }
-
-    }
-
-    pub fn kernel_density(&self, queries: &NdArray<f64>, bandwidth: f64, kernel: KernelType) -> NdArray<f64> {
-        let shape = queries.shape().dims();
-        assert!(shape.len() == 2, "Expected 2D array (n_queries, dim)");
-
-        let n_queries = shape[0];
-        let dim = shape[1];
-        assert_eq!(dim, self.dim, "Query dimension must match tree dimension");
-
-        let mut results = vec![0.0; n_queries];
-
-        for i in 0..n_queries {
-            let query = &queries.as_slice()[i * dim..(i + 1) * dim];
-            let mut density = 0.0;
-            self.kde_recursive(0, query, bandwidth, &mut density, kernel, &ApproxCriterion::None);
-            results[i] = density;
-        }
-
-        NdArray::from_vec(Shape::new(vec![n_queries]), results)
-    }
-
-    pub fn kernel_density_approx(&self, queries: &NdArray<f64>, bandwidth: f64, kernel: KernelType, criterion: &ApproxCriterion) -> NdArray<f64> {
-        let shape = queries.shape().dims();
-        assert!(shape.len() == 2, "Expected 2D array (n_queries, dim)");
-
-        let n_queries = shape[0];
-        let dim = shape[1];
-        assert_eq!(dim, self.dim, "Query dimension must match tree dimension");
-
-        let mut results = vec![0.0; n_queries];
-
-        for i in 0..n_queries {
-            let query = &queries.as_slice()[i * dim..(i + 1) * dim];
-            let mut density = 0.0;
-            self.kde_recursive(0, query, bandwidth, &mut density, kernel, criterion);
-            results[i] = density;
-        }
-
-        NdArray::from_vec(Shape::new(vec![n_queries]), results)
-    }
-
-    fn approx_kde_for_node(&self, query: &[f64], node: &BallNode, h: f64, kernel: KernelType) -> f64 {
-        let n_points = (node.end - node.start) as f64;
-
-        let dist_to_center = self.metric.distance(query, &node.center);
-
-        let min_possible = (dist_to_center - node.radius).max(0.0);
-        let max_possible = dist_to_center + node.radius;
-        
-        let k_min = kernel.evaluate(min_possible, h);
-        let k_max = kernel.evaluate(max_possible, h);
-        let k_avg = (k_min + k_max) / 2.0;
-        
-        n_points * k_avg
-    }
-
-    fn should_approximate(&self, node: &BallNode, criterion: &ApproxCriterion) -> bool {
-        if node.left.is_none() {
-            return false;
-        }
-        
-        match criterion {
-            ApproxCriterion::None => false,
-            
-            ApproxCriterion::MinSamples(threshold) => {
-                let node_count = node.end - node.start;
-                node_count >= *threshold
-            },
-            
-            ApproxCriterion::MaxSpan(threshold) => {
-                let span = 2.0 * node.radius;
-                span <= *threshold
-            },
-            
-            ApproxCriterion::Combined(min_samples, max_span) => {
-                let node_count = node.end - node.start;
-                let span = 2.0 * node.radius;
-                node_count >= *min_samples && span <= *max_span
-            },
-        }
-    }
-
-    fn kde_recursive(&self, node_idx: usize, query: &[f64], h: f64, density: &mut f64, kernel: KernelType, criterion: &ApproxCriterion) {
-        let node = &self.nodes[node_idx];
-        let dist_to_center = self.metric.distance(query, &node.center);
-
-        let min_dist = (dist_to_center - node.radius).max(0.0);
-        if kernel.evaluate(min_dist, h) < 1e-10 {
-            return;
-        }
-
-        if self.should_approximate(node, criterion) {
-            *density += self.approx_kde_for_node(query, node, h, kernel);
-            return;
-        }
-
-        if node.left.is_none() {
-            for i in node.start..node.end {
-                let dist = self.metric.distance(query, self.get_point(i));
-                *density += kernel.evaluate(dist, h);
-            }
-            return;
-        }
-
-        if let Some(left) = node.left {
-            self.kde_recursive(left, query, h, density, kernel, &criterion);
-        }
-        if let Some(right) = node.right {
-            self.kde_recursive(right, query, h, density, kernel, &criterion);
-        }
+        let (l, r) = (node.left.unwrap(), node.right.unwrap());
+        let dl = self.metric.distance(query, &self.nodes[l].center);
+        let dr = self.metric.distance(query, &self.nodes[r].center);
+        if dl <= dr { (l, r) } else { (r, l) }
     }
 }

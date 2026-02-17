@@ -1,5 +1,4 @@
 use std::{cmp::Ordering};
-use crate::array::NdArray;
 
 #[derive(Debug, Clone, Copy)]
 pub enum DistanceMetric {
@@ -20,12 +19,6 @@ impl DistanceMetric {
     }
 }
 
-pub enum ApproxCriterion {
-    None,
-    MinSamples(usize),
-    MaxSpan(f64),
-    Combined(usize, f64),
-}
 
 #[derive(Clone, Copy, Debug)]
 pub enum KernelType {
