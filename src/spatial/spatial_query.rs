@@ -141,7 +141,6 @@ pub trait SpatialQuery {
                 *val /= norm;
             }
         }
-
         NdArray::from_vec(Shape::new(vec![n_queries]), results)
     }
 }

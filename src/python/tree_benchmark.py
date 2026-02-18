@@ -67,7 +67,7 @@ def benchmark_tree_irn_kdtree(
 
     for _ in range(runs):
         t0 = time.perf_counter()
-        tree = irn.spatial.KDTree.from_array(
+        tree = irn.spatial.BallTree.from_array(
             points,
             leaf_size=leaf_size,
             metric="euclidean",
@@ -111,7 +111,7 @@ def benchmark_tree_sklearn(
     for _ in range(runs):
         # Build
         t0 = time.perf_counter()
-        tree = KDTree(
+        tree = BallTree(
             points,
             leaf_size=leaf_size,
             metric="euclidean",
@@ -138,19 +138,16 @@ def benchmark_tree_sklearn(
 
 
 if __name__ == "__main__":
-
-    print("\n results comparison (single run):")
-
     rng = np.random.default_rng(42)
-    points_np = rng.uniform(0.0, 1.0, size=(100000, 4))
-    queries_np = rng.uniform(0.0, 1.0, size=(20, 4))
+    points_np = rng.normal(0.0, 1.0, size=(100000, 4))
+    queries_np = rng.normal(0.0, 1.0, size=(20, 4))
 
     points_irn = irn.Array.from_numpy(points_np)
     queries_irn = irn.Array.from_numpy(queries_np)
 
     t0 = time.perf_counter()
-    agg_result = irn.spatial.AggTree.from_array(points_irn, leaf_size=32, metric="euclidean", max_span= 1.5) \
-        .kernel_density(queries_irn, bandwidth=0.5, kernel="gaussian", normalize=True)
+    agg_result = irn.spatial.AggTree.from_array(points_irn, leaf_size=32, metric="euclidean", max_span= 1.0) \
+        .kernel_density(queries_irn, bandwidth=0.5 , kernel="gaussian", normalize=True)
     t1 = time.perf_counter()
     agg_time = t1-t0
 
@@ -183,83 +180,3 @@ if __name__ == "__main__":
 
 
 
-"""
-
-SKlearn vs substratum
-KDE Query - Gaussian, Euclidian
-n_points=100_000,
-n_queries=500
-
-substratum KDTree benchmark results:
-   build_min: 0.012436 sec
-  build_mean: 0.014963 sec
-   query_min: 0.607634 sec
-  query_mean: 0.635967 sec
-
-substratum benchmark results:
-   build_min: 0.019365 sec
-  build_mean: 0.022635 sec
-   query_min: 0.607534 sec
-  query_mean: 0.639607 sec
-
-
-
-
-sklearn KDTree benchmark results:
-   build_min: 0.038591 sec
-  build_mean: 0.040955 sec
-   query_min: 0.929484 sec
-  query_mean: 0.986913 sec
-
-sklearn BallTree benchmark results:
-   build_min: 0.037026 sec
-  build_mean: 0.038487 sec
-   query_min: 0.948515 sec
-  query_mean: 0.996769 sec
-
-
-KDE Query - Gaussian, Euclidian
-n_points=200_000,
-n_queries=1000,
-
-old cache hating implementation:
-
-KDTree benchmark results:
-    build_min: 0.035546 sec
-    build_mean: 0.037652 sec
-    query_min: 3.458297 sec
-    query_mean: 3.813541 sec
-
-BallTree benchmark results:
-    build_min: 0.050904 sec
-    build_mean: 0.053747 sec
-    query_min: 3.484985 sec
-    query_mean: 3.655839 sec
-
-VPTree benchmark results:
-    build_min: 0.035535 sec
-    build_mean: 0.037596 sec
-    query_min: 3.428210 sec
-    query_mean: 3.515841 sec
-
-
-new cache friendly implementation:
-
-KDTree benchmark results:
-    build_min: 0.033573 sec
-    build_mean: 0.035239 sec
-    query_min: 2.342033 sec
-    query_mean: 2.391603 sec
-
-BallTree benchmark results:
-    build_min: 0.043306 sec
-    build_mean: 0.046842 sec
-    query_min: 2.473859 sec
-    query_mean: 2.506054 sec
-
-VPTree benchmark results:
-    build_min: 0.034412 sec
-    build_mean: 0.035934 sec
-    query_min: 2.354319 sec
-    query_mean: 2.403241 sec
-"""
