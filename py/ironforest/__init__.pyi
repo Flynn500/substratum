@@ -1,4 +1,4 @@
-"""Type stubs for ironforest package."""
+"""IronForest: A library supporting spatial queries & tree-based machine learning."""
 
 from ironforest._core import (
     Array as Array,

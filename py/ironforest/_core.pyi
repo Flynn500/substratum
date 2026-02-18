@@ -978,7 +978,8 @@ class spatial:
             self,
             queries: ArrayLike,
             bandwidth: float = 1.0,
-            kernel: Literal["gaussian", "epanechnikov", "uniform", "triangular"] = "gaussian"
+            kernel: Literal["gaussian", "epanechnikov", "uniform", "triangular"] = "gaussian",
+            normalize: bool = True
         ) -> float:
             """Estimate kernel density at a single query point.
 
@@ -991,6 +992,7 @@ class spatial:
                     - "epanechnikov": Epanechnikov kernel
                     - "uniform": Uniform (rectangular) kernel
                     - "triangular": Triangular kernel
+                Normalize: Bool to control whether normalized values are returned.
 
             Returns:
                 Density estimate at the query point (float).
@@ -1002,7 +1004,8 @@ class spatial:
             self,
             queries: ArrayLike,
             bandwidth: float = 1.0,
-            kernel: Literal["gaussian", "epanechnikov", "uniform", "triangular"] = "gaussian"
+            kernel: Literal["gaussian", "epanechnikov", "uniform", "triangular"] = "gaussian",
+            normalize: bool = True
         ) -> List:
             """Estimate kernel density at multiple query points.
 
@@ -1016,6 +1019,7 @@ class spatial:
                     - "epanechnikov": Epanechnikov kernel
                     - "uniform": Uniform (rectangular) kernel
                     - "triangular": Triangular kernel
+                Normalize: Bool to control whether normalized values are returned.
 
             Returns:
                 1D Array of density estimates, one for each query point.
@@ -1027,7 +1031,8 @@ class spatial:
             self,
             queries: None = None,
             bandwidth: float = 1.0,
-            kernel: Literal["gaussian", "epanechnikov", "uniform", "triangular"] = "gaussian"
+            kernel: Literal["gaussian", "epanechnikov", "uniform", "triangular"] = "gaussian",
+            normalize: bool = True
         ) -> List:
             """Estimate kernel density at all training points (leave-one-out).
 
@@ -1040,6 +1045,7 @@ class spatial:
                     - "epanechnikov": Epanechnikov kernel
                     - "uniform": Uniform (rectangular) kernel
                     - "triangular": Triangular kernel
+                Normalize: Bool to control whether normalized values are returned.
 
             Returns:
                 1D Array of density estimates at each training point.
@@ -1115,7 +1121,8 @@ class spatial:
             self,
             queries: ArrayLike,
             bandwidth: float = 1.0,
-            kernel: Literal["gaussian", "epanechnikov", "uniform", "triangular"] = "gaussian"
+            kernel: Literal["gaussian", "epanechnikov", "uniform", "triangular"] = "gaussian",
+            normalize: bool = True
         ) -> float:
             """Estimate kernel density at a single query point.
 
@@ -1128,6 +1135,7 @@ class spatial:
                     - "epanechnikov": Epanechnikov kernel
                     - "uniform": Uniform (rectangular) kernel
                     - "triangular": Triangular kernel
+                Normalize: Bool to control whether normalized values are returned.
 
             Returns:
                 Density estimate at the query point (float).
@@ -1139,7 +1147,8 @@ class spatial:
             self,
             queries: ArrayLike,
             bandwidth: float = 1.0,
-            kernel: Literal["gaussian", "epanechnikov", "uniform", "triangular"] = "gaussian"
+            kernel: Literal["gaussian", "epanechnikov", "uniform", "triangular"] = "gaussian",
+            normalize: bool = True
         ) -> List:
             """Estimate kernel density at multiple query points.
 
@@ -1153,6 +1162,7 @@ class spatial:
                     - "epanechnikov": Epanechnikov kernel
                     - "uniform": Uniform (rectangular) kernel
                     - "triangular": Triangular kernel
+                Normalize: Bool to control whether normalized values are returned.
 
             Returns:
                 1D Array of density estimates, one for each query point.
@@ -1164,7 +1174,8 @@ class spatial:
             self,
             queries: None = None,
             bandwidth: float = 1.0,
-            kernel: Literal["gaussian", "epanechnikov", "uniform", "triangular"] = "gaussian"
+            kernel: Literal["gaussian", "epanechnikov", "uniform", "triangular"] = "gaussian",
+            normalize: bool = True
         ) -> List:
             """Estimate kernel density at all training points (leave-one-out).
 
@@ -1177,6 +1188,7 @@ class spatial:
                     - "epanechnikov": Epanechnikov kernel
                     - "uniform": Uniform (rectangular) kernel
                     - "triangular": Triangular kernel
+                Normalize: Bool to control whether normalized values are returned.
 
             Returns:
                 1D Array of density estimates at each training point.
@@ -1258,7 +1270,8 @@ class spatial:
             self,
             queries: ArrayLike,
             bandwidth: float = 1.0,
-            kernel: Literal["gaussian", "epanechnikov", "uniform", "triangular"] = "gaussian"
+            kernel: Literal["gaussian", "epanechnikov", "uniform", "triangular"] = "gaussian",
+            normalize: bool = True
         ) -> float:
             """Estimate kernel density at a single query point.
 
@@ -1271,6 +1284,7 @@ class spatial:
                     - "epanechnikov": Epanechnikov kernel
                     - "uniform": Uniform (rectangular) kernel
                     - "triangular": Triangular kernel
+                Normalize: Bool to control whether normalized values are returned.
 
             Returns:
                 Density estimate at the query point (float).
@@ -1282,7 +1296,8 @@ class spatial:
             self,
             queries: ArrayLike,
             bandwidth: float = 1.0,
-            kernel: Literal["gaussian", "epanechnikov", "uniform", "triangular"] = "gaussian"
+            kernel: Literal["gaussian", "epanechnikov", "uniform", "triangular"] = "gaussian",
+            normalize: bool = True
         ) -> List:
             """Estimate kernel density at multiple query points.
 
@@ -1296,6 +1311,7 @@ class spatial:
                     - "epanechnikov": Epanechnikov kernel
                     - "uniform": Uniform (rectangular) kernel
                     - "triangular": Triangular kernel
+                Normalize: Bool to control whether normalized values are returned.
 
             Returns:
                 1D Array of density estimates, one for each query point.
@@ -1307,7 +1323,8 @@ class spatial:
             self,
             queries: None = None,
             bandwidth: float = 1.0,
-            kernel: Literal["gaussian", "epanechnikov", "uniform", "triangular"] = "gaussian"
+            kernel: Literal["gaussian", "epanechnikov", "uniform", "triangular"] = "gaussian",
+            normalize: bool = True
         ) -> List:
             """Estimate kernel density at all training points (leave-one-out).
 
@@ -1320,6 +1337,7 @@ class spatial:
                     - "epanechnikov": Epanechnikov kernel
                     - "uniform": Uniform (rectangular) kernel
                     - "triangular": Triangular kernel
+                Normalize: Bool to control whether normalized values are returned.
 
             Returns:
                 1D Array of density estimates at each training point.
@@ -1376,7 +1394,8 @@ class spatial:
             self,
             queries: ArrayLike,
             bandwidth: float = 1.0,
-            kernel: Literal["gaussian", "epanechnikov", "uniform", "triangular"] = "gaussian"
+            kernel: Literal["gaussian", "epanechnikov", "uniform", "triangular"] = "gaussian",
+            normalize: bool = True
         ) -> float:
             """Estimate kernel density at a single query point (with approximation).
 
@@ -1389,6 +1408,7 @@ class spatial:
                     - "epanechnikov": Epanechnikov kernel
                     - "uniform": Uniform (rectangular) kernel
                     - "triangular": Triangular kernel
+                Normalize: Bool to control whether normalized values are returned.
 
             Returns:
                 Approximate density estimate at the query point (float).
@@ -1400,7 +1420,8 @@ class spatial:
             self,
             queries: ArrayLike,
             bandwidth: float = 1.0,
-            kernel: Literal["gaussian", "epanechnikov", "uniform", "triangular"] = "gaussian"
+            kernel: Literal["gaussian", "epanechnikov", "uniform", "triangular"] = "gaussian",
+            normalize: bool = True
         ) -> List:
             """Estimate kernel density at multiple query points (with approximation).
 
@@ -1414,6 +1435,7 @@ class spatial:
                     - "epanechnikov": Epanechnikov kernel
                     - "uniform": Uniform (rectangular) kernel
                     - "triangular": Triangular kernel
+                Normalize: Bool to control whether normalized values are returned.
 
             Returns:
                 1D Array of approximate density estimates, one for each query point.
@@ -1425,7 +1447,8 @@ class spatial:
             self,
             queries: None = None,
             bandwidth: float = 1.0,
-            kernel: Literal["gaussian", "epanechnikov", "uniform", "triangular"] = "gaussian"
+            kernel: Literal["gaussian", "epanechnikov", "uniform", "triangular"] = "gaussian",
+            normalize: bool = True
         ) -> List:
             """Estimate kernel density at all training points (with approximation).
 
@@ -1438,6 +1461,7 @@ class spatial:
                     - "epanechnikov": Epanechnikov kernel
                     - "uniform": Uniform (rectangular) kernel
                     - "triangular": Triangular kernel
+                Normalize: Bool to control whether normalized values are returned.
 
             Returns:
                 1D Array of approximate density estimates at each training point.

@@ -1,4 +1,4 @@
-"""IronForest: N-dimensional array library for numerical computation and spatial analysis."""
+"""IronForest: A library supporting spatial queries & tree-based machine learning."""
 
 from ironforest._core import (
     Array,

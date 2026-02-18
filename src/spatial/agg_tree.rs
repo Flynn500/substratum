@@ -5,6 +5,7 @@ use crate::{KernelType, Shape, array::NdArray, spatial::common::DistanceMetric};
 pub struct AggNode {
     pub center: Vec<f64>,
     pub radius: f64,
+    pub variance: f64,
     pub start: usize,
     pub end: usize,
     pub left: Option<usize>,
@@ -134,7 +135,7 @@ impl AggTree {
         &self.data[i * dim..(i + 1) * dim]
     }
 
-    fn init_node(&self, start: usize, end: usize) -> (Vec<f64>, f64) {
+    fn init_node(&self, start: usize, end: usize) -> (Vec<f64>, f64, f64) {
         let n = (end - start) as f64;
         let mut centroid = vec![0.0; self.dim];
 
@@ -151,15 +152,18 @@ impl AggTree {
         }
 
         let mut max_dist: f64 = 0.0;
+        let mut variance = 0.0;
         for i in start..end {
             let p = self.get_point_from_idx(i);
-            let dist = self.metric.distance(p, &centroid);
 
-            if  dist > max_dist {
-                max_dist = dist;
-            }
+            let dist = self.metric.distance(p, &centroid);
+            if  dist > max_dist {max_dist = dist;}
+
+            variance += dist * dist;
         }
-        (centroid, max_dist)
+        variance /= n;
+
+        (centroid, max_dist, variance)
     }
 
     fn select_split_dim(&self, start: usize, end: usize) -> usize {
@@ -208,12 +212,13 @@ impl AggTree {
 
 
     fn build_recursive(&mut self, start: usize, end: usize) -> usize {
-        let (center, radius) = self.init_node(start, end);
+        let (center, radius, variance) = self.init_node(start, end);
 
         let node_idx = self.nodes.len();
         self.nodes.push(AggNode {
             center,
             radius,
+            variance,
             start,
             end,
             left: None,
@@ -247,20 +252,15 @@ impl AggTree {
     }
 
     fn approx_kde_for_node(&self, query: &[f64], node: &AggNode, h: f64, kernel: KernelType) -> f64 {
-        let n_points = (node.end - node.start) as f64;
+        let n = (node.end - node.start) as f64;
+        let r_c = self.metric.distance(query, &node.center);
 
-        let dist_to_center = self.metric.distance(query, &node.center);
+        let k0 = kernel.evaluate(r_c, h);
+        let k2 = kernel.evaluate_second_derivative(r_c, h);
 
-        let min_possible = (dist_to_center - node.radius).max(0.0);
-        let max_possible = dist_to_center + node.radius;
-
-        let k_min = kernel.evaluate(min_possible, h);
-        let k_max = kernel.evaluate(max_possible, h);
-        let k_avg = (k_min + k_max) / 2.0;
-
-        n_points * k_avg
+        n * (k0 + 0.5 * k2 * node.variance)
     }
-
+    
     fn should_approximate(&self, node: &AggNode) -> bool {
         let node_count = node.end - node.start;
         let span = 2.0 * node.radius;
@@ -297,7 +297,7 @@ impl AggTree {
     }
 
 
-    pub fn kernel_density(&self, queries: &NdArray<f64>, bandwidth: f64, kernel: KernelType) -> NdArray<f64> {
+    pub fn kernel_density(&self, queries: &NdArray<f64>, bandwidth: f64, kernel: KernelType, normalize: bool) -> NdArray<f64> {
         let shape = queries.shape().dims();
         assert!(shape.len() == 2, "Expected 2D array (n_queries, dim)");
 
@@ -312,6 +312,15 @@ impl AggTree {
             let mut density = 0.0;
             self.kde_recursive(0, query, bandwidth, &mut density, kernel);
             results[i] = density;
+        }
+
+        if normalize {
+            let h_d = bandwidth.powi(dim as i32);
+            let c_k = kernel.normalization_constant(dim);
+            let norm = h_d * c_k;
+            for val in &mut results {
+                *val /= norm;
+            }
         }
 
         NdArray::from_vec(Shape::new(vec![n_queries]), results)

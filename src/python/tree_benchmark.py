@@ -3,7 +3,7 @@ import ironforest as irn
 import numpy as np
 from sklearn.neighbors import KDTree, BallTree
 
-def benchmark_tree(
+def benchmark_tree_aggtree(
     n_points=100_000,
     n_queries=500,
     dim=2,
@@ -22,22 +22,17 @@ def benchmark_tree(
 
     for _ in range(runs):
         t0 = time.perf_counter()
-        tree = irn.spatial.KDTree.from_array(
+        tree = irn.spatial.AggTree.from_array(
             points,
             leaf_size=leaf_size,
             metric="euclidean",
+            max_span=1.75
         )
         t1 = time.perf_counter()
         build_times.append(t1 - t0)
 
         t0 = time.perf_counter()
-        # _ = tree.kernel_density_approx(
-        #     queries,
-        #     bandwidth=bandwidth,
-        #     kernel="gaussian",
-        #     criterion="min_samples",
-        #     min_samples=100
-        # )
+
         _ = tree.kernel_density(
             queries,
             bandwidth=bandwidth,
@@ -53,7 +48,48 @@ def benchmark_tree(
         "query_mean": sum(query_times) / runs,
     }
 
+def benchmark_tree_irn_kdtree(
+    n_points=100_000,
+    n_queries=500,
+    dim=2,
+    leaf_size=32,
+    bandwidth=0.5,
+    runs=5,
+    seed=42,
+):
+    gen = irn.random.Generator.from_seed(seed)
+    
+    points = gen.uniform(0.0, 1.0, [n_points, dim])
+    queries = gen.uniform(0.0, 1.0, [n_queries, dim])
 
+    build_times = []
+    query_times = []
+
+    for _ in range(runs):
+        t0 = time.perf_counter()
+        tree = irn.spatial.KDTree.from_array(
+            points,
+            leaf_size=leaf_size,
+            metric="euclidean",
+        )
+        t1 = time.perf_counter()
+        build_times.append(t1 - t0)
+
+        t0 = time.perf_counter()
+        _ = tree.kernel_density(
+            queries,
+            bandwidth=bandwidth,
+            kernel="gaussian",
+        )
+        t1 = time.perf_counter()
+        query_times.append(t1 - t0)
+
+    return {
+        "build_min": min(build_times),
+        "build_mean": sum(build_times) / runs,
+        "query_min": min(query_times),
+        "query_mean": sum(query_times) / runs,
+    }
 
 def benchmark_tree_sklearn(
     n_points=100_000,
@@ -102,29 +138,47 @@ def benchmark_tree_sklearn(
 
 
 if __name__ == "__main__":
-    result = benchmark_tree(
-        n_points=100_000,
-        n_queries=500,
-        dim=10,
-        leaf_size=32,
-        runs=10,
-    )
 
-    print(" benchmark results:")
-    for k, v in result.items():
-        print(f"{k:>12}: {v:.6f} sec")
+    print("\n results comparison (single run):")
 
-    result = benchmark_tree_sklearn(
-        n_points=100_000,
-        n_queries=500,
-        dim=10,
-        leaf_size=32,
-        runs=10,
-    )
+    rng = np.random.default_rng(42)
+    points_np = rng.uniform(0.0, 1.0, size=(100000, 4))
+    queries_np = rng.uniform(0.0, 1.0, size=(20, 4))
 
-    print(" benchmark results:")
-    for k, v in result.items():
-        print(f"{k:>12}: {v:.6f} sec")
+    points_irn = irn.Array.from_numpy(points_np)
+    queries_irn = irn.Array.from_numpy(queries_np)
+
+    t0 = time.perf_counter()
+    agg_result = irn.spatial.AggTree.from_array(points_irn, leaf_size=32, metric="euclidean", max_span= 0.3) \
+        .kernel_density(queries_irn, bandwidth=0.5, kernel="gaussian", normalize=True)
+    t1 = time.perf_counter()
+    agg_time = t1-t0
+
+    t0 = time.perf_counter()
+    kd_result = irn.spatial.KDTree.from_array(points_irn, leaf_size=32, metric="euclidean") \
+        .kernel_density(queries_irn, bandwidth=0.5, kernel="gaussian",normalize = True)
+    t1 = time.perf_counter()
+    kd_time = t1-t0
+
+    t0 = time.perf_counter()
+    sk_result = KDTree(points_np, leaf_size=32, metric="euclidean") \
+        .kernel_density(queries_np, h=0.5, kernel="gaussian")
+    t1 = time.perf_counter()
+    sk_time = t1-t0
+
+    agg = np.array(irn.Array.to_numpy(agg_result)) # type: ignore
+    kd  = np.array(irn.Array.to_numpy(kd_result)) # type: ignore
+    sk  = np.array(sk_result)
+    
+    print(f"\n  {'pair':<25} {'max_abs_diff':>14} {'mean_abs_diff':>14}")
+    print(f"  {'AggTree vs irn.KDTree':<25} {np.max(np.abs(agg - kd)):>14.6e} {np.mean(np.abs(agg - kd)):>14.6e}")
+    print(f"  {'AggTree vs sklearn':<25} {np.max(np.abs(agg - sk)):>14.6e} {np.mean(np.abs(agg - sk)):>14.6e}")
+    print(f"  {'irn.KDTree vs sklearn':<25} {np.max(np.abs(kd  - sk)):>14.6e} {np.mean(np.abs(kd  - sk)):>14.6e}")
+    print(f"time: SK KD {sk_time} - IRN KD {kd_time} - IRN AGG {agg_time}")
+    print(f"\n  per-query values (first 5 queries):")
+    print(f"  {'query':<8} {'AggTree':>12} {'irn.KDTree':>12} {'sklearn':>12}")
+    for i in range(5):
+        print(f"  {i:<8} {agg[i]:>12.6f} {kd[i]:>12.6f} {sk[i]:>12.6f}")
 
 
 
@@ -148,17 +202,7 @@ substratum benchmark results:
    query_min: 0.607534 sec
   query_mean: 0.639607 sec
 
-substratum KDTree approx benchmark results: min_samples = 100 
-   build_min: 0.013954 sec
-  build_mean: 0.014673 sec
-   query_min: 0.000024 sec
-  query_mean: 0.000034 sec
 
-substratum BallTree approx benchmark results: min_samples = 100
-   build_min: 0.019431 sec
-  build_mean: 0.020502 sec
-   query_min: 0.000026 sec
-  query_mean: 0.000040 sec
 
 
 sklearn KDTree benchmark results:

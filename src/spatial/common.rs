@@ -1,4 +1,5 @@
 use std::{cmp::Ordering};
+use crate::stats::special::gamma;
 
 #[derive(Debug, Clone, Copy)]
 pub enum DistanceMetric {
@@ -42,6 +43,31 @@ impl KernelType {
             KernelType::Triangular => {
                 if u < 1.0 { 1.0 - u } else { 0.0 }
             }
+        }
+    }
+
+    pub fn normalization_constant(&self, dim: usize) -> f64 {
+        let d = dim as f64;
+        let unit_ball = std::f64::consts::PI.powf(d / 2.0) / gamma(d / 2.0 + 1.0);
+        match self {
+            KernelType::Gaussian => (2.0 * std::f64::consts::PI).powf(d / 2.0),
+            KernelType::Uniform => unit_ball,
+            KernelType::Epanechnikov => unit_ball * 2.0 / (d + 2.0),
+            KernelType::Triangular => unit_ball * 1.0 / (d + 1.0),
+        }
+    }
+
+    pub fn evaluate_second_derivative(&self, r: f64, h: f64) -> f64 {
+        let u = r / h;
+        match self {
+            KernelType::Gaussian => {
+                let k = (-0.5 * u * u).exp();
+                (u * u / (h * h) - 1.0 / (h * h)) * k
+            }
+
+            KernelType::Epanechnikov => if u < 1.0 { -1.5 / (h * h) } else { 0.0 },
+            KernelType::Triangular => 0.0,
+            KernelType::Uniform => 0.0,
         }
     }
 }

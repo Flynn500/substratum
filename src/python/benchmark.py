@@ -23,7 +23,7 @@ def bench_array_creation(size=1000):
     shape_ss = [size, size]
     shape_np = (size, size)
     
-    ss_time = benchmark(lambda: ss.zeros(shape_ss), "substratum zeros")
+    ss_time = benchmark(lambda: irn.zeros(shape_ss), "substratum zeros")
     np_time = benchmark(lambda: np.zeros(shape_np), "numpy zeros")
     
     print(f"Ratio (numpy/substratum): {np_time/ss_time:.2f}x")
@@ -36,8 +36,8 @@ def bench_operations(size=1000):
     data = list(range(size * size))
     data_f = [float(x) for x in data]
     
-    a_ss = ss.Array([size, size], data_f)
-    b_ss = ss.Array([size, size], data_f)
+    a_ss = irn.Array([size, size], data_f)
+    b_ss = irn.Array([size, size], data_f)
     
     a_np = np.array(data_f).reshape(size, size)
     b_np = np.array(data_f).reshape(size, size)
@@ -64,7 +64,7 @@ def bench_math_functions(size=1000):
     # Setup with positive values for sqrt
     data = [float(i + 1) for i in range(size * size)]
     
-    arr_ss = ss.Array([size, size], data)
+    arr_ss = irn.Array([size, size], data)
     arr_np = np.array(data).reshape(size, size)
     
     # sqrt
@@ -74,7 +74,7 @@ def bench_math_functions(size=1000):
     
     # exp
     small_data = [float(i % 10) for i in range(size * size)]
-    arr_ss_small = ss.Array([size, size], small_data)
+    arr_ss_small = irn.Array([size, size], small_data)
     arr_np_small = np.array(small_data).reshape(size, size)
     
     ss_exp = benchmark(lambda: arr_ss_small.exp(), "substratum exp")
@@ -90,7 +90,7 @@ def bench_random(size=1000):
     """Benchmark random number generation"""
     print(f"\n=== Random Generation ({size}x{size}) ===")
     
-    gen_ss = ss.Generator.from_seed(42)
+    gen_ss = irn.random.Generator.from_seed(42)
     rng_np = np.random.default_rng(42)
     
     shape_ss = [size, size]

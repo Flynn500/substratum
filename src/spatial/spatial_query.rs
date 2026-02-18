@@ -15,6 +15,7 @@ pub trait SpatialQuery {
     fn node_left(&self, idx: usize) -> Option<usize>;
     fn node_right(&self, idx: usize) -> Option<usize>;
 
+
     fn min_distance_to_node(&self, node_idx: usize, query: &[f64]) -> f64;
 
     fn knn_child_order(&self, node_idx: usize, query: &[f64]) -> (usize, usize) {
@@ -24,6 +25,10 @@ pub trait SpatialQuery {
     fn get_point(&self, i: usize) -> &[f64] {
         let dim = self.dim();
         &self.data()[i * dim..(i + 1) * dim]
+    }
+
+    fn n_points(&self) -> usize {
+        self.data().len() / self.dim()
     }
 
     fn query_radius(&self, query: &[f64], radius: f64) -> Vec<usize> {
@@ -111,7 +116,7 @@ pub trait SpatialQuery {
     }
 
 
-    fn kernel_density(&self, queries: &NdArray<f64>, bandwidth: f64, kernel: KernelType) -> NdArray<f64> {
+    fn kernel_density(&self, queries: &NdArray<f64>, bandwidth: f64, kernel: KernelType, normalize: bool) -> NdArray<f64> {
         let shape = queries.shape().dims();
         assert!(shape.len() == 2, "Expected 2D array (n_queries, dim)");
 
@@ -126,6 +131,15 @@ pub trait SpatialQuery {
             let mut density = 0.0;
             self.kde_recursive(0, query, bandwidth, &mut density, kernel);
             results[i] = density;
+        }
+
+        if normalize {
+            let h_d = bandwidth.powi(dim as i32);
+            let c_k = kernel.normalization_constant(dim);
+            let norm = h_d * c_k;
+            for val in &mut results {
+                *val /= norm;
+            }
         }
 
         NdArray::from_vec(Shape::new(vec![n_queries]), results)

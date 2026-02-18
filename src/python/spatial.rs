@@ -76,17 +76,19 @@ fn parse_metric(metric: &str) -> PyResult<DistanceMetric> {
                 Ok(self.inner.query_knn(&query_vec, k))
             }
 
-            #[pyo3(signature = (queries=None, bandwidth=1.0, kernel="gaussian"))]
+            #[pyo3(signature = (queries=None, bandwidth=1.0, kernel="gaussian", normalize=true))]
             fn kernel_density(
                 &self,
                 py: Python<'_>,
                 queries: Option<ArrayLike>,
                 bandwidth: Option<f64>,
                 kernel: Option<&str>,
+                normalize: Option<bool>,
             ) -> PyResult<Py<PyAny>> {
                 let bandwidth = bandwidth.unwrap_or(1.0);
                 let kernel_type = parse_kernel(kernel.unwrap_or("gaussian"))?;
-                
+                let normalize = normalize.unwrap_or(false);
+
                 let queries_arr = if let Some(q) = queries {
                     q.into_spatial_query_ndarray(self.inner.dim)?
                 } else {
@@ -95,9 +97,9 @@ fn parse_metric(metric: &str) -> PyResult<DistanceMetric> {
                         self.inner.data.clone()
                     )
                 };
-                
-                let result = self.inner.kernel_density(&queries_arr, bandwidth, kernel_type);
-                
+
+                let result = self.inner.kernel_density(&queries_arr, bandwidth, kernel_type, normalize);
+
                 if result.shape().dims()[0] == 1 {
                     Ok(result.as_slice()[0].into_pyobject(py)?.into_any().unbind())
                 } else {
@@ -133,17 +135,19 @@ fn parse_metric(metric: &str) -> PyResult<DistanceMetric> {
                 Ok(self.inner.query_knn(&query_vec, k))
             }
 
-            #[pyo3(signature = (queries=None, bandwidth=1.0, kernel="gaussian"))]
+            #[pyo3(signature = (queries=None, bandwidth=1.0, kernel="gaussian", normalize=false))]
             fn kernel_density(
                 &self,
                 py: Python<'_>,
                 queries: Option<ArrayLike>,
                 bandwidth: Option<f64>,
                 kernel: Option<&str>,
+                normalize: Option<bool>,
             ) -> PyResult<Py<PyAny>> {
                 let bandwidth = bandwidth.unwrap_or(1.0);
                 let kernel_type = parse_kernel(kernel.unwrap_or("gaussian"))?;
-                
+                let normalize = normalize.unwrap_or(false);
+
                 let queries_arr = if let Some(q) = queries {
                     q.into_spatial_query_ndarray(self.inner.dim)?
                 } else {
@@ -152,9 +156,9 @@ fn parse_metric(metric: &str) -> PyResult<DistanceMetric> {
                         self.inner.data.clone()
                     )
                 };
-                
-                let result = self.inner.kernel_density(&queries_arr, bandwidth, kernel_type);
-                
+
+                let result = self.inner.kernel_density(&queries_arr, bandwidth, kernel_type, normalize);
+
                 if result.shape().dims()[0] == 1 {
                     Ok(result.as_slice()[0].into_pyobject(py)?.into_any().unbind())
                 } else {
@@ -192,16 +196,18 @@ fn parse_metric(metric: &str) -> PyResult<DistanceMetric> {
                 Ok(self.inner.query_knn(&query_vec, k))
             }
 
-            #[pyo3(signature = (queries=None, bandwidth=1.0, kernel="gaussian"))]
+            #[pyo3(signature = (queries=None, bandwidth=1.0, kernel="gaussian", normalize=true))]
             fn kernel_density(
                 &self,
                 py: Python<'_>,
                 queries: Option<ArrayLike>,
                 bandwidth: Option<f64>,
                 kernel: Option<&str>,
+                normalize: Option<bool>,
             ) -> PyResult<Py<PyAny>> {
                 let bandwidth = bandwidth.unwrap_or(1.0);
                 let kernel_type = parse_kernel(kernel.unwrap_or("gaussian"))?;
+                let normalize = normalize.unwrap_or(false);
 
                 let queries_arr = if let Some(q) = queries {
                     q.into_spatial_query_ndarray(self.inner.dim)?
@@ -212,7 +218,7 @@ fn parse_metric(metric: &str) -> PyResult<DistanceMetric> {
                     )
                 };
 
-                let result = self.inner.kernel_density(&queries_arr, bandwidth, kernel_type);
+                let result = self.inner.kernel_density(&queries_arr, bandwidth, kernel_type, normalize);
 
                 if result.shape().dims()[0] == 1 {
                     Ok(result.as_slice()[0].into_pyobject(py)?.into_any().unbind())
@@ -247,16 +253,18 @@ fn parse_metric(metric: &str) -> PyResult<DistanceMetric> {
                 Ok(PyAggTree { inner: tree })
             }
 
-            #[pyo3(signature = (queries=None, bandwidth=1.0, kernel="gaussian"))]
+            #[pyo3(signature = (queries=None, bandwidth=1.0, kernel="gaussian", normalize=true))]
             fn kernel_density(
                 &self,
                 py: Python<'_>,
                 queries: Option<ArrayLike>,
                 bandwidth: Option<f64>,
                 kernel: Option<&str>,
+                normalize: Option<bool>,
             ) -> PyResult<Py<PyAny>> {
                 let bandwidth = bandwidth.unwrap_or(1.0);
                 let kernel_type = parse_kernel(kernel.unwrap_or("gaussian"))?;
+                let normalize = normalize.unwrap_or(false);
 
                 let queries_arr = if let Some(q) = queries {
                     q.into_spatial_query_ndarray(self.inner.dim)?
@@ -267,7 +275,7 @@ fn parse_metric(metric: &str) -> PyResult<DistanceMetric> {
                     )
                 };
 
-                let result = self.inner.kernel_density(&queries_arr, bandwidth, kernel_type);
+                let result = self.inner.kernel_density(&queries_arr, bandwidth, kernel_type, normalize);
 
                 if result.shape().dims()[0] == 1 {
                     Ok(result.as_slice()[0].into_pyobject(py)?.into_any().unbind())
