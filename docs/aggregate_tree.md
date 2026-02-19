@@ -6,7 +6,8 @@ You can tune how aggresively nodes are aggregated with the `atol` parameter. Whe
 
 The following heatmap was generated using a bandwidth of 0.05 and an atol of 0.001
 
-![KDE Heatmap](kde_heatmap.compare.png)
+<img width="2708" height="855" alt="kde_heatmap_compare" src="https://github.com/Flynn500/ironforest/blob/003842528571875f611550195d533f31fb73f52d/docs/kde_heatmap_compare.png" />
+
 
 The above heatmap is a best-case scenario for our AggTree. The dataset was generated using scikit-learn's make blobs with a STD of 0.04, just below our bandwidth.
 
