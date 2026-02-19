@@ -178,46 +178,42 @@ impl AggTree {
         (centroid, max_dist, variance, moment3, moment4)
     }
 
-    fn select_split_dim(&self, start: usize, end: usize) -> usize {
-        let mut best_dim = 0;
-        let mut best_spread = 0.0;
-        
-        for d in 0..self.dim {
-            let mut min_val = f64::INFINITY;
-            let mut max_val = f64::NEG_INFINITY;
-            
-            for i in start..end {
-                let val = self.get_point_from_idx(i)[d];
-                min_val = min_val.min(val);
-                max_val = max_val.max(val);
-            }
-            
-            let spread = max_val - min_val;
-            if spread > best_spread {
-                best_spread = spread;
-                best_dim = d;
-            }
-        }
-        best_dim
+
+    fn furthest_from(&self, query: &[f64], start: usize, end: usize) -> usize {
+        (start..end)
+            .max_by(|&a, &b| {
+                let da = self.metric.distance(query, self.get_point_from_idx(a));
+                let db = self.metric.distance(query, self.get_point_from_idx(b));
+                da.partial_cmp(&db).unwrap()
+            })
+            .unwrap()
     }
 
-    fn partition(&mut self, start: usize, end: usize, dim: usize) -> usize {
-        let mut slots_by_key: Vec<(f64, usize)> = (start..end)
-            .map(|slot| (self.get_point_from_idx(slot)[dim], slot))
+    fn pivot_partition(&mut self, start: usize, end: usize, centroid: &[f64]) -> usize {
+        let p1_slot = self.furthest_from(&centroid, start, end);
+        let p1 = self.get_point_from_idx(p1_slot).to_vec();
+
+        let p2_slot = self.furthest_from(&p1, start, end);
+        let p2 = self.get_point_from_idx(p2_slot).to_vec();
+
+        let axis: Vec<f64> = p2.iter().zip(&p1).map(|(a, b)| a - b).collect();
+
+        let mut projections: Vec<(f64, usize)> = (start..end)
+            .map(|i| {
+                let p = self.get_point_from_idx(i);
+                let proj = p.iter().zip(&axis).map(|(x, a)| x * a).sum::<f64>();
+                (proj, self.indices[i])
+            })
             .collect();
 
         let mid_offset = (end - start) / 2;
-
-        slots_by_key.select_nth_unstable_by(mid_offset, |a, b| {
+        projections.select_nth_unstable_by(mid_offset, |a, b| {
             a.0.partial_cmp(&b.0).unwrap()
         });
 
-        let new_order: Vec<usize> = slots_by_key
-            .iter()
-            .map(|&(_key, slot)| self.indices[slot])
-            .collect();
-
-        self.indices[start..end].copy_from_slice(&new_order);
+        self.indices[start..end].copy_from_slice(
+            &projections.iter().map(|&(_, idx)| idx).collect::<Vec<_>>()
+        );
 
         start + mid_offset
     }
@@ -228,6 +224,7 @@ impl AggTree {
         let n = (end - start) as f64;
 
         let max_abs_error = self.kernel.node_error_bound(n, radius, self.bandwidth);
+        let mut mid = self.pivot_partition(start, end, &center);
 
         let node_idx = self.nodes.len();
         self.nodes.push(AggNode {
@@ -247,9 +244,6 @@ impl AggTree {
         if count <= self.leaf_size || max_abs_error < self.atol {
             return node_idx;
         }
-
-        let dim = self.select_split_dim(start, end);
-        let mut mid = self.partition(start, end, dim);
 
         if mid == start { mid = start + 1; }
         else if mid == end { mid = end - 1; }
