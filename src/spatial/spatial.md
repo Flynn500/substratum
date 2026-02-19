@@ -75,7 +75,7 @@ For queries, we recurse through the tree pruning nodes that are too far away to 
 
 $$\hat{K} = n \cdot \left( K(r_c) + \frac{1}{2} K''(r_c) \cdot \sigma^2 \right)$$
 
-Where r_c is the second derivative of the kernel with respect to r and variance is given by:
+Where r_c is the distance from the query point to the nodes centrer and variance is given by:
 
 $$\sigma^2 = \frac{1}{n} \sum_{i=1}^{n} \|x_i - \mu\|^2$$
 
