@@ -98,7 +98,7 @@ impl KernelType {
     pub fn node_error_bound(&self, n: f64, radius: f64, h: f64) -> f64 {
         match self {
             KernelType::Gaussian => {
-                (n / 120.0) * 7.0 * radius.powi(5) / h.powi(5)
+                (n / 120.0) * 2.5221 * radius.powi(5) / h.powi(5)
             }
             KernelType::Epanechnikov => {
                 n * (radius / h) * 0.75
