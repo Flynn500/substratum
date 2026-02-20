@@ -1,6 +1,6 @@
 
 from typing import Optional, Literal
-from ironforest._core import Array, asarray, Tree, TreeConfig, TaskType, SplitCriterion
+from ironforest._core import Array, ndutils, Tree, TreeConfig, TaskType, SplitCriterion
 import random
 
 class RandomForestClassifier:
@@ -65,9 +65,9 @@ class RandomForestClassifier:
         """
 
         if not isinstance(X, Array):
-            X = asarray(X)
+            X = ndutils.asarray(X)
         if not isinstance(y, Array):
-            y = asarray(y)
+            y = ndutils.asarray(y)
 
         if X.ndim != 2:
             raise ValueError(f"X must be 2D array, got {X.ndim}D")
@@ -91,8 +91,8 @@ class RandomForestClassifier:
         for i in range(self.n_estimators):
             indices = [rng.randint(0, n_samples - 1) for _ in range(n_samples)]
 
-            X_boot = asarray([X[idx, col] for idx in indices for col in range(n_features)])
-            y_boot = asarray([y[idx] for idx in indices])
+            X_boot = ndutils.asarray([X[idx, col] for idx in indices for col in range(n_features)])
+            y_boot = ndutils.asarray([y[idx] for idx in indices])
 
             config = TreeConfig(
                 task_type=TaskType.classification(),
@@ -130,7 +130,7 @@ class RandomForestClassifier:
             raise ValueError("This RandomForestClassifier instance is not fitted yet")
 
         if not isinstance(X, Array):
-            X = asarray(X)
+            X = ndutils.asarray(X)
 
         if X.ndim != 2:
             raise ValueError(f"X must be 2D array, got {X.ndim}D")
@@ -147,7 +147,7 @@ class RandomForestClassifier:
                 votes[int(preds[i])] += 1
             results.append(float(votes.index(max(votes))))
 
-        return asarray(results)
+        return ndutils.asarray(results)
 
 
 class RandomForestRegressor:
@@ -206,9 +206,9 @@ class RandomForestRegressor:
         """
 
         if not isinstance(X, Array):
-            X = asarray(X)
+            X = ndutils.asarray(X)
         if not isinstance(y, Array):
-            y = asarray(y)
+            y = ndutils.asarray(y)
 
         if X.ndim != 2:
             raise ValueError(f"X must be 2D array, got {X.ndim}D")
@@ -231,8 +231,8 @@ class RandomForestRegressor:
         for _ in range(self.n_estimators):
             indices = [rng.randint(0, n_samples - 1) for _ in range(n_samples)]
 
-            X_boot = asarray([X[idx, col] for idx in indices for col in range(n_features)])
-            y_boot = asarray([y[idx] for idx in indices])
+            X_boot = ndutils.asarray([X[idx, col] for idx in indices for col in range(n_features)])
+            y_boot = ndutils.asarray([y[idx] for idx in indices])
 
             config = TreeConfig(
                 task_type=TaskType.regression(),
@@ -269,7 +269,7 @@ class RandomForestRegressor:
             raise ValueError("This RandomForestRegressor instance is not fitted yet")
 
         if not isinstance(X, Array):
-            X = asarray(X)
+            X = ndutils.asarray(X)
 
         if X.ndim != 2:
             raise ValueError(f"X must be 2D array, got {X.ndim}D")
@@ -284,4 +284,4 @@ class RandomForestRegressor:
             total = sum(preds[i] for preds in all_preds)
             results.append(total / len(self.trees_))
 
-        return asarray(results)
+        return ndutils.asarray(results)

@@ -1,4 +1,4 @@
-"""Type stubs for ironforest.models module."""
+"""Machine learning models built on top of ironforest."""
 
 from .linear_regression import LinearRegression as LinearRegression
 from .decision_tree import DecisionTreeClassifier as DecisionTreeClassifier

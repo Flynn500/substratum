@@ -1,7 +1,7 @@
 """Isolation Forest for anomaly detection built on tree_engine."""
 
 from typing import Optional
-from ironforest._core import Array, asarray, Tree, TreeConfig, TaskType, SplitCriterion
+from ironforest._core import Array, ndutils, Tree, TreeConfig, TaskType, SplitCriterion
 import random
 
 
@@ -72,7 +72,7 @@ class IsolationForest:
         """
 
         if not isinstance(X, Array):
-            X = asarray(X)
+            X = ndutils.asarray(X)
 
         if X.ndim != 2:
             raise ValueError(f"X must be 2D array, got {X.ndim}D")
@@ -92,7 +92,7 @@ class IsolationForest:
             else:
                 indices = list(range(n_samples))
 
-            X_sample = asarray([X[idx, col] for idx in indices for col in range(n_features)])
+            X_sample = ndutils.asarray([X[idx, col] for idx in indices for col in range(n_features)])
 
             config = TreeConfig(
                 task_type=TaskType.anomaly_detection(),
@@ -105,7 +105,7 @@ class IsolationForest:
                 seed=rng.randint(0, 2**31),
             )
 
-            y_dummy = asarray([0.0] * len(indices))
+            y_dummy = ndutils.asarray([0.0] * len(indices))
             tree = Tree.fit(config, X_sample, y_dummy, len(indices), n_features)
             self.trees_.append(tree)
 
@@ -141,7 +141,7 @@ class IsolationForest:
         for score in scores:
             results.append(-1.0 if score < self.threshold_ else 1.0)
 
-        return asarray(results)
+        return ndutils.asarray(results)
 
     def score_samples(self, X):
         """Compute the anomaly score of each sample.
@@ -167,7 +167,7 @@ class IsolationForest:
             raise ValueError("This IsolationForest instance is not fitted yet")
 
         if not isinstance(X, Array):
-            X = asarray(X)
+            X = ndutils.asarray(X)
 
         if X.ndim != 2:
             raise ValueError(f"X must be 2D array, got {X.ndim}D")
@@ -183,7 +183,7 @@ class IsolationForest:
             score = -2.0 ** (-avg_path_length / self.offset_)
             results.append(score)
 
-        return asarray(results)
+        return ndutils.asarray(results)
 
     def decision_function(self, X):
         """Average anomaly score of X.

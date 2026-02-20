@@ -1,4 +1,5 @@
-from ironforest._core import Array, linalg, column_stack, asarray
+from ironforest._core import Array, linalg, ndutils
+
 
 class LinearRegression:
     """Linear regression model using least squares."""
@@ -27,13 +28,13 @@ class LinearRegression:
             self: Fitted estimator
         """
         if not isinstance(X, Array):
-            X = asarray(X)
+            X = ndutils.asarray(X)
         if not isinstance(y, Array):
-            y = asarray(y)
+            y = ndutils.asarray(y)
         
         if self.fit_intercept:
             ones = Array.ones((X.shape[0], 1))
-            X_design = column_stack([ones, X])
+            X_design = ndutils.column_stack([ones, X])
         else:
             X_design = X
 
@@ -64,7 +65,7 @@ class LinearRegression:
             RuntimeError: If model hasn't been fitted yet
         """
         if not isinstance(X, Array):
-            X = asarray(X)
+            X = ndutils.asarray(X)
 
         if not self._is_fitted:
             raise RuntimeError("Model must be fitted before calling predict")
@@ -88,9 +89,9 @@ class LinearRegression:
             R² score
         """
         if not isinstance(X, Array):
-            X = asarray(X)
+            X = ndutils.asarray(X)
         if not isinstance(y, Array):
-            y = asarray(y)
+            y = ndutils.asarray(y)
 
         if not self._is_fitted:
             raise RuntimeError("Model must be fitted before calling score")
@@ -117,9 +118,9 @@ class LinearRegression:
             Residuals array
         """
         if not isinstance(X, Array):
-            X = asarray(X)
+            X = ndutils.asarray(X)
         if not isinstance(y, Array):
-            y = asarray(y)
+            y = ndutils.asarray(y)
 
         if not self._is_fitted:
             raise RuntimeError("Model must be fitted before calculating residuals")

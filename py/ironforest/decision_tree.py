@@ -1,7 +1,7 @@
 """Decision Tree classifier and regressor built on tree_engine."""
 
 from typing import Optional, Literal
-from ironforest._core import Array, asarray, Tree, TreeConfig, TaskType, SplitCriterion
+from ironforest._core import Array, ndutils, Tree, TreeConfig, TaskType, SplitCriterion
 
 
 class DecisionTreeClassifier:
@@ -43,9 +43,9 @@ class DecisionTreeClassifier:
         """
 
         if not isinstance(X, Array):
-            X = asarray(X)
+            X = ndutils.asarray(X)
         if not isinstance(y, Array):
-            y = asarray(y)
+            y = ndutils.asarray(y)
 
         if X.ndim != 2:
             raise ValueError(f"X must be 2D array, got {X.ndim}D")
@@ -99,7 +99,7 @@ class DecisionTreeClassifier:
             raise ValueError("This DecisionTreeClassifier instance is not fitted yet")
 
         if not isinstance(X, Array):
-            X = asarray(X)
+            X = ndutils.asarray(X)
 
         if X.ndim != 2:
             raise ValueError(f"X must be 2D array, got {X.ndim}D")
@@ -159,9 +159,9 @@ class DecisionTreeRegressor:
         """
 
         if not isinstance(X, Array):
-            X = asarray(X)
+            X = ndutils.asarray(X)
         if not isinstance(y, Array):
-            y = asarray(y)
+            y = ndutils.asarray(y)
 
         if X.ndim != 2:
             raise ValueError(f"X must be 2D array, got {X.ndim}D")
@@ -206,7 +206,7 @@ class DecisionTreeRegressor:
             raise ValueError("This DecisionTreeRegressor instance is not fitted yet")
 
         if not isinstance(X, Array):
-            X = asarray(X)
+            X = ndutils.asarray(X)
 
         if X.ndim != 2:
             raise ValueError(f"X must be 2D array, got {X.ndim}D")

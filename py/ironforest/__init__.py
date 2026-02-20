@@ -2,14 +2,8 @@
 
 from ironforest._core import (
     Array,
-    zeros,
-    ones,
-    full,
-    asarray,
-    eye,
-    diag,
-    column_stack,
     linalg,
+    ndutils,
     stats,
     random,
     spatial,
@@ -19,13 +13,7 @@ from . import models
 
 __all__ = [
     "Array",
-    "zeros",
-    "ones",
-    "full",
-    "asarray",
-    "eye",
-    "diag",
-    "column_stack",
+    "ndutils",
     "linalg",
     "stats",
     "random",
@@ -33,4 +21,4 @@ __all__ = [
     "models",
 ]
 
-__version__ = "0.2.2"
+__version__ = "0.4.0"

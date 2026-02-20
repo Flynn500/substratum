@@ -1,28 +1,28 @@
 use pyo3::prelude::*;
 use pyo3::exceptions::PyValueError;
 use pyo3::types::{PyAny, PyFloat, PyList, PySlice, PyTuple};
-use numpy::{PyArrayDyn, PyReadonlyArrayDyn, PyUntypedArrayMethods, PyArrayMethods, IntoPyArray};
+use numpy::{PyArrayDyn, PyArrayMethods};
 use crate::array::{NdArray, Shape};
 use super::{PyArray, ArrayLike};
 
 #[pymethods]
 impl PyArray {
     #[staticmethod]
-    fn zeros(shape: Vec<usize>) -> Self {
+    pub fn zeros(shape: Vec<usize>) -> Self {
         PyArray {
             inner: NdArray::zeros(Shape::new(shape)),
         }
     }
 
     #[staticmethod]
-    fn ones(shape: Vec<usize>) -> Self {
+    pub fn ones(shape: Vec<usize>) -> Self {
         PyArray {
             inner: NdArray::ones(Shape::new(shape)),
         }
     }
 
     #[staticmethod]
-    fn full(shape: Vec<usize>, fill_value: f64) -> Self {
+    pub fn full(shape: Vec<usize>, fill_value: f64) -> Self {
         PyArray {
             inner: NdArray::full(Shape::new(shape), fill_value),
         }
@@ -30,7 +30,7 @@ impl PyArray {
 
     #[staticmethod]
     #[pyo3(signature = (data, shape=None))]
-    fn asarray(data: ArrayLike, shape: Option<Vec<usize>>) -> PyResult<Self> {
+    pub fn asarray(data: ArrayLike, shape: Option<Vec<usize>>) -> PyResult<Self> {
         let arr = data.into_ndarray()?;
 
         if let Some(s) = shape {
@@ -53,7 +53,7 @@ impl PyArray {
 
     #[staticmethod]
     #[pyo3(signature = (n, m=None, k=None))]
-    fn eye(n: usize, m: Option<usize>, k: Option<isize>) -> Self {
+    pub fn eye(n: usize, m: Option<usize>, k: Option<isize>) -> Self {
         PyArray {
             inner: NdArray::eye(n, m, k.unwrap_or(0)),
         }
@@ -61,19 +61,10 @@ impl PyArray {
 
     #[staticmethod]
     #[pyo3(signature = (v, k=None))]
-    fn diag(v: ArrayLike, k: Option<isize>) -> Self {
+    pub fn diag(v: ArrayLike, k: Option<isize>) -> Self {
         let v_arr = v.into_ndarray().unwrap();
         PyArray {
             inner: NdArray::from_diag(&v_arr, k.unwrap_or(0)),
-        }
-    }
-
-    #[staticmethod]
-    fn outer(a: ArrayLike, b: ArrayLike) -> Self {
-        let a_arr = a.into_ndarray().unwrap();
-        let b_arr = b.into_ndarray().unwrap();
-        PyArray {
-            inner: NdArray::outer(&a_arr, &b_arr),
         }
     }
 
@@ -342,17 +333,6 @@ impl PyArray {
         Ok(self.inner.item())
     }
 
-    #[staticmethod]
-    fn from_numpy(_py: Python<'_>, arr: &Bound<'_, PyAny>) -> PyResult<Self> {
-        let numpy_arr: PyReadonlyArrayDyn<f64> = arr.extract()?;
-        let shape: Vec<usize> = numpy_arr.shape().to_vec();
-        let data: Vec<f64> = numpy_arr.as_slice()?.to_vec();
-
-        Ok(PyArray {
-            inner: NdArray::from_vec(Shape::new(shape), data),
-        })
-    }
-
     fn to_numpy<'py>(&self, py: Python<'py>) -> Bound<'py, PyArrayDyn<f64>> {
         use numpy::IntoPyArray;
         let shape = self.inner.shape().dims();
@@ -593,48 +573,3 @@ impl PyArrayIter {
     }
 }
 
-// Top-level array construction functions
-#[pyfunction]
-pub fn zeros(shape: Vec<usize>) -> PyArray {
-    PyArray::zeros(shape)
-}
-
-#[pyfunction]
-#[pyo3(signature = (n, m=None, k=None))]
-pub fn eye(n: usize, m: Option<usize>, k: Option<isize>) -> PyArray {
-    PyArray::eye(n, m, k)
-}
-
-#[pyfunction]
-#[pyo3(signature = (v, k=None))]
-pub fn diag(v: ArrayLike, k: Option<isize>) -> PyArray {
-    PyArray::diag(v, k)
-}
-
-#[pyfunction]
-pub fn column_stack(arrays: Vec<PyArray>) -> PyResult<PyArray> {
-    if arrays.is_empty() {
-        return Err(PyValueError::new_err("Need at least one array"));
-    }
-
-    let array_refs: Vec<&NdArray<f64>> = arrays.iter().map(|a| &a.inner).collect();
-    Ok(PyArray {
-        inner: NdArray::column_stack(&array_refs),
-    })
-}
-
-#[pyfunction]
-pub fn ones(shape: Vec<usize>) -> PyArray {
-    PyArray::ones(shape)
-}
-
-#[pyfunction]
-pub fn full(shape: Vec<usize>, fill_value: f64) -> PyArray {
-    PyArray::full(shape, fill_value)
-}
-
-#[pyfunction]
-#[pyo3(signature = (data, shape=None))]
-pub fn asarray(data: ArrayLike, shape: Option<Vec<usize>>) -> PyResult<PyArray> {
-    PyArray::asarray(data, shape)
-}

@@ -210,8 +210,6 @@ class Ensemble:
 
 from typing import Iterator, List, Literal, Sequence, Tuple, overload, Any, Union
 
-# Type alias for array-like inputs that can be converted to Array
-# Accepts: Array, NumPy arrays, Python lists/nested lists, or scalar floats
 ArrayLike = Union['Array', Sequence[float], Sequence[Sequence[float]], float, Any]
 
 class linalg:
@@ -510,6 +508,103 @@ class random:
         """Create a seeded random number generator."""
         ...
 
+class ndutils:
+    """Array utility functions."""
+
+    @staticmethod
+    def zeros(shape: Sequence[int]) -> Array:
+        """Create array filled with zeros."""
+        ...
+
+    @staticmethod
+    def ones(shape: Sequence[int]) -> Array:
+        """Create array filled with ones."""
+        ...
+
+    @staticmethod
+    def full(shape: Sequence[int], fill_value: float) -> Array:
+        """Create array filled with a specified value."""
+        ...
+
+    @staticmethod
+    def asarray(data: ArrayLike, shape: Sequence[int] | None = None) -> Array:
+        """Create array from data with optional reshape.
+
+        Args:
+            data: Array-like data (Array, NumPy array, list, nested list, or scalar).
+            shape: Optional shape. If None, creates a 1D array.
+        """
+        ...
+
+    @staticmethod
+    def eye(n: int, m: int | None = None, k: int | None = None) -> Array:
+        """Create a 2D identity matrix with ones on the k-th diagonal."""
+        ...
+
+    @staticmethod
+    def diag(v: ArrayLike, k: int | None = None) -> Array:
+        """Create a 2D array with v on the k-th diagonal.
+
+        Args:
+            v: 1D array-like of diagonal values.
+            k: Diagonal offset (0=main, >0=upper, <0=lower).
+        """
+        ...
+
+    @staticmethod
+    def column_stack(arrays: Sequence[Array]) -> Array:
+        """Stack 1D or 2D arrays as columns into a 2D array.
+
+        Args:
+            arrays: Sequence of 1D or 2D arrays to stack. 1D arrays are treated
+                as columns (n, 1). All arrays must have the same number of rows.
+
+        Raises:
+            ValueError: If arrays is empty or arrays have mismatched row counts.
+        """
+        ...
+
+    @staticmethod
+    def outer(a: ArrayLike, b: ArrayLike) -> Array:
+        """Compute the outer product of two 1D arrays.
+
+        Args:
+            a: First 1D array-like.
+            b: Second 1D array-like.
+
+        Returns:
+            2D array representing the outer product.
+        """
+        ...
+
+    @staticmethod
+    def from_numpy(arr: Any) -> Array:
+        """Convert a numpy ndarray to an Array.
+
+        Args:
+            arr: A numpy ndarray of dtype float64.
+
+        Returns:
+            A new Array containing the same data and shape as the numpy array.
+
+        Raises:
+            ValueError: If the numpy array cannot be converted (wrong dtype, etc.).
+        """
+        ...
+
+    @staticmethod
+    def to_numpy(arr: Array) -> Any:
+        """Convert an Array to a numpy ndarray.
+
+        Args:
+            arr: The Array to convert.
+
+        Returns:
+            A numpy ndarray of dtype float64 with the same shape and data.
+        """
+        ...
+
+
 class Array(Sequence[float]):
     """N-dimensional array of float64 values."""
 
@@ -554,16 +649,6 @@ class Array(Sequence[float]):
         Args:
             v: 1D array-like of diagonal values.
             k: Diagonal offset (0=main, >0=upper, <0=lower).
-        """
-        ...
-
-    @staticmethod
-    def outer(a: ArrayLike, b: ArrayLike) -> Array:
-        """Compute the outer product of two 1D arrays.
-
-        Args:
-            a: First 1D array-like.
-            b: Second 1D array-like.
         """
         ...
 
@@ -614,21 +699,6 @@ class Array(Sequence[float]):
     
     def item(self) -> float:
         """Convert a single-element array into a float."""
-        ...
-
-    @staticmethod
-    def from_numpy(arr: Any) -> Array:
-        """Convert a numpy array to a substratum Array.
-
-        Args:
-            arr: A numpy ndarray of dtype float64.
-
-        Returns:
-            A new Array containing the same data and shape as the numpy array.
-
-        Raises:
-            ValueError: If the numpy array cannot be converted (wrong dtype, etc.).
-        """
         ...
 
     def to_numpy(self) -> Any:
@@ -774,63 +844,6 @@ class Array(Sequence[float]):
 
 
 
-def zeros(shape: Sequence[int]) -> Array:
-    """Create array filled with zeros."""
-    ...
-
-def eye(n: int, m: int | None = None, k: int | None = None) -> Array:
-    """Create a 2D identity matrix with ones on the k-th diagonal."""
-    ...
-
-def diag(v: ArrayLike, k: int | None = None) -> Array:
-    """Create a 2D array with v on the k-th diagonal.
-
-    Args:
-        v: 1D array-like of diagonal values.
-        k: Diagonal offset (0=main, >0=upper, <0=lower).
-    """
-    ...
-
-def outer(a: ArrayLike, b: ArrayLike) -> Array:
-    """Compute the outer product of two 1D arrays.
-
-    Args:
-        a: First 1D array-like.
-        b: Second 1D array-like.
-    """
-    ...
-
-def column_stack(arrays: Sequence[Array]) -> Array:
-    """Stack 1D or 2D arrays as columns into a 2D array.
-
-    Args:
-        arrays: Sequence of 1D or 2D arrays to stack. 1D arrays are converted
-            to columns (n, 1). All arrays must have the same number of rows.
-
-    Returns:
-        A 2D array formed by stacking the given arrays column-wise.
-
-    Raises:
-        ValueError: If arrays is empty or if arrays have mismatched row counts.
-    """
-    ...
-
-def ones(shape: Sequence[int]) -> Array:
-    """Create array filled with ones."""
-    ...
-
-def full(shape: Sequence[int], fill_value: float) -> Array:
-    """Create array filled with a specified value."""
-    ...
-
-def asarray(data: ArrayLike, shape: Sequence[int] | None = None) -> Array:
-    """Create array from data with optional reshape.
-
-    Args:
-        data: Array-like data (Array, NumPy array, list, nested list, or scalar).
-        shape: Optional shape. If None, creates a 1D array.
-    """
-    ...
 
 class models:
     """Machine learning models built on top of ironforest."""

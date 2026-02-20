@@ -124,45 +124,35 @@ impl ArrayLike {
     }
 }
 
-// Main PyArray wrapper
 #[pyclass(name = "Array")]
 #[derive(Clone)]
 pub struct PyArray {
     pub inner: NdArray<f64>,
 }
 
-// Submodules
 pub mod array;
+pub mod ndutils;
 pub mod linalg;
 pub mod stats;
 pub mod random;
 pub mod spatial;
 pub mod tree_engine;
 
-// Re-export for convenience
 pub use array::PyArrayIter;
 pub use random::PyGenerator;
 
-// Main Python module
 #[pymodule]
 fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
-    // Register main types
     m.add_class::<PyArray>()?;
     m.add_class::<PyArrayIter>()?;
     m.add_class::<PyGenerator>()?;
     m.add_class::<spatial::PyBallTree>()?;
     m.add_class::<spatial::PyKDTree>()?;
 
-    // Top-level array functions
-    m.add_function(wrap_pyfunction!(array::zeros, m)?)?;
-    m.add_function(wrap_pyfunction!(array::ones, m)?)?;
-    m.add_function(wrap_pyfunction!(array::full, m)?)?;
-    m.add_function(wrap_pyfunction!(array::asarray, m)?)?;
-    m.add_function(wrap_pyfunction!(array::eye, m)?)?;
-    m.add_function(wrap_pyfunction!(array::diag, m)?)?;
-    m.add_function(wrap_pyfunction!(array::column_stack, m)?)?;
+    let ndutils_module = PyModule::new(m.py(), "ndutils")?;
+    ndutils::register_module(&ndutils_module)?;
+    m.add_submodule(&ndutils_module)?;
 
-    // Submodules
     let linalg_module = PyModule::new(m.py(), "linalg")?;
     linalg::register_module(&linalg_module)?;
     m.add_submodule(&linalg_module)?;
@@ -179,7 +169,6 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     spatial::register_module(&spatial_module)?;
     m.add_submodule(&spatial_module)?;
 
-    // Register tree engine classes
     tree_engine::register_classes(m)?;
 
     Ok(())
