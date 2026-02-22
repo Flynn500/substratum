@@ -14,11 +14,6 @@ features = ["pyo3/extension-module"]
 include = [
     "py/ironforest/_core.pyi",
     "py/ironforest/__init__.pyi",
-    "py/ironforest/decision_tree.pyi",
-    "py/ironforest/linear_regression.pyi",
-    "py/ironforest/random_forest.pyi",
-    "py/ironforest/isolation_forest.pyi",
-    "py/ironforest/models.pyi",
     "py/ironforest/py.typed"
 ]
 module-name = "ironforest._core"

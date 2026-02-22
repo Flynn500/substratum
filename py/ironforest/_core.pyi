@@ -958,7 +958,7 @@ class spatial:
             """
             ...
 
-        def query_radius(self, query: ArrayLike, radius: float) -> List:
+        def query_radius(self, query: ArrayLike, radius: float) -> List[Tuple[int, float]]:
             """Find all points within a given radius of the query point.
 
             Args:
@@ -966,9 +966,8 @@ class spatial:
                 radius: Search radius. All points with distance <= radius are returned.
 
             Returns:
-                1D Array of row indices (as floats) for all points within the specified
-                radius of the query point. These indices can be used to look up the actual
-                points in the original data array.
+                List of tuples (index, distance) for all points within the specified
+                radius of the query point, in arbitrary order.
             """
             ...
 
@@ -1101,7 +1100,7 @@ class spatial:
             """
             ...
 
-        def query_radius(self, query: ArrayLike, radius: float) -> List:
+        def query_radius(self, query: ArrayLike, radius: float) -> List[Tuple[int, float]]:
             """Find all points within a given radius of the query point.
 
             Args:
@@ -1109,9 +1108,8 @@ class spatial:
                 radius: Search radius. All points with distance <= radius are returned.
 
             Returns:
-                1D Array of row indices (as floats) for all points within the specified
-                radius of the query point. These indices can be used to look up the actual
-                points in the original data array.
+                List of tuples (index, distance) for all points within the specified
+                radius of the query point, in arbitrary order.
             """
             ...
 
@@ -1250,7 +1248,7 @@ class spatial:
             """
             ...
 
-        def query_radius(self, query: ArrayLike, radius: float) -> Array:
+        def query_radius(self, query: ArrayLike, radius: float) -> List[Tuple[int, float]]:
             """Find all points within a given radius of the query point.
 
             Args:
@@ -1258,9 +1256,8 @@ class spatial:
                 radius: Search radius. All points with distance <= radius are returned.
 
             Returns:
-                1D Array of row indices (as floats) for all points within the specified
-                radius of the query point. These indices can be used to look up the actual
-                points in the original data array.
+                List of tuples (index, distance) for all points within the specified
+                radius of the query point, in arbitrary order.
             """
             ...
 
@@ -1520,7 +1517,7 @@ class spatial:
             """
             ...
 
-        def query_radius(self, query: ArrayLike, radius: float) -> List:
+        def query_radius(self, query: ArrayLike, radius: float) -> List[Tuple[int, float]]:
             """Find all points within a given radius of the query point.
 
             Args:
@@ -1528,7 +1525,8 @@ class spatial:
                 radius: Search radius. All points with distance <= radius are returned.
 
             Returns:
-                List of row indices for all points within the specified radius.
+                List of tuples (index, distance) for all points within the specified
+                radius of the query point, in arbitrary order.
             """
             ...
 

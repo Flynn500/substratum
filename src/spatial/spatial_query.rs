@@ -21,7 +21,7 @@ pub trait SpatialQuery: Sync {
 
     fn min_distance_to_node(&self, node_idx: usize, query: &[f64]) -> f64;
 
-    fn knn_child_order(&self, node_idx: usize, query: &[f64]) -> (usize, usize) {
+    fn knn_child_order(&self, node_idx: usize, _query: &[f64]) -> (usize, usize) {
         (self.node_left(node_idx).unwrap(), self.node_right(node_idx).unwrap())
     }
 
@@ -34,21 +34,22 @@ pub trait SpatialQuery: Sync {
         self.data().len() / self.dim()
     }
 
-    fn query_radius(&self, query: &[f64], radius: f64) -> Vec<usize> {
+    fn query_radius(&self, query: &[f64], radius: f64) -> Vec<(usize, f64)> {
         let mut results = Vec::new();
         self.query_radius_recursive(0, query, radius, &mut results);
         results
     }
 
-    fn query_radius_recursive(&self, node_idx: usize, query: &[f64], radius: f64, results: &mut Vec<usize>) {
+    fn query_radius_recursive(&self, node_idx: usize, query: &[f64], radius: f64, results: &mut Vec<(usize, f64)>) {
         if self.min_distance_to_node(node_idx, query) > radius {
             return;
         }
 
         if self.node_left(node_idx).is_none() {
             for i in self.node_start(node_idx)..self.node_end(node_idx) {
-                if self.metric().distance(query, self.get_point(i)) <= radius {
-                    results.push(self.indices()[i]);
+                let dist = self.metric().distance(query, self.get_point(i));
+                if dist <= radius {
+                    results.push((self.indices()[i], dist));
                 }
             }
             return;
