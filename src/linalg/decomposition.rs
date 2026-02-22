@@ -51,7 +51,7 @@ impl NdArray<f64> {
         let n = self.shape().dims()[1];
 
         let mut r = self.clone();
-        let mut q = NdArray::eye(m, None, 0);
+        let mut q = NdArray::<f64>::eye(m, None, 0);
 
         let k_max = if m > n { n } else { m };
 
@@ -155,7 +155,7 @@ impl NdArray<f64> {
 
         let mut a = self.clone();
 
-        let mut v = NdArray::eye(n, None, 0);
+        let mut v = NdArray::<f64>::eye(n, None, 0);
 
         for _ in 0..max_iter {
             let (q, r) = a.qr()?;

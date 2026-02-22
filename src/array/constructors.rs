@@ -1,6 +1,30 @@
 use crate::array::ndarray::NdArray;
 use crate::array::shape::Shape;
 
+impl NdArray<i64> {
+    pub fn ones(shape: Shape) -> Self {
+        Self::filled(shape, 1_i64)
+    }
+
+    pub fn eye(n: usize, m: Option<usize>, k: isize) -> Self {
+        let m = m.unwrap_or(n);
+        let mut arr = NdArray::zeros(Shape::d2(n, m));
+        let (row_start, col_start) = if k >= 0 {
+            (0, k as usize)
+        } else {
+            ((-k) as usize, 0)
+        };
+        let mut row = row_start;
+        let mut col = col_start;
+        while row < n && col < m {
+            *arr.get_mut(&[row, col]).unwrap() = 1_i64;
+            row += 1;
+            col += 1;
+        }
+        arr
+    }
+}
+
 impl NdArray<f64> {
     pub fn ones(shape: Shape) -> Self {
         Self::filled(shape, 1.0)

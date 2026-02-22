@@ -1,9 +1,15 @@
 use pyo3::prelude::*;
-use pyo3::exceptions::PyValueError;
+use pyo3::exceptions::{PyTypeError, PyValueError};
 use pyo3::types::PyAny;
 use pyo3::{FromPyObject, Borrowed};
 use numpy::{PyArray1, PyArray2, PyArrayDyn, PyReadonlyArrayDyn, PyUntypedArrayMethods};
 use crate::array::{NdArray, Shape};
+
+#[derive(Clone)]
+pub enum ArrayData {
+    Float(NdArray<f64>),
+    Int(NdArray<i64>),
+}
 
 pub enum ArrayLike {
     Array(PyArray),
@@ -11,6 +17,7 @@ pub enum ArrayLike {
     Vec(Vec<f64>),
     Vec2D(Vec<Vec<f64>>),
     Scalar(f64),
+    IntScalar(i64),
 }
 
 impl<'a, 'py> FromPyObject<'a, 'py> for ArrayLike {
@@ -35,6 +42,11 @@ impl<'a, 'py> FromPyObject<'a, 'py> for ArrayLike {
             return Ok(ArrayLike::Vec(list));
         }
 
+        // Try i64 before f64 so Python ints route to IntScalar, not Scalar
+        if let Ok(s) = ob.extract::<i64>() {
+            return Ok(ArrayLike::IntScalar(s));
+        }
+
         if let Ok(scalar) = ob.extract::<f64>() {
             return Ok(ArrayLike::Scalar(scalar));
         }
@@ -46,9 +58,22 @@ impl<'a, 'py> FromPyObject<'a, 'py> for ArrayLike {
 }
 
 impl ArrayLike {
+    pub fn is_int(&self) -> bool {
+        match self {
+            ArrayLike::Array(a) => matches!(a.inner, ArrayData::Int(_)),
+            ArrayLike::IntScalar(_) => true,
+            _ => false,
+        }
+    }
+
     pub fn into_ndarray(self) -> PyResult<NdArray<f64>> {
         match self {
-            ArrayLike::Array(arr) => Ok(arr.inner),
+            ArrayLike::Array(arr) => match arr.inner {
+                ArrayData::Float(f) => Ok(f),
+                ArrayData::Int(_) => Err(PyTypeError::new_err(
+                    "expected float array; got integer array"
+                )),
+            },
             ArrayLike::Scalar(s) => Ok(NdArray::from_vec(Shape::new(vec![1]), vec![s])),
             ArrayLike::Vec(v) => Ok(NdArray::from_vec(Shape::d1(v.len()), v)),
             ArrayLike::Vec2D(v) => {
@@ -68,6 +93,7 @@ impl ArrayLike {
             ArrayLike::Numpy { shape, data } => {
                 Ok(NdArray::from_vec(Shape::new(shape), data))
             }
+            ArrayLike::IntScalar(s) => Ok(NdArray::from_vec(Shape::new(vec![1]), vec![s as f64])),
         }
     }
 
@@ -122,12 +148,59 @@ impl ArrayLike {
         }
         Ok(vec)
     }
+
+    pub fn into_i64_ndarray(self) -> PyResult<NdArray<i64>> {
+        match self {
+            ArrayLike::Array(arr) => match arr.inner {
+                ArrayData::Int(i) => Ok(i),
+                ArrayData::Float(f) => {
+                    let data: Vec<i64> = f.as_slice().iter().map(|&x| x as i64).collect();
+                    Ok(NdArray::from_vec(f.shape().clone(), data))
+                }
+            },
+            ArrayLike::Scalar(s) => Ok(NdArray::from_vec(Shape::new(vec![1]), vec![s as i64])),
+            ArrayLike::Vec(v) => {
+                let data: Vec<i64> = v.iter().map(|&x| x as i64).collect();
+                Ok(NdArray::from_vec(Shape::d1(data.len()), data))
+            }
+            ArrayLike::Vec2D(v) => {
+                if v.is_empty() {
+                    return Err(PyValueError::new_err("Cannot create array from empty nested list"));
+                }
+                let rows = v.len();
+                let cols = v[0].len();
+                for row in &v {
+                    if row.len() != cols {
+                        return Err(PyValueError::new_err("Nested lists must have consistent dimensions"));
+                    }
+                }
+                let data: Vec<i64> = v.into_iter().flatten().map(|x| x as i64).collect();
+                Ok(NdArray::from_vec(Shape::new(vec![rows, cols]), data))
+            }
+            ArrayLike::Numpy { shape, data } => {
+                let data: Vec<i64> = data.iter().map(|&x| x as i64).collect();
+                Ok(NdArray::from_vec(Shape::new(shape), data))
+            }
+            ArrayLike::IntScalar(s) => Ok(NdArray::from_vec(Shape::new(vec![1]), vec![s])),
+        }
+    }
 }
 
 #[pyclass(name = "Array")]
 #[derive(Clone)]
 pub struct PyArray {
-    pub inner: NdArray<f64>,
+    pub inner: ArrayData,
+}
+
+impl PyArray {
+    pub fn as_float(&self) -> PyResult<&NdArray<f64>> {
+        match &self.inner {
+            ArrayData::Float(a) => Ok(a),
+            ArrayData::Int(_) => Err(PyTypeError::new_err(
+                "operation not supported for integer arrays"
+            )),
+        }
+    }
 }
 
 pub mod array;
@@ -138,13 +211,14 @@ pub mod random;
 pub mod spatial;
 pub mod tree_engine;
 
-pub use array::PyArrayIter;
+pub use array::{PyArrayIter, PyIntArrayIter};
 pub use random::PyGenerator;
 
 #[pymodule]
 fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyArray>()?;
     m.add_class::<PyArrayIter>()?;
+    m.add_class::<PyIntArrayIter>()?;
     m.add_class::<PyGenerator>()?;
     m.add_class::<spatial::PyBallTree>()?;
     m.add_class::<spatial::PyKDTree>()?;

@@ -1,6 +1,28 @@
 use crate::array::ndarray::NdArray;
 use crate::array::shape::Shape;
 
+impl<T: Copy> NdArray<T> {
+    pub fn transpose(&self) -> Self {
+        assert_eq!(self.ndim(), 2, "transpose requires 2D array");
+        let (n, m) = (self.shape().dims()[0], self.shape().dims()[1]);
+        let mut data = Vec::with_capacity(n * m);
+        for j in 0..m {
+            for i in 0..n {
+                data.push(*self.get(&[i, j]).unwrap());
+            }
+        }
+        NdArray::from_vec(Shape::d2(m, n), data)
+    }
+
+    pub fn t(&self) -> Self {
+        self.transpose()
+    }
+
+    pub fn ravel(&self) -> Self {
+        NdArray::from_vec(Shape::d1(self.len()), self.as_slice().to_vec())
+    }
+}
+
 impl NdArray<f64> {
     pub fn diagonal(&self, k: isize) -> Self {
         assert_eq!(self.ndim(), 2, "Input must be 2D");
@@ -41,30 +63,6 @@ impl NdArray<f64> {
         }
 
         NdArray::from_vec(Shape::d2(m, n), data)
-    }
-
-    pub fn transpose(&self) -> Self {
-        assert_eq!(self.ndim(), 2, "transpose requires 2D array");
-        let (n, m) = (self.shape().dims()[0], self.shape().dims()[1]);
-        let mut data = Vec::with_capacity(n * m);
-
-        for j in 0..m {
-            for i in 0..n {
-                data.push(*self.get(&[i, j]).unwrap());
-            }
-        }
-
-        NdArray::from_vec(Shape::d2(m, n), data)
-    }
-
-    pub fn t(&self) -> Self {
-        self.transpose()
-    }
-
-    pub fn ravel(&self) -> Self {
-        // Flatten the array to 1D, returning a copy
-        let data = self.as_slice().to_vec();
-        NdArray::from_vec(Shape::d1(data.len()), data)
     }
 
     pub fn matmul(&self, other: &NdArray<f64>) -> Self {

@@ -1,7 +1,7 @@
 use pyo3::prelude::*;
 use crate::random::Generator;
 use crate::array::{NdArray, Shape};
-use super::PyArray;
+use super::{PyArray, ArrayData};
 
 pub fn register_module(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyGenerator>()?;
@@ -39,19 +39,19 @@ impl PyGenerator {
 
     fn uniform(&mut self, low: f64, high: f64, shape: Vec<usize>) -> PyArray {
         PyArray {
-            inner: self.inner.uniform(low, high, Shape::new(shape)),
+            inner: ArrayData::Float(self.inner.uniform(low, high, Shape::new(shape))),
         }
     }
 
     fn standard_normal(&mut self, shape: Vec<usize>) -> PyArray {
         PyArray {
-            inner: self.inner.standard_normal(Shape::new(shape)),
+            inner: ArrayData::Float(self.inner.standard_normal(Shape::new(shape))),
         }
     }
 
     fn normal(&mut self, mu: f64, sigma: f64, shape: Vec<usize>) -> PyArray {
         PyArray {
-            inner: self.inner.normal(mu, sigma, Shape::new(shape)),
+            inner: ArrayData::Float(self.inner.normal(mu, sigma, Shape::new(shape))),
         }
     }
 
@@ -59,25 +59,25 @@ impl PyGenerator {
         let arr = self.inner.randint(low, high, Shape::new(shape.clone()));
         let data: Vec<f64> = arr.as_slice().iter().map(|&x| x as f64).collect();
         PyArray {
-            inner: NdArray::from_vec(Shape::new(shape), data),
+            inner: ArrayData::Float(NdArray::from_vec(Shape::new(shape), data)),
         }
     }
 
     fn gamma(&mut self, shape_param: f64, scale: f64, shape: Vec<usize>) -> PyArray {
         PyArray {
-            inner: self.inner.gamma(shape_param, scale, Shape::new(shape)),
+            inner: ArrayData::Float(self.inner.gamma(shape_param, scale, Shape::new(shape))),
         }
     }
 
     fn beta(&mut self, alpha: f64, beta_param: f64, shape: Vec<usize>) -> PyArray {
         PyArray {
-            inner: self.inner.beta(alpha, beta_param, Shape::new(shape)),
+            inner: ArrayData::Float(self.inner.beta(alpha, beta_param, Shape::new(shape))),
         }
     }
 
     fn lognormal(&mut self, mu: f64, sigma: f64, shape: Vec<usize>) -> PyArray {
         PyArray {
-            inner: self.inner.lognormal(mu, sigma, Shape::new(shape)),
+            inner: ArrayData::Float(self.inner.lognormal(mu, sigma, Shape::new(shape))),
         }
     }
 }

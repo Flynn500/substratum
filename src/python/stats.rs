@@ -1,6 +1,6 @@
 use pyo3::prelude::*;
 use pyo3::types::PyAny;
-use super::{PyArray, ArrayLike};
+use super::{PyArray, ArrayData, ArrayLike};
 
 pub fn register_module(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(sum, m)?)?;
@@ -56,14 +56,18 @@ fn min(a: ArrayLike) -> f64 {
 
 #[pyfunction]
 fn quantile(py: Python<'_>, a: &PyArray, q: ArrayLike) -> PyResult<Py<PyAny>> {
+    let arr = a.as_float()?;
     match q {
         ArrayLike::Scalar(q_val) => {
-            Ok(a.inner.quantile(q_val).into_pyobject(py)?.into_any().unbind())
+            Ok(arr.quantile(q_val).into_pyobject(py)?.into_any().unbind())
+        }
+        ArrayLike::IntScalar(s) => {
+            Ok(arr.quantile(s as f64).into_pyobject(py)?.into_any().unbind())
         }
         _ => {
             let q_arr = q.into_ndarray()?;
             Ok(PyArray {
-                inner: a.inner.quantiles(q_arr.as_slice()),
+                inner: ArrayData::Float(arr.quantiles(q_arr.as_slice())),
             }.into_pyobject(py)?.into_any().unbind())
         }
     }

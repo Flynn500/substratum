@@ -210,7 +210,8 @@ class Ensemble:
 
 from typing import Iterator, List, Literal, Sequence, Tuple, overload, Any, Union
 
-ArrayLike = Union['Array', Sequence[float], Sequence[Sequence[float]], float, Any]
+ArrayLike = Union['Array', Sequence[float], Sequence[Sequence[float]], float, int, Any]
+Dtype = Literal["float", "float64", "f64", "int", "int64", "i64"]
 
 class linalg:
     """Linear algebra functions."""
@@ -512,32 +513,33 @@ class ndutils:
     """Array utility functions."""
 
     @staticmethod
-    def zeros(shape: Sequence[int]) -> Array:
+    def zeros(shape: Sequence[int], dtype: Dtype | None = None) -> Array:
         """Create array filled with zeros."""
         ...
 
     @staticmethod
-    def ones(shape: Sequence[int]) -> Array:
+    def ones(shape: Sequence[int], dtype: Dtype | None = None) -> Array:
         """Create array filled with ones."""
         ...
 
     @staticmethod
-    def full(shape: Sequence[int], fill_value: float) -> Array:
+    def full(shape: Sequence[int], fill_value: float, dtype: Dtype | None = None) -> Array:
         """Create array filled with a specified value."""
         ...
 
     @staticmethod
-    def asarray(data: ArrayLike, shape: Sequence[int] | None = None) -> Array:
+    def asarray(data: ArrayLike, shape: Sequence[int] | None = None, dtype: Dtype | None = None) -> Array:
         """Create array from data with optional reshape.
 
         Args:
             data: Array-like data (Array, NumPy array, list, nested list, or scalar).
             shape: Optional shape. If None, creates a 1D array.
+            dtype: Element type. "float"/"float64" (default) or "int"/"int64".
         """
         ...
 
     @staticmethod
-    def eye(n: int, m: int | None = None, k: int | None = None) -> Array:
+    def eye(n: int, m: int | None = None, k: int | None = None, dtype: Dtype | None = None) -> Array:
         """Create a 2D identity matrix with ones on the k-th diagonal."""
         ...
 
@@ -606,39 +608,45 @@ class ndutils:
 
 
 class Array(Sequence[float]):
-    """N-dimensional array of float64 values."""
+    """N-dimensional array of float64 or int64 values."""
 
-    def __init__(self, shape: Sequence[int], data: Sequence[float]) -> None:
+    def __init__(self, shape: Sequence[int], data: Sequence[float] | Sequence[int], dtype: Dtype | None = None) -> None:
         """Create array from shape and flat data list."""
         ...
 
+    @property
+    def dtype(self) -> Literal["float64", "int64"]:
+        """The element type of this array."""
+        ...
+
     @staticmethod
-    def zeros(shape: Sequence[int]) -> Array:
+    def zeros(shape: Sequence[int], dtype: Dtype | None = None) -> Array:
         """Create array filled with zeros."""
         ...
 
     @staticmethod
-    def ones(shape: Sequence[int]) -> Array:
+    def ones(shape: Sequence[int], dtype: Dtype | None = None) -> Array:
         """Create array filled with ones."""
         ...
 
     @staticmethod
-    def full(shape: Sequence[int], fill_value: float) -> Array:
+    def full(shape: Sequence[int], fill_value: float, dtype: Dtype | None = None) -> Array:
         """Create array filled with a specified value."""
         ...
 
     @staticmethod
-    def asarray(data: ArrayLike, shape: Sequence[int] | None = None) -> Array:
+    def asarray(data: ArrayLike, shape: Sequence[int] | None = None, dtype: Dtype | None = None) -> Array:
         """Create array from data with optional reshape.
 
         Args:
             data: Array-like data (Array, NumPy array, list, nested list, or scalar).
             shape: Optional shape. If None, creates a 1D array.
+            dtype: Element type. "float"/"float64" (default) or "int"/"int64".
         """
         ...
 
     @staticmethod
-    def eye(n: int, m: int | None = None, k: int | None = None) -> Array:
+    def eye(n: int, m: int | None = None, k: int | None = None, dtype: Dtype | None = None) -> Array:
         """Create a 2D identity matrix with ones on the k-th diagonal."""
         ...
 
@@ -661,12 +669,12 @@ class Array(Sequence[float]):
     def ndim(self) -> int:
         """Get the number of dimensions."""
 
-    def get(self, indices: Sequence[int]) -> float:
+    def get(self, indices: Sequence[int]) -> float | int:
         """Get element at indices."""
         ...
 
-    def tolist(self) -> List[float]:
-        """Return data as nested list."""
+    def tolist(self) -> list:
+        """Return data as nested Python list (floats or ints depending on dtype)."""
         ...
 
     def diagonal(self, k: int | None = None) -> Array:
@@ -697,8 +705,8 @@ class Array(Sequence[float]):
         """
         ...
     
-    def item(self) -> float:
-        """Convert a single-element array into a float."""
+    def item(self) -> float | int:
+        """Convert a single-element array into a Python scalar (float or int)."""
         ...
 
     def to_numpy(self) -> Any:
@@ -788,7 +796,7 @@ class Array(Sequence[float]):
 
     def __len__(self) -> int: ...
     @overload
-    def __getitem__(self, index: int) -> float | Array:
+    def __getitem__(self, index: int) -> float | int | Array:
         """Get element (1D) or row (2D+) at index."""
         ...
     @overload
@@ -796,7 +804,7 @@ class Array(Sequence[float]):
         """Slice always returns an array."""
         ...
     @overload
-    def __getitem__(self, index: Tuple[int, int]) -> float:
+    def __getitem__(self, index: Tuple[int, int]) -> float | int:
         """Two integer indices return a scalar."""
         ...
     @overload
@@ -812,32 +820,34 @@ class Array(Sequence[float]):
         """Two slices return an array."""
         ...
     @overload
-    def __getitem__(self, index: Tuple[int, ...]) -> float | Array:
+    def __getitem__(self, index: Tuple[int, ...]) -> float | int | Array:
         """Fallback: multiple indices can return scalar or array."""
         ...
     @overload
-    def __setitem__(self, index: int, value: float) -> None:
+    def __setitem__(self, index: int, value: float | int) -> None:
         """Set element at index (1D arrays only)."""
         ...
     @overload
-    def __setitem__(self, index: Tuple[int, ...], value: float) -> None:
+    def __setitem__(self, index: Tuple[int, ...], value: float | int) -> None:
         """Set element at (i, j, ...)."""
         ...
-    def __iter__(self) -> Iterator[float]: ...
-    def __contains__(self, value: float) -> bool: ...
+    def __iter__(self) -> Iterator[float | int]: ...
+    def __contains__(self, value: float | int) -> bool: ...
 
 
     def __add__(self, other: ArrayLike) -> Array: ...
-    def __radd__(self, other: float) -> Array: ...
+    def __radd__(self, other: float | int) -> Array: ...
 
     def __sub__(self, other: ArrayLike) -> Array: ...
-    def __rsub__(self, other: float) -> Array: ...
+    def __rsub__(self, other: float | int) -> Array: ...
 
     def __mul__(self, other: ArrayLike) -> Array: ...
-    def __rmul__(self, other: float) -> Array: ...
+    def __rmul__(self, other: float | int) -> Array: ...
 
-    def __truediv__(self, other: ArrayLike) -> Array: ...
-    def __rtruediv__(self, other: float) -> Array: ...
+    def __truediv__(self, other: ArrayLike) -> Array:
+        """True division. For integer arrays, always returns a float array."""
+        ...
+    def __rtruediv__(self, other: float | int) -> Array: ...
 
     def __neg__(self) -> Array: ...
     def __repr__(self) -> str: ...
@@ -958,7 +968,7 @@ class spatial:
             """
             ...
 
-        def query_radius(self, query: ArrayLike, radius: float) -> List[Tuple[int, float]]:
+        def query_radius(self, query: ArrayLike, radius: float) -> Tuple[Array, Array]:
             """Find all points within a given radius of the query point.
 
             Args:
@@ -966,12 +976,13 @@ class spatial:
                 radius: Search radius. All points with distance <= radius are returned.
 
             Returns:
-                List of tuples (index, distance) for all points within the specified
-                radius of the query point, in arbitrary order.
+                Tuple of (indices, distances) where indices is an int64 Array and
+                distances is a float64 Array, both of length equal to the number of
+                points found, in arbitrary order.
             """
             ...
 
-        def query_knn(self, query: ArrayLike, k: int) -> List[Tuple[int, float]]:
+        def query_knn(self, query: ArrayLike, k: int) -> Tuple[Array, Array]:
             """Find the k nearest neighbors to the query point.
 
             Args:
@@ -979,9 +990,9 @@ class spatial:
                 k: Number of nearest neighbors to return.
 
             Returns:
-                List of tuples (index, distance) for the k nearest neighbors,
-                sorted by distance (closest first). The indices can be used to look up
-                the actual points in the original data array.
+                Tuple of (indices, distances) where indices is an int64 Array and
+                distances is a float64 Array, both sorted by distance (closest first).
+                The indices can be used to look up the actual points in the original data.
             """
             ...
 
@@ -1100,7 +1111,7 @@ class spatial:
             """
             ...
 
-        def query_radius(self, query: ArrayLike, radius: float) -> List[Tuple[int, float]]:
+        def query_radius(self, query: ArrayLike, radius: float) -> Tuple[Array, Array]:
             """Find all points within a given radius of the query point.
 
             Args:
@@ -1108,12 +1119,13 @@ class spatial:
                 radius: Search radius. All points with distance <= radius are returned.
 
             Returns:
-                List of tuples (index, distance) for all points within the specified
-                radius of the query point, in arbitrary order.
+                Tuple of (indices, distances) where indices is an int64 Array and
+                distances is a float64 Array, both of length equal to the number of
+                points found, in arbitrary order.
             """
             ...
 
-        def query_knn(self, query: ArrayLike, k: int) -> List[Tuple[int, float]]:
+        def query_knn(self, query: ArrayLike, k: int) -> Tuple[Array, Array]:
             """Find the k nearest neighbors to the query point.
 
             Args:
@@ -1121,9 +1133,9 @@ class spatial:
                 k: Number of nearest neighbors to return.
 
             Returns:
-                List of tuples (index, distance) for the k nearest neighbors,
-                sorted by distance (closest first). The indices can be used to look up
-                the actual points in the original data array.
+                Tuple of (indices, distances) where indices is an int64 Array and
+                distances is a float64 Array, both sorted by distance (closest first).
+                The indices can be used to look up the actual points in the original data.
             """
             ...
 
@@ -1248,7 +1260,7 @@ class spatial:
             """
             ...
 
-        def query_radius(self, query: ArrayLike, radius: float) -> List[Tuple[int, float]]:
+        def query_radius(self, query: ArrayLike, radius: float) -> Tuple[Array, Array]:
             """Find all points within a given radius of the query point.
 
             Args:
@@ -1256,12 +1268,13 @@ class spatial:
                 radius: Search radius. All points with distance <= radius are returned.
 
             Returns:
-                List of tuples (index, distance) for all points within the specified
-                radius of the query point, in arbitrary order.
+                Tuple of (indices, distances) where indices is an int64 Array and
+                distances is a float64 Array, both of length equal to the number of
+                points found, in arbitrary order.
             """
             ...
 
-        def query_knn(self, query: ArrayLike, k: int) -> List[Tuple[int, float]]:
+        def query_knn(self, query: ArrayLike, k: int) -> Tuple[Array, Array]:
             """Find the k nearest neighbors to the query point.
 
             Args:
@@ -1269,9 +1282,9 @@ class spatial:
                 k: Number of nearest neighbors to return.
 
             Returns:
-                List of tuples (index, distance) for the k nearest neighbors,
-                sorted by distance (closest first). The indices can be used to look up
-                the actual points in the original data array.
+                Tuple of (indices, distances) where indices is an int64 Array and
+                distances is a float64 Array, both sorted by distance (closest first).
+                The indices can be used to look up the actual points in the original data.
             """
             ...
 
@@ -1517,7 +1530,7 @@ class spatial:
             """
             ...
 
-        def query_radius(self, query: ArrayLike, radius: float) -> List[Tuple[int, float]]:
+        def query_radius(self, query: ArrayLike, radius: float) -> Tuple[Array, Array]:
             """Find all points within a given radius of the query point.
 
             Args:
@@ -1525,12 +1538,13 @@ class spatial:
                 radius: Search radius. All points with distance <= radius are returned.
 
             Returns:
-                List of tuples (index, distance) for all points within the specified
-                radius of the query point, in arbitrary order.
+                Tuple of (indices, distances) where indices is an int64 Array and
+                distances is a float64 Array, both of length equal to the number of
+                points found, in arbitrary order.
             """
             ...
 
-        def query_knn(self, query: ArrayLike, k: int) -> List[Tuple[int, float]]:
+        def query_knn(self, query: ArrayLike, k: int) -> Tuple[Array, Array]:
             """Find the k nearest neighbors to the query point.
 
             Args:
@@ -1538,8 +1552,8 @@ class spatial:
                 k: Number of nearest neighbors to return.
 
             Returns:
-                List of tuples (index, distance) for the k nearest neighbors,
-                sorted by distance (closest first).
+                Tuple of (indices, distances) where indices is an int64 Array and
+                distances is a float64 Array, both sorted by distance (closest first).
             """
             ...
 

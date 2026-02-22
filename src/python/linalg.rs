@@ -1,7 +1,7 @@
 use pyo3::prelude::*;
 use pyo3::exceptions::PyValueError;
 use crate::array::NdArray;
-use super::{PyArray, ArrayLike};
+use super::{PyArray, ArrayData, ArrayLike};
 
 pub fn register_module(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(matmul, m)?)?;
@@ -20,95 +20,95 @@ pub fn register_module(m: &Bound<'_, PyModule>) -> PyResult<()> {
 }
 
 #[pyfunction]
-fn matmul(a: ArrayLike, b: ArrayLike) -> PyArray {
-    PyArray { inner: a.into_ndarray().unwrap().matmul(&b.into_ndarray().unwrap()) }
+fn matmul(a: ArrayLike, b: ArrayLike) -> PyResult<PyArray> {
+    Ok(PyArray { inner: ArrayData::Float(a.into_ndarray()?.matmul(&b.into_ndarray()?)) })
 }
 
 #[pyfunction]
-fn dot(a: ArrayLike, b: ArrayLike) -> PyArray {
-    PyArray { inner: a.into_ndarray().unwrap().dot(&b.into_ndarray().unwrap()) }
+fn dot(a: ArrayLike, b: ArrayLike) -> PyResult<PyArray> {
+    Ok(PyArray { inner: ArrayData::Float(a.into_ndarray()?.dot(&b.into_ndarray()?)) })
 }
 
 #[pyfunction]
-fn transpose(a: ArrayLike) -> PyArray {
-    PyArray { inner: a.into_ndarray().unwrap().transpose() }
+fn transpose(a: ArrayLike) -> PyResult<PyArray> {
+    Ok(PyArray { inner: ArrayData::Float(a.into_ndarray()?.transpose()) })
 }
 
 #[pyfunction]
 fn cholesky(a: ArrayLike) -> PyResult<PyArray> {
-    a.into_ndarray().unwrap().cholesky()
-        .map(|l| PyArray { inner: l })
+    a.into_ndarray()?.cholesky()
+        .map(|l| PyArray { inner: ArrayData::Float(l) })
         .map_err(|e| PyValueError::new_err(e))
 }
 
 #[pyfunction]
 fn qr(a: ArrayLike) -> PyResult<(PyArray, PyArray)> {
-    a.into_ndarray().unwrap().qr()
-        .map(|(q, r)| (PyArray { inner: q }, PyArray { inner: r }))
+    a.into_ndarray()?.qr()
+        .map(|(q, r)| (PyArray { inner: ArrayData::Float(q) }, PyArray { inner: ArrayData::Float(r) }))
         .map_err(|e| PyValueError::new_err(e))
 }
 
 #[pyfunction]
 fn eig(a: ArrayLike) -> PyResult<(PyArray, PyArray)> {
-    a.into_ndarray().unwrap().eig()
-        .map(|(vals, vecs)| (PyArray { inner: vals }, PyArray { inner: vecs }))
+    a.into_ndarray()?.eig()
+        .map(|(vals, vecs)| (PyArray { inner: ArrayData::Float(vals) }, PyArray { inner: ArrayData::Float(vecs) }))
         .map_err(|e| PyValueError::new_err(e))
 }
 
 #[pyfunction]
 #[pyo3(signature = (a, max_iter=1000, tol=1e-10))]
 fn eig_with_params(a: ArrayLike, max_iter: usize, tol: f64) -> PyResult<(PyArray, PyArray)> {
-    a.into_ndarray().unwrap().eig_with_params(max_iter, tol)
-        .map(|(vals, vecs)| (PyArray { inner: vals }, PyArray { inner: vecs }))
+    a.into_ndarray()?.eig_with_params(max_iter, tol)
+        .map(|(vals, vecs)| (PyArray { inner: ArrayData::Float(vals) }, PyArray { inner: ArrayData::Float(vecs) }))
         .map_err(|e| PyValueError::new_err(e))
 }
 
 #[pyfunction]
 fn eigvals(a: ArrayLike) -> PyResult<PyArray> {
-    a.into_ndarray().unwrap().eigvals()
-        .map(|vals| PyArray { inner: vals })
+    a.into_ndarray()?.eigvals()
+        .map(|vals| PyArray { inner: ArrayData::Float(vals) })
         .map_err(|e| PyValueError::new_err(e))
 }
 
 #[pyfunction]
 #[pyo3(signature = (a, k=None))]
 fn diagonal(a: ArrayLike, k: Option<isize>) -> PyResult<PyArray> {
-    let arr = a.into_ndarray().unwrap();
+    let arr = a.into_ndarray()?;
     if arr.ndim() != 2 {
         return Err(PyValueError::new_err("diagonal requires a 2D array"));
     }
     Ok(PyArray {
-        inner: arr.diagonal(k.unwrap_or(0)),
+        inner: ArrayData::Float(arr.diagonal(k.unwrap_or(0))),
     })
 }
 
 #[pyfunction]
-fn outer(a: ArrayLike, b: ArrayLike) -> PyArray {
-    let a_arr = a.into_ndarray().unwrap();
-    let b_arr = b.into_ndarray().unwrap();
-    PyArray {
-        inner: NdArray::outer(&a_arr, &b_arr),
-    }
+fn outer(a: ArrayLike, b: ArrayLike) -> PyResult<PyArray> {
+    let a_arr = a.into_ndarray()?;
+    let b_arr = b.into_ndarray()?;
+    Ok(PyArray {
+        inner: ArrayData::Float(NdArray::outer(&a_arr, &b_arr)),
+    })
 }
 
 #[pyfunction]
 fn lstsq(a: ArrayLike, b: ArrayLike) -> PyResult<(PyArray, PyArray)> {
-    let aarr = a.into_ndarray().unwrap();
-    let barr = b.into_ndarray().unwrap();
+    let aarr = a.into_ndarray()?;
+    let barr = b.into_ndarray()?;
     let x = aarr.least_squares(&barr)
         .map_err(|e| PyValueError::new_err(e))?;
 
     let ax = aarr.matmul(&x);
     let residuals = &barr - &ax;
 
-    Ok((PyArray { inner: x }, PyArray { inner: residuals }))
+    Ok((PyArray { inner: ArrayData::Float(x) }, PyArray { inner: ArrayData::Float(residuals) }))
 }
 
 #[pyfunction]
 fn weighted_lstsq(a: ArrayLike, b: ArrayLike, weights: ArrayLike) -> PyResult<(PyArray, PyArray)> {
-    let aarr = a.into_ndarray().unwrap();
-    let barr = b.into_ndarray().unwrap();
-    let warr = weights.into_ndarray().unwrap();
+    let aarr = a.into_ndarray()?;
+    let barr = b.into_ndarray()?;
+    let warr = weights.into_ndarray()?;
     let x = aarr.weighted_least_squares(&barr, &warr)
         .map_err(|e| PyValueError::new_err(e))?;
 
@@ -137,5 +137,5 @@ fn weighted_lstsq(a: ArrayLike, b: ArrayLike, weights: ArrayLike) -> PyResult<(P
         NdArray::from_vec(crate::array::shape::Shape::d2(m, b_cols), res)
     };
 
-    Ok((PyArray { inner: x }, PyArray { inner: weighted_res }))
+    Ok((PyArray { inner: ArrayData::Float(x) }, PyArray { inner: ArrayData::Float(weighted_res) }))
 }

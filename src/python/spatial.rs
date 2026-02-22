@@ -3,7 +3,7 @@ use pyo3::exceptions::PyValueError;
 use pyo3::types::PyAny;
 use crate::array::{NdArray, Shape};
 use crate::spatial::{BallTree, KDTree, VPTree, AggTree, BruteForce, VantagePointSelection, DistanceMetric, KernelType, SpatialQuery};
-use super::{PyArray, ArrayLike};
+use super::{PyArray, ArrayData, ArrayLike};
 
 pub fn register_module(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyBallTree>()?;
@@ -63,18 +63,32 @@ fn parse_metric(metric: &str) -> PyResult<DistanceMetric> {
                 let leaf_size = leaf_size.unwrap_or(20);
                 let metric_str = metric.unwrap_or("euclidean");
                 let metric = parse_metric(metric_str)?;
-                let tree = BallTree::from_ndarray(&array.inner, leaf_size, metric);
+                let tree = BallTree::from_ndarray(array.as_float()?, leaf_size, metric);
                 Ok(PyBallTree { inner: tree })
             }
 
-            fn query_radius(&self, query: ArrayLike, radius: f64) -> PyResult<Vec<usize>> {
+            fn query_radius(&self, query: ArrayLike, radius: f64) -> PyResult<(PyArray, PyArray)> {
                 let query_vec = query.into_vec_with_dim(self.inner.dim)?;
-                Ok(self.inner.query_radius(&query_vec, radius))
+                let results = self.inner.query_radius(&query_vec, radius);
+                let (indices, distances): (Vec<i64>, Vec<f64>) = results.into_iter()
+                    .map(|(i, d)| (i as i64, d)).unzip();
+                let n = indices.len();
+                Ok((
+                    PyArray { inner: ArrayData::Int(NdArray::from_vec(Shape::d1(n), indices)) },
+                    PyArray { inner: ArrayData::Float(NdArray::from_vec(Shape::d1(n), distances)) },
+                ))
             }
 
-            fn query_knn(&self, query: ArrayLike, k: usize) -> PyResult<Vec<(usize, f64)>> {
+            fn query_knn(&self, query: ArrayLike, k: usize) -> PyResult<(PyArray, PyArray)> {
                 let query_vec = query.into_vec_with_dim(self.inner.dim)?;
-                Ok(self.inner.query_knn(&query_vec, k))
+                let results = self.inner.query_knn(&query_vec, k);
+                let (indices, distances): (Vec<i64>, Vec<f64>) = results.into_iter()
+                    .map(|(i, d)| (i as i64, d)).unzip();
+                let n = indices.len();
+                Ok((
+                    PyArray { inner: ArrayData::Int(NdArray::from_vec(Shape::d1(n), indices)) },
+                    PyArray { inner: ArrayData::Float(NdArray::from_vec(Shape::d1(n), distances)) },
+                ))
             }
 
             #[pyo3(signature = (queries=None, bandwidth=1.0, kernel="gaussian", normalize=true))]
@@ -104,7 +118,7 @@ fn parse_metric(metric: &str) -> PyResult<DistanceMetric> {
                 if result.shape().dims()[0] == 1 {
                     Ok(result.as_slice()[0].into_pyobject(py)?.into_any().unbind())
                 } else {
-                    Ok(PyArray { inner: result }.into_pyobject(py)?.into_any().unbind())
+                    Ok(PyArray { inner: ArrayData::Float(result) }.into_pyobject(py)?.into_any().unbind())
                 }
             }
         }
@@ -122,18 +136,32 @@ fn parse_metric(metric: &str) -> PyResult<DistanceMetric> {
                 let leaf_size = leaf_size.unwrap_or(20);
                 let metric_str = metric.unwrap_or("euclidean");
                 let metric = parse_metric(metric_str)?;
-                let tree = KDTree::from_ndarray(&array.inner, leaf_size, metric);
+                let tree = KDTree::from_ndarray(array.as_float()?, leaf_size, metric);
                 Ok(PyKDTree { inner: tree })
             }
 
-            fn query_radius(&self, query: ArrayLike, radius: f64) -> PyResult<Vec<usize>> {
+            fn query_radius(&self, query: ArrayLike, radius: f64) -> PyResult<(PyArray, PyArray)> {
                 let query_vec = query.into_vec_with_dim(self.inner.dim)?;
-                Ok(self.inner.query_radius(&query_vec, radius))
+                let results = self.inner.query_radius(&query_vec, radius);
+                let (indices, distances): (Vec<i64>, Vec<f64>) = results.into_iter()
+                    .map(|(i, d)| (i as i64, d)).unzip();
+                let n = indices.len();
+                Ok((
+                    PyArray { inner: ArrayData::Int(NdArray::from_vec(Shape::d1(n), indices)) },
+                    PyArray { inner: ArrayData::Float(NdArray::from_vec(Shape::d1(n), distances)) },
+                ))
             }
 
-            fn query_knn(&self, query: ArrayLike, k: usize) -> PyResult<Vec<(usize, f64)>> {
+            fn query_knn(&self, query: ArrayLike, k: usize) -> PyResult<(PyArray, PyArray)> {
                 let query_vec = query.into_vec_with_dim(self.inner.dim)?;
-                Ok(self.inner.query_knn(&query_vec, k))
+                let results = self.inner.query_knn(&query_vec, k);
+                let (indices, distances): (Vec<i64>, Vec<f64>) = results.into_iter()
+                    .map(|(i, d)| (i as i64, d)).unzip();
+                let n = indices.len();
+                Ok((
+                    PyArray { inner: ArrayData::Int(NdArray::from_vec(Shape::d1(n), indices)) },
+                    PyArray { inner: ArrayData::Float(NdArray::from_vec(Shape::d1(n), distances)) },
+                ))
             }
 
             #[pyo3(signature = (queries=None, bandwidth=1.0, kernel="gaussian", normalize=true))]
@@ -163,7 +191,7 @@ fn parse_metric(metric: &str) -> PyResult<DistanceMetric> {
                 if result.shape().dims()[0] == 1 {
                     Ok(result.as_slice()[0].into_pyobject(py)?.into_any().unbind())
                 } else {
-                    Ok(PyArray { inner: result }.into_pyobject(py)?.into_any().unbind())
+                    Ok(PyArray { inner: ArrayData::Float(result) }.into_pyobject(py)?.into_any().unbind())
                 }
             }
         }
@@ -183,18 +211,32 @@ fn parse_metric(metric: &str) -> PyResult<DistanceMetric> {
                 let metric = parse_metric(metric_str)?;
                 let selection_str = selection.unwrap_or("first");
                 let selection_method = parse_vantage_selection(selection_str)?;
-                let tree = VPTree::from_ndarray(&array.inner, leaf_size, metric, selection_method);
+                let tree = VPTree::from_ndarray(array.as_float()?, leaf_size, metric, selection_method);
                 Ok(PyVPTree { inner: tree })
             }
 
-            fn query_radius(&self, query: ArrayLike, radius: f64) -> PyResult<Vec<usize>> {
+            fn query_radius(&self, query: ArrayLike, radius: f64) -> PyResult<(PyArray, PyArray)> {
                 let query_vec = query.into_vec_with_dim(self.inner.dim)?;
-                Ok(self.inner.query_radius(&query_vec, radius))
+                let results = self.inner.query_radius(&query_vec, radius);
+                let (indices, distances): (Vec<i64>, Vec<f64>) = results.into_iter()
+                    .map(|(i, d)| (i as i64, d)).unzip();
+                let n = indices.len();
+                Ok((
+                    PyArray { inner: ArrayData::Int(NdArray::from_vec(Shape::d1(n), indices)) },
+                    PyArray { inner: ArrayData::Float(NdArray::from_vec(Shape::d1(n), distances)) },
+                ))
             }
 
-            fn query_knn(&self, query: ArrayLike, k: usize) -> PyResult<Vec<(usize, f64)>> {
+            fn query_knn(&self, query: ArrayLike, k: usize) -> PyResult<(PyArray, PyArray)> {
                 let query_vec = query.into_vec_with_dim(self.inner.dim)?;
-                Ok(self.inner.query_knn(&query_vec, k))
+                let results = self.inner.query_knn(&query_vec, k);
+                let (indices, distances): (Vec<i64>, Vec<f64>) = results.into_iter()
+                    .map(|(i, d)| (i as i64, d)).unzip();
+                let n = indices.len();
+                Ok((
+                    PyArray { inner: ArrayData::Int(NdArray::from_vec(Shape::d1(n), indices)) },
+                    PyArray { inner: ArrayData::Float(NdArray::from_vec(Shape::d1(n), distances)) },
+                ))
             }
 
             #[pyo3(signature = (queries=None, bandwidth=1.0, kernel="gaussian", normalize=true))]
@@ -224,7 +266,7 @@ fn parse_metric(metric: &str) -> PyResult<DistanceMetric> {
                 if result.shape().dims()[0] == 1 {
                     Ok(result.as_slice()[0].into_pyobject(py)?.into_any().unbind())
                 } else {
-                    Ok(PyArray { inner: result }.into_pyobject(py)?.into_any().unbind())
+                    Ok(PyArray { inner: ArrayData::Float(result) }.into_pyobject(py)?.into_any().unbind())
                 }
             }
         }
@@ -251,7 +293,7 @@ fn parse_metric(metric: &str) -> PyResult<DistanceMetric> {
                 let kernel = parse_kernel(kernel.unwrap_or("gaussian"))?;
                 let bandwidth = bandwidth.unwrap_or(1.0);
                 let atol = atol.unwrap_or(0.01);
-                let tree = AggTree::from_ndarray(&array.inner, leaf_size, metric, kernel, bandwidth, atol);
+                let tree = AggTree::from_ndarray(array.as_float()?, leaf_size, metric, kernel, bandwidth, atol);
                 Ok(PyAggTree { inner: tree })
             }
 
@@ -282,7 +324,7 @@ fn parse_metric(metric: &str) -> PyResult<DistanceMetric> {
                 if result.shape().dims()[0] == 1 {
                     Ok(result.as_slice()[0].into_pyobject(py)?.into_any().unbind())
                 } else {
-                    Ok(PyArray { inner: result }.into_pyobject(py)?.into_any().unbind())
+                    Ok(PyArray { inner: ArrayData::Float(result) }.into_pyobject(py)?.into_any().unbind())
                 }
             }
         }
@@ -298,18 +340,32 @@ fn parse_metric(metric: &str) -> PyResult<DistanceMetric> {
             #[pyo3(signature = (array, metric="euclidean"))]
             fn from_array(array: &PyArray, metric: Option<&str>) -> PyResult<Self> {
                 let metric = parse_metric(metric.unwrap_or("euclidean"))?;
-                let tree = BruteForce::from_ndarray(&array.inner, metric);
+                let tree = BruteForce::from_ndarray(array.as_float()?, metric);
                 Ok(PyBruteForce { inner: tree })
             }
 
-            fn query_radius(&self, query: ArrayLike, radius: f64) -> PyResult<Vec<usize>> {
+            fn query_radius(&self, query: ArrayLike, radius: f64) -> PyResult<(PyArray, PyArray)> {
                 let query_vec = query.into_vec_with_dim(self.inner.dim)?;
-                Ok(self.inner.query_radius(&query_vec, radius))
+                let results = self.inner.query_radius(&query_vec, radius);
+                let (indices, distances): (Vec<i64>, Vec<f64>) = results.into_iter()
+                    .map(|(i, d)| (i as i64, d)).unzip();
+                let n = indices.len();
+                Ok((
+                    PyArray { inner: ArrayData::Int(NdArray::from_vec(Shape::d1(n), indices)) },
+                    PyArray { inner: ArrayData::Float(NdArray::from_vec(Shape::d1(n), distances)) },
+                ))
             }
 
-            fn query_knn(&self, query: ArrayLike, k: usize) -> PyResult<Vec<(usize, f64)>> {
+            fn query_knn(&self, query: ArrayLike, k: usize) -> PyResult<(PyArray, PyArray)> {
                 let query_vec = query.into_vec_with_dim(self.inner.dim)?;
-                Ok(self.inner.query_knn(&query_vec, k))
+                let results = self.inner.query_knn(&query_vec, k);
+                let (indices, distances): (Vec<i64>, Vec<f64>) = results.into_iter()
+                    .map(|(i, d)| (i as i64, d)).unzip();
+                let n = indices.len();
+                Ok((
+                    PyArray { inner: ArrayData::Int(NdArray::from_vec(Shape::d1(n), indices)) },
+                    PyArray { inner: ArrayData::Float(NdArray::from_vec(Shape::d1(n), distances)) },
+                ))
             }
 
             #[pyo3(signature = (queries=None, bandwidth=1.0, kernel="gaussian", normalize=true))]
@@ -339,7 +395,7 @@ fn parse_metric(metric: &str) -> PyResult<DistanceMetric> {
                 if result.shape().dims()[0] == 1 {
                     Ok(result.as_slice()[0].into_pyobject(py)?.into_any().unbind())
                 } else {
-                    Ok(PyArray { inner: result }.into_pyobject(py)?.into_any().unbind())
+                    Ok(PyArray { inner: ArrayData::Float(result) }.into_pyobject(py)?.into_any().unbind())
                 }
             }
         }
