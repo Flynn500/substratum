@@ -26,7 +26,7 @@ points = gen.uniform(0.0, 100.0, [100, 2])
 tree = irn.spatial.VPTree.from_array(points, leaf_size=10)
 
 query_point = [50.0, 50.0]
-neighbors = tree.query_knn(query_point, k=5)
+neighbors, distances = tree.query_knn(query_point, k=5)
 
 print(neighbors)
 ```
