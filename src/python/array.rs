@@ -1,7 +1,7 @@
 use pyo3::prelude::*;
-use pyo3::exceptions::{PyTypeError, PyValueError};
+use pyo3::exceptions::{PyValueError};
 use pyo3::types::{PyAny, PyFloat, PyList, PySlice, PyTuple};
-use numpy::{PyArrayDyn, PyArrayMethods};
+use numpy::{PyArrayMethods};
 use crate::array::{NdArray, Shape};
 use super::{PyArray, ArrayData, ArrayLike};
 

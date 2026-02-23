@@ -2,7 +2,7 @@ use pyo3::prelude::*;
 use pyo3::exceptions::{PyTypeError, PyValueError};
 use pyo3::types::PyAny;
 use pyo3::{FromPyObject, Borrowed};
-use numpy::{PyArray1, PyArray2, PyArrayDyn, PyReadonlyArrayDyn, PyUntypedArrayMethods};
+use numpy::{PyReadonlyArrayDyn, PyUntypedArrayMethods};
 use crate::array::{NdArray, Shape};
 
 #[derive(Clone)]
