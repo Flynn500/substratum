@@ -5,6 +5,55 @@ use crate::array::{NdArray, Shape};
 use crate::spatial::{BallTree, KDTree, VPTree, AggTree, BruteForce, VantagePointSelection, DistanceMetric, KernelType, SpatialQuery};
 use super::{PyArray, ArrayData, ArrayLike};
 
+/// Shared helper: reconstruct original-order data from a reordered tree and return
+/// the rows at the requested original indices (or all rows if `indices` is None).
+fn get_tree_data(
+    tree_indices: &[usize],
+    raw_data: &[f64],
+    n_points: usize,
+    dim: usize,
+    indices: Option<ArrayLike>,
+) -> PyResult<PyArray> {
+    use pyo3::exceptions::PyValueError;
+
+    // Reconstruct data in original index order
+    let mut original_data = vec![0.0f64; n_points * dim];
+    for (tree_pos, &orig_idx) in tree_indices.iter().enumerate() {
+        original_data[orig_idx * dim..(orig_idx + 1) * dim]
+            .copy_from_slice(&raw_data[tree_pos * dim..(tree_pos + 1) * dim]);
+    }
+
+    match indices {
+        None => Ok(PyArray {
+            inner: ArrayData::Float(NdArray::from_vec(
+                Shape::new(vec![n_points, dim]),
+                original_data,
+            )),
+        }),
+        Some(idx) => {
+            let idx_arr = idx.into_i64_ndarray()?;
+            let k = idx_arr.len();
+            let mut result = Vec::with_capacity(k * dim);
+            for &orig_idx in idx_arr.as_slice() {
+                let i = orig_idx as usize;
+                if i >= n_points {
+                    return Err(PyValueError::new_err(format!(
+                        "Index {} out of bounds for tree with {} points",
+                        orig_idx, n_points
+                    )));
+                }
+                result.extend_from_slice(&original_data[i * dim..(i + 1) * dim]);
+            }
+            Ok(PyArray {
+                inner: ArrayData::Float(NdArray::from_vec(
+                    Shape::new(vec![k, dim]),
+                    result,
+                )),
+            })
+        }
+    }
+}
+
 pub fn register_module(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyBallTree>()?;
     m.add_class::<PyKDTree>()?;
@@ -157,6 +206,13 @@ impl PyBallTree {
             Ok(PyArray { inner: ArrayData::Float(result) }.into_pyobject(py)?.into_any().unbind())
         }
     }
+
+    /// Return data points at original indices in shape (n, dim).
+    /// Call with no argument to get all points in original index order.
+    #[pyo3(signature = (indices=None))]
+    fn data(&self, indices: Option<ArrayLike>) -> PyResult<PyArray> {
+        get_tree_data(self.inner.indices(), self.inner.data(), self.inner.n_points, self.inner.dim, indices)
+    }
 }
 
 #[pyclass(name = "KDTree")]
@@ -265,6 +321,13 @@ impl PyKDTree {
         } else {
             Ok(PyArray { inner: ArrayData::Float(result) }.into_pyobject(py)?.into_any().unbind())
         }
+    }
+
+    /// Return data points at original indices in shape (n, dim).
+    /// Call with no argument to get all points in original index order.
+    #[pyo3(signature = (indices=None))]
+    fn data(&self, indices: Option<ArrayLike>) -> PyResult<PyArray> {
+        get_tree_data(self.inner.indices(), self.inner.data(), self.inner.n_points, self.inner.dim, indices)
     }
 }
 
@@ -376,6 +439,13 @@ impl PyVPTree {
         } else {
             Ok(PyArray { inner: ArrayData::Float(result) }.into_pyobject(py)?.into_any().unbind())
         }
+    }
+
+    /// Return data points at original indices in shape (n, dim).
+    /// Call with no argument to get all points in original index order.
+    #[pyo3(signature = (indices=None))]
+    fn data(&self, indices: Option<ArrayLike>) -> PyResult<PyArray> {
+        get_tree_data(self.inner.indices(), self.inner.data(), self.inner.n_points, self.inner.dim, indices)
     }
 }
 
@@ -541,5 +611,12 @@ impl PyBruteForce {
         } else {
             Ok(PyArray { inner: ArrayData::Float(result) }.into_pyobject(py)?.into_any().unbind())
         }
+    }
+
+    /// Return data points at original indices in shape (n, dim).
+    /// Call with no argument to get all points in original index order.
+    #[pyo3(signature = (indices=None))]
+    fn data(&self, indices: Option<ArrayLike>) -> PyResult<PyArray> {
+        get_tree_data(self.inner.indices(), self.inner.data(), self.inner.n_points, self.inner.dim, indices)
     }
 }

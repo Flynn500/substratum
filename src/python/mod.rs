@@ -86,7 +86,7 @@ impl ArrayLike {
                     "expected float array; got integer array"
                 )),
             },
-            ArrayLike::Scalar(s) => Ok(NdArray::from_vec(Shape::new(vec![1]), vec![s])),
+            ArrayLike::Scalar(s) => Ok(NdArray::from_vec(Shape::scalar(), vec![s])),
             ArrayLike::Vec(v) => Ok(NdArray::from_vec(Shape::d1(v.len()), v)),
             ArrayLike::Vec2D(v) => {
                 if v.is_empty() {
@@ -105,7 +105,7 @@ impl ArrayLike {
             ArrayLike::Numpy { shape, data } => {
                 Ok(NdArray::from_vec(Shape::new(shape), data))
             }
-            ArrayLike::IntScalar(s) => Ok(NdArray::from_vec(Shape::new(vec![1]), vec![s as f64])),
+            ArrayLike::IntScalar(s) => Ok(NdArray::from_vec(Shape::scalar(), vec![s as f64])),
         }
     }
 

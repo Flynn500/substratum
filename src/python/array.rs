@@ -1,7 +1,7 @@
 use pyo3::prelude::*;
 use pyo3::exceptions::{PyValueError};
 use pyo3::types::{PyAny, PyFloat, PyList, PySlice, PyTuple};
-use numpy::{PyArrayMethods};
+use numpy::{PyArrayMethods, PyReadonlyArrayDyn};
 use crate::array::{NdArray, Shape};
 use super::{PyArray, ArrayData, ArrayLike};
 
@@ -407,7 +407,6 @@ impl PyArray {
                 ArrayLike::IntScalar(s) => Ok(PyArray { inner: ArrayData::Float(lhs / (s as f64)) }),
                 _ => Ok(PyArray { inner: ArrayData::Float(lhs / &other.into_ndarray()?) }),
             },
-            // Integer true division always returns float (NumPy semantics)
             ArrayData::Int(lhs) => {
                 let lhs_f = lhs.map(|x| x as f64);
                 match other {
@@ -437,6 +436,73 @@ impl PyArray {
         match &self.inner {
             ArrayData::Float(a) => PyArray { inner: ArrayData::Float(-a) },
             ArrayData::Int(a) => PyArray { inner: ArrayData::Int(-a) },
+        }
+    }
+
+    fn __richcmp__(&self, other: ArrayLike, op: pyo3::basic::CompareOp) -> PyResult<PyArray> {
+        match op {
+            pyo3::basic::CompareOp::Lt => self.apply_cmp(other, |a, b| a < b),
+            pyo3::basic::CompareOp::Le => self.apply_cmp(other, |a, b| a <= b),
+            pyo3::basic::CompareOp::Gt => self.apply_cmp(other, |a, b| a > b),
+            pyo3::basic::CompareOp::Ge => self.apply_cmp(other, |a, b| a >= b),
+            pyo3::basic::CompareOp::Eq => self.apply_cmp(other, |a, b| a == b),
+            pyo3::basic::CompareOp::Ne => self.apply_cmp(other, |a, b| a != b),
+        }
+    }
+
+    fn __pow__(&self, exp: ArrayLike, _modulo: Option<i64>) -> PyResult<Self> {
+        match &self.inner {
+            ArrayData::Float(a) => {
+                let data: Vec<f64> = match exp {
+                    ArrayLike::Scalar(e) =>
+                        a.as_slice().iter().map(|&x| x.powf(e)).collect(),
+                    ArrayLike::IntScalar(e) =>
+                        a.as_slice().iter().map(|&x| x.powf(e as f64)).collect(),
+                    ArrayLike::Array(arr) => match &arr.inner {
+                        ArrayData::Float(b) =>
+                            a.as_slice().iter().zip(b.as_slice().iter()).map(|(&x, &e)| x.powf(e)).collect(),
+                        ArrayData::Int(b) =>
+                            a.as_slice().iter().zip(b.as_slice().iter()).map(|(&x, &e)| x.powf(e as f64)).collect(),
+                    },
+                    _ => {
+                        let rhs = exp.into_ndarray()?;
+                        a.as_slice().iter().zip(rhs.as_slice().iter()).map(|(&x, &e)| x.powf(e)).collect()
+                    }
+                };
+                Ok(PyArray { inner: ArrayData::Float(NdArray::from_vec(a.shape().clone(), data)) })
+            }
+            ArrayData::Int(a) => {
+                let data: Vec<f64> = match exp {
+                    ArrayLike::Scalar(e) =>
+                        a.as_slice().iter().map(|&x| (x as f64).powf(e)).collect(),
+                    ArrayLike::IntScalar(e) =>
+                        a.as_slice().iter().map(|&x| (x as f64).powf(e as f64)).collect(),
+                    ArrayLike::Array(arr) => match &arr.inner {
+                        ArrayData::Float(b) =>
+                            a.as_slice().iter().zip(b.as_slice().iter()).map(|(&x, &e)| (x as f64).powf(e)).collect(),
+                        ArrayData::Int(b) =>
+                            a.as_slice().iter().zip(b.as_slice().iter()).map(|(&x, &e)| (x as f64).powf(e as f64)).collect(),
+                    },
+                    _ => {
+                        let rhs = exp.into_ndarray()?;
+                        a.as_slice().iter().zip(rhs.as_slice().iter()).map(|(&x, &e)| (x as f64).powf(e)).collect()
+                    }
+                };
+                Ok(PyArray { inner: ArrayData::Float(NdArray::from_vec(a.shape().clone(), data)) })
+            }
+        }
+    }
+
+    fn __rpow__(&self, base: &Bound<'_, PyAny>, _modulo: Option<i64>) -> PyResult<Self> {
+        let b = if let Ok(v) = base.extract::<f64>() { v }
+                else { base.extract::<i64>()? as f64 };
+        match &self.inner {
+            ArrayData::Float(a) =>
+                Ok(PyArray { inner: ArrayData::Float(a.map(|x| b.powf(x))) }),
+            ArrayData::Int(a) => {
+                let data: Vec<f64> = a.as_slice().iter().map(|&x| b.powf(x as f64)).collect();
+                Ok(PyArray { inner: ArrayData::Float(NdArray::from_vec(a.shape().clone(), data)) })
+            }
         }
     }
 
@@ -483,6 +549,30 @@ impl PyArray {
         match &self.inner {
             ArrayData::Float(a) => PyArray { inner: ArrayData::Float(a.take(&indices)) },
             ArrayData::Int(a) => PyArray { inner: ArrayData::Int(a.take(&indices)) },
+        }
+    }
+
+    fn reshape(&self, shape: Vec<usize>) -> PyResult<Self> {
+        let total: usize = shape.iter().product();
+        match &self.inner {
+            ArrayData::Float(a) => {
+                if a.len() != total {
+                    return Err(PyValueError::new_err(format!(
+                        "Cannot reshape array of size {} into shape {:?}",
+                        a.len(), shape
+                    )));
+                }
+                Ok(PyArray { inner: ArrayData::Float(a.reshape(shape)) })
+            }
+            ArrayData::Int(a) => {
+                if a.len() != total {
+                    return Err(PyValueError::new_err(format!(
+                        "Cannot reshape array of size {} into shape {:?}",
+                        a.len(), shape
+                    )));
+                }
+                Ok(PyArray { inner: ArrayData::Int(a.reshape(shape)) })
+            }
         }
     }
 
@@ -545,6 +635,27 @@ impl PyArray {
     fn __getitem__(&self, py: Python<'_>, key: &Bound<'_, PyAny>) -> PyResult<Py<PyAny>> {
         let dims = self.dims();
         let ndim = dims.len();
+
+        if let Ok(bool_mask) = key.extract::<Vec<bool>>() {
+            return self.apply_bool_mask_py(&bool_mask, py);
+        }
+
+        if let Ok(np_bool) = key.extract::<PyReadonlyArrayDyn<bool>>() {
+            let mask: Vec<bool> = np_bool.as_slice()?.iter().copied().collect();
+            return self.apply_bool_mask_py(&mask, py);
+        }
+
+        if let Ok(py_arr) = key.extract::<PyRef<PyArray>>() {
+            return match &py_arr.inner {
+                ArrayData::Int(idx_arr) => {
+                    let indices: Vec<isize> = idx_arr.as_slice().iter().map(|&x| x as isize).collect();
+                    self.apply_int_index_array_py(&indices, py)
+                }
+                ArrayData::Float(_) => Err(PyValueError::new_err(
+                    "index arrays must be integer type"
+                )),
+            };
+        }
 
         if let Ok(tuple) = key.cast::<PyTuple>() {
             let tuple_len = tuple.len();
@@ -751,8 +862,78 @@ impl PyArray {
     }
 }
 
-// Private helpers — not exposed to Python
 impl PyArray {
+    fn apply_cmp(&self, other: ArrayLike, cmp: impl Fn(f64, f64) -> bool) -> PyResult<Self> {
+        match &self.inner {
+            ArrayData::Float(a) => {
+                let data: Vec<f64> = match other {
+                    ArrayLike::Scalar(s) =>
+                        a.as_slice().iter().map(|&x| if cmp(x, s) { 1.0 } else { 0.0 }).collect(),
+                    ArrayLike::IntScalar(s) => {
+                        let s = s as f64;
+                        a.as_slice().iter().map(|&x| if cmp(x, s) { 1.0 } else { 0.0 }).collect()
+                    }
+                    ArrayLike::Array(arr) => match &arr.inner {
+                        ArrayData::Float(b) =>
+                            a.as_slice().iter().zip(b.as_slice().iter())
+                                .map(|(&x, &y)| if cmp(x, y) { 1.0 } else { 0.0 }).collect(),
+                        ArrayData::Int(b) =>
+                            a.as_slice().iter().zip(b.as_slice().iter())
+                                .map(|(&x, &y)| if cmp(x, y as f64) { 1.0 } else { 0.0 }).collect(),
+                    },
+                    _ => {
+                        let rhs = other.into_ndarray()?;
+                        a.as_slice().iter().zip(rhs.as_slice().iter())
+                            .map(|(&x, &y)| if cmp(x, y) { 1.0 } else { 0.0 }).collect()
+                    }
+                };
+                Ok(PyArray { inner: ArrayData::Float(NdArray::from_vec(a.shape().clone(), data)) })
+            }
+            ArrayData::Int(a) => {
+                let data: Vec<i64> = match other {
+                    ArrayLike::Scalar(s) =>
+                        a.as_slice().iter().map(|&x| if cmp(x as f64, s) { 1 } else { 0 }).collect(),
+                    ArrayLike::IntScalar(s) => {
+                        let s = s as f64;
+                        a.as_slice().iter().map(|&x| if cmp(x as f64, s) { 1 } else { 0 }).collect()
+                    }
+                    ArrayLike::Array(arr) => match &arr.inner {
+                        ArrayData::Float(b) =>
+                            a.as_slice().iter().zip(b.as_slice().iter())
+                                .map(|(&x, &y)| if cmp(x as f64, y) { 1 } else { 0 }).collect(),
+                        ArrayData::Int(b) =>
+                            a.as_slice().iter().zip(b.as_slice().iter())
+                                .map(|(&x, &y)| if cmp(x as f64, y as f64) { 1 } else { 0 }).collect(),
+                    },
+                    _ => {
+                        let rhs = other.into_i64_ndarray()?;
+                        a.as_slice().iter().zip(rhs.as_slice().iter())
+                            .map(|(&x, &y)| if cmp(x as f64, y as f64) { 1 } else { 0 }).collect()
+                    }
+                };
+                Ok(PyArray { inner: ArrayData::Int(NdArray::from_vec(a.shape().clone(), data)) })
+            }
+        }
+    }
+
+    fn apply_bool_mask_py(&self, mask: &[bool], py: Python<'_>) -> PyResult<Py<PyAny>> {
+        let dims = self.dims();
+        if dims.is_empty() {
+            return Err(PyValueError::new_err("Cannot apply boolean mask to scalar"));
+        }
+        if mask.len() != dims[0] {
+            return Err(PyValueError::new_err(format!(
+                "Boolean mask length {} doesn't match first dimension {}",
+                mask.len(), dims[0]
+            )));
+        }
+        let result = match &self.inner {
+            ArrayData::Float(a) => PyArray { inner: ArrayData::Float(a.boolean_mask(mask)) },
+            ArrayData::Int(a) => PyArray { inner: ArrayData::Int(a.boolean_mask(mask)) },
+        };
+        Ok(result.into_pyobject(py)?.into_any().unbind())
+    }
+
     fn dims(&self) -> Vec<usize> {
         match &self.inner {
             ArrayData::Float(a) => a.shape().dims().to_vec(),
@@ -874,6 +1055,36 @@ impl PyArray {
             .map(|i| self.int_to_pylist_recursive(a, py, dim + 1, offset + i * strides[dim]))
             .collect::<PyResult<_>>()?;
         Ok(PyList::new(py, items)?.into())
+    }
+
+    fn apply_int_index_array_py(&self, indices: &[isize], py: Python<'_>) -> PyResult<Py<PyAny>> {
+        let dims = self.dims();
+        let dim0 = dims[0] as isize;
+
+        let normalized: Vec<usize> = indices.iter().map(|&idx| {
+            let n = if idx < 0 { dim0 + idx } else { idx };
+            if n < 0 || n >= dim0 {
+                Err(PyValueError::new_err(format!(
+                    "index {} is out of bounds for axis 0 with size {}", idx, dim0
+                )))
+            } else {
+                Ok(n as usize)
+            }
+        }).collect::<PyResult<_>>()?;
+
+        if dims.len() == 1 {
+            let arr = self.gather_flat_indices(normalized);
+            return Ok(arr.into_pyobject(py)?.into_any().unbind());
+        }
+
+        let stride0 = self.strides_val()[0];
+        let row_starts: Vec<usize> = normalized.iter().map(|&i| i * stride0).collect();
+        let row_size: usize = dims[1..].iter().product();
+        let mut result_dims = vec![normalized.len()];
+        result_dims.extend_from_slice(&dims[1..]);
+
+        let arr = self.gather_rows(row_starts, row_size, result_dims);
+        Ok(arr.into_pyobject(py)?.into_any().unbind())
     }
 }
 

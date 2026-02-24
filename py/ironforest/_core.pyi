@@ -578,6 +578,40 @@ class ndutils:
             2D array representing the outer product.
         """
         ...
+    
+    @staticmethod
+    def linspace(
+        start: ArrayLike,
+        stop: ArrayLike,
+        num: int,
+    ) -> Array:
+        """
+        Return evenly spaced numbers over a specified interval.
+
+        Returns `num` evenly spaced samples calculated over the interval [`start`, `stop`].
+        If `start` and `stop` are arrays, they will be broadcast together, and the output
+        shape will be `(*broadcast_shape, num)`.
+
+        Args:
+            start: The starting value(s) of the sequence.
+            stop: The ending value(s) of the sequence.
+            num: Number of samples to generate. Must be >= 2.
+
+        Returns:
+            An array of evenly spaced values with shape `(*broadcast_shape, num)`.
+
+        Raises:
+            ValueError: If `num` is less than 2.
+            ValueError: If `start` and `stop` are not broadcastable.
+
+        Examples:
+            >>> linspace(0.0, 1.0, num=5)
+            NdArray([0.0, 0.25, 0.5, 0.75, 1.0])
+
+            >>> linspace([0.0, 10.0], [1.0, 20.0], num=3)
+            NdArray([[0.0, 0.5, 1.0], [10.0, 15.0, 20.0]])
+        """
+        ...
 
     @staticmethod
     def from_numpy(arr: Any) -> Array:
@@ -704,6 +738,20 @@ class Array(Sequence[float]):
             A new 1D array containing the elements at the specified indices.
         """
         ...
+
+    def reshape(self, shape: Sequence[int]) -> Array:
+        """Return a view of the array with a new shape (same total number of elements).
+
+        Args:
+            shape: New shape. The total number of elements must remain unchanged.
+
+        Returns:
+            A new Array with the specified shape and the same data.
+
+        Raises:
+            ValueError: If the total element count would change.
+        """
+        ...
     
     def item(self) -> float | int:
         """Convert a single-element array into a Python scalar (float or int)."""
@@ -804,6 +852,10 @@ class Array(Sequence[float]):
         """Slice always returns an array."""
         ...
     @overload
+    def __getitem__(self, index: List[bool]) -> Array:
+        """Boolean mask along the first axis — selects elements (1D) or rows (2D+)."""
+        ...
+    @overload
     def __getitem__(self, index: Tuple[int, int]) -> float | int:
         """Two integer indices return a scalar."""
         ...
@@ -850,6 +902,48 @@ class Array(Sequence[float]):
     def __rtruediv__(self, other: float | int) -> Array: ...
 
     def __neg__(self) -> Array: ...
+
+    def __pow__(self, exp: ArrayLike, modulo: None = None) -> Array:
+        """Element-wise power (``arr ** exp``). Always returns float64.
+
+        Args:
+            exp: Exponent — scalar or same-shape array.
+            modulo: Ignored (required by Python's three-argument ``pow()``).
+
+        Returns:
+            float64 Array with each element raised to *exp*.
+        """
+        ...
+
+    def __rpow__(self, base: float | int, modulo: None = None) -> Array:
+        """Reverse element-wise power (``base ** arr``). Always returns float64."""
+        ...
+
+    def __lt__(self, other: ArrayLike) -> Array:
+        """Element-wise ``<``. float input → float64 (1.0/0.0); int → int64 (1/0)."""
+        ...
+
+    def __le__(self, other: ArrayLike) -> Array:
+        """Element-wise ``<=``."""
+        ...
+
+    def __gt__(self, other: ArrayLike) -> Array:
+        """Element-wise ``>``."""
+        ...
+
+    def __ge__(self, other: ArrayLike) -> Array:
+        """Element-wise ``>=``."""
+        ...
+
+    def __eq__(self, other: ArrayLike) -> Array:  # type: ignore[override]
+        """Element-wise ``==``. Returns an Array of 1.0/0.0 (float) or 1/0 (int),
+        *not* a bool. Use ``.all()`` or ``.any()`` to reduce to a scalar."""
+        ...
+
+    def __ne__(self, other: ArrayLike) -> Array:  # type: ignore[override]
+        """Element-wise ``!=``."""
+        ...
+
     def __repr__(self) -> str: ...
 
 
@@ -998,6 +1092,31 @@ class spatial:
             ...
 
         @overload
+        def data(self, indices: ArrayLike) -> Array:
+            """Return training-data rows at specific original indices.
+
+            Args:
+                indices: 1D int array-like of original point indices (as returned
+                    by ``query_knn`` or ``query_radius``).
+
+            Returns:
+                float64 Array of shape ``(len(indices), n_features)``.
+
+            Raises:
+                ValueError: If any index is out of bounds.
+            """
+            ...
+
+        @overload
+        def data(self, indices: None = None) -> Array:
+            """Return all training-data points in original index order.
+
+            Returns:
+                float64 Array of shape ``(n_points, n_features)``.
+            """
+            ...
+
+        @overload
         def kernel_density(
             self,
             queries: ArrayLike,
@@ -1138,6 +1257,22 @@ class spatial:
                 Tuple of (indices, distances) where indices is an int64 Array and
                 distances is a float64 Array, both sorted by distance (closest first).
                 The indices can be used to look up the actual points in the original data.
+            """
+            ...
+
+        @overload
+        def data(self, indices: ArrayLike) -> Array: ...
+        @overload
+        def data(self, indices: None = None) -> Array:
+            """Return training-data rows at original indices, or all points if omitted.
+
+            Args:
+                indices: 1D int array-like of original indices (from ``query_knn`` /
+                    ``query_radius``), or ``None`` to return all points.
+
+            Returns:
+                float64 Array of shape ``(len(indices), n_features)`` or
+                ``(n_points, n_features)`` when called without arguments.
             """
             ...
 
@@ -1288,6 +1423,22 @@ class spatial:
                 Tuple of (indices, distances) where indices is an int64 Array and
                 distances is a float64 Array, both sorted by distance (closest first).
                 The indices can be used to look up the actual points in the original data.
+            """
+            ...
+
+        @overload
+        def data(self, indices: ArrayLike) -> Array: ...
+        @overload
+        def data(self, indices: None = None) -> Array:
+            """Return training-data rows at original indices, or all points if omitted.
+
+            Args:
+                indices: 1D int array-like of original indices (from ``query_knn`` /
+                    ``query_radius``), or ``None`` to return all points.
+
+            Returns:
+                float64 Array of shape ``(len(indices), n_features)`` or
+                ``(n_points, n_features)`` when called without arguments.
             """
             ...
 
@@ -1558,6 +1709,22 @@ class spatial:
             Returns:
                 Tuple of (indices, distances) where indices is an int64 Array and
                 distances is a float64 Array, both sorted by distance (closest first).
+            """
+            ...
+
+        @overload
+        def data(self, indices: ArrayLike) -> Array: ...
+        @overload
+        def data(self, indices: None = None) -> Array:
+            """Return training-data rows at original indices, or all points if omitted.
+
+            Args:
+                indices: 1D int array-like of original indices (from ``query_knn`` /
+                    ``query_radius``), or ``None`` to return all points.
+
+            Returns:
+                float64 Array of shape ``(len(indices), n_features)`` or
+                ``(n_points, n_features)`` when called without arguments.
             """
             ...
 

@@ -16,6 +16,7 @@ pub fn register_module(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(eye, m)?)?;
     m.add_function(wrap_pyfunction!(diag, m)?)?;
     m.add_function(wrap_pyfunction!(column_stack, m)?)?;
+    m.add_function(wrap_pyfunction!(linspace, m)?)?;
     Ok(())
 }
 
@@ -76,6 +77,44 @@ fn outer(a: ArrayLike, b: ArrayLike) -> PyResult<PyArray> {
     Ok(PyArray {
         inner: ArrayData::Float(NdArray::outer(&a_arr, &b_arr)),
     })
+}
+
+#[pyfunction]
+fn linspace(_py: Python<'_>, start: ArrayLike, stop: ArrayLike, num: i64) -> PyResult<PyArray> {
+    let start_arr = start.into_ndarray().unwrap();
+    let stop_arr = stop.into_ndarray().unwrap();
+
+    if num < 2 {
+        return Err(PyValueError::new_err("num must be >= 2"));
+    }
+
+    let broadcast_shape = start_arr.shape().broadcast(stop_arr.shape())
+        .ok_or_else(|| PyValueError::new_err(
+            "start and stop shapes are not broadcastable"
+        ))?;
+
+    let start_b = start_arr.broadcast_to(&broadcast_shape).unwrap();
+    let stop_b = stop_arr.broadcast_to(&broadcast_shape).unwrap();
+
+    let steps = (num - 1) as f64;
+    let total_elements = broadcast_shape.size();
+    let mut data = Vec::with_capacity(total_elements * num as usize);
+
+    for j in 0..num as usize {
+        for i in 0..total_elements {
+            let s = start_b.as_slice()[i];
+            let e = stop_b.as_slice()[i];
+            data.push(s + (e - s) * (j as f64 / steps));
+        }
+    }
+
+    let out_shape = Shape::new({
+        let mut dims = vec![num as usize];
+        dims.extend(broadcast_shape.dims());
+        dims
+    });
+    let our_arr = NdArray::from_vec(out_shape, data);
+    Ok(PyArray { inner: ArrayData::Float(our_arr) })
 }
 
 #[pyfunction]

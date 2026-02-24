@@ -96,12 +96,59 @@ impl<T: Copy> NdArray<T> {
         );
         self.as_slice()[0]
     }
+
+    pub fn broadcast_to(&self, target: &Shape) -> Option<NdArray<T>> {
+        if !self.shape().broadcasts_to(target) {
+            return None;
+        }
+
+        let mut data = Vec::with_capacity(target.size());
+        let src_ndim = self.ndim();
+        let tgt_ndim = target.ndim();
+
+        for flat_i in 0..target.size() {
+            let mut remaining = flat_i;
+            let mut src_flat = 0;
+
+            for dim in 0..tgt_ndim {
+                let tgt_dim_size = target.dims()[dim];
+                let stride = target.dims()[dim + 1..].iter().product::<usize>().max(1);
+                let idx = (remaining / stride) % tgt_dim_size;
+                remaining %= stride;
+
+                let src_dim = tgt_ndim - src_ndim;
+                let src_idx = if dim >= src_dim {
+                    let s = self.shape().dims()[dim - src_dim];
+                    if s == 1 { 0 } else { idx }
+                } else {
+                    0
+                };
+
+                let src_stride = self.strides().get(dim.saturating_sub(src_dim)).copied().unwrap_or(1);
+                src_flat += src_idx * src_stride;
+            }
+
+            data.push(self.as_slice()[src_flat]);
+        }
+
+        Some(NdArray::from_vec(target.clone(), data))
+    }
 }
 
 impl<T: Clone> NdArray<T> {
     pub fn filled(shape: Shape, value: T) -> Self {
         let storage = Storage::filled(value, shape.size());
         Self::new(shape, storage)
+    }
+
+    pub fn reshape(&self, new_dims: Vec<usize>) -> Self {
+        let new_size: usize = new_dims.iter().product();
+        assert_eq!(
+            self.len(), new_size,
+            "Cannot reshape array of size {} into shape {:?}",
+            self.len(), new_dims
+        );
+        NdArray::from_vec(Shape::new(new_dims), self.as_slice().to_vec())
     }
 }
 
@@ -128,6 +175,31 @@ impl<T: Copy> NdArray<T> {
             .collect();
 
         NdArray::from_vec(Shape::d1(data.len()), data)
+    }
+
+    /// Select elements/rows along the first axis where `mask` is true.
+    /// Mask length must equal the size of the first dimension.
+    pub fn boolean_mask(&self, mask: &[bool]) -> Self {
+        let n_rows = if self.ndim() == 0 { 0 } else { self.shape().dims()[0] };
+        assert_eq!(
+            mask.len(), n_rows,
+            "Boolean mask length {} must match first dimension {}",
+            mask.len(), n_rows
+        );
+        let row_size = if n_rows == 0 { 0 } else { self.len() / n_rows };
+        let data: Vec<T> = mask.iter().enumerate()
+            .filter_map(|(i, &m)| if m { Some(i) } else { None })
+            .flat_map(|i| self.as_slice()[i * row_size..(i + 1) * row_size].iter().copied())
+            .collect();
+
+        let n_selected = if row_size == 0 { 0 } else { data.len() / row_size };
+        if self.ndim() <= 1 {
+            NdArray::from_vec(Shape::d1(n_selected), data)
+        } else {
+            let mut new_dims = self.shape().dims().to_vec();
+            new_dims[0] = n_selected;
+            NdArray::from_vec(Shape::new(new_dims), data)
+        }
     }
 }
 
