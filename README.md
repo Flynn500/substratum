@@ -36,11 +36,11 @@ Output:
 ## Features
 - Array, an N-dimensional array object with broadcasting
 - matrix operations and constructors
-- KDTree, BallTree & VPTree with knn radius KDE and KDE approx queries
-- Decision trees, Random Forest and (Isolation Forest soon)
+- KDTree, BallTree & VPTree with knn radius & KDE queries
+- Decision trees, Random Forest and Isolation Forest
 - Linear and (Local Regression soon)
 - Random sampling from uniform, normal, lognormal, gamma and beta distributions.
-- Statistical methods (mean, median, var, std, quantile, Pearson and Spearman correlation)
+- Statistical methods for arrays (mean, median, var, std, quantile, Pearson and Spearman correlation)
 
 ## Rationale
 The core rational behind this project was to deepen my understanding of how libraries I use on a regular basis work, and learn how to write python bindings to offload computationally expensive tasks to tools better suited. Like dubious, I focused on building things from the ground up. I didn't want to glue dependecies together to get something functional, I wanted to understand from input to output how these algorithms worked under the hood. I chose rust because I had read the book around a year prior to starting this project, and pyo3 bindings are relitively easy to get working. This library is only exposed through python as that's where I've actually use its features. I don't intend to package this as a rust create at this stage. 
@@ -107,6 +107,7 @@ Because of the nature of this project I don't intend to bring on any other contr
 - `KDTree` kNN, Kernel Density Estimation and radius queries. 
 - `BallTree` with kNN, Kernel Density Estimation and radius queries. 
 - `VPTree` with kNN, Kernel Density Estimation and radius queries.
+- `AggTree` with Approximate Kernel Density Estimation
 
 ### Model
 - Linear Regression
@@ -126,3 +127,6 @@ Because of the nature of this project I don't intend to bring on any other contr
 ### Stats
 - Basic statistical methods for `Array` objects, mean, var std, and quantile.
 - Pearson and Spearman correlation.
+
+### NdUtils
+- Various operations for handling arrays (consructors, numpy conversion, column stack, etc.)
