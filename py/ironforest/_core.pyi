@@ -968,7 +968,7 @@ class spatial:
             """
             ...
 
-        def query_radius(self, query: ArrayLike, radius: float) -> Tuple[Array, Array]:
+        def query_radius(self, query: ArrayLike, radius: float) -> Union[Tuple[Array, Array], Tuple[Array, Array, Array]]:
             """Find all points within a given radius of the query point.
 
             Args:
@@ -976,9 +976,10 @@ class spatial:
                 radius: Search radius. All points with distance <= radius are returned.
 
             Returns:
-                Tuple of (indices, distances) where indices is an int64 Array and
-                distances is a float64 Array, both of length equal to the number of
-                points found, in arbitrary order.
+                For a single query: (indices, distances)
+                For a batch: (indices, distances, counts) where counts[i] is the
+                    number of results for query i. indices and distances are
+                    flattened; use counts to split them per query.
             """
             ...
 
@@ -1111,7 +1112,7 @@ class spatial:
             """
             ...
 
-        def query_radius(self, query: ArrayLike, radius: float) -> Tuple[Array, Array]:
+        def query_radius(self, query: ArrayLike, radius: float)-> Union[Tuple[Array, Array], Tuple[Array, Array, Array]]:
             """Find all points within a given radius of the query point.
 
             Args:
@@ -1119,9 +1120,10 @@ class spatial:
                 radius: Search radius. All points with distance <= radius are returned.
 
             Returns:
-                Tuple of (indices, distances) where indices is an int64 Array and
-                distances is a float64 Array, both of length equal to the number of
-                points found, in arbitrary order.
+                For a single query: (indices, distances)
+                For a batch: (indices, distances, counts) where counts[i] is the
+                    number of results for query i. indices and distances are
+                    flattened; use counts to split them per query.
             """
             ...
 
@@ -1260,7 +1262,7 @@ class spatial:
             """
             ...
 
-        def query_radius(self, query: ArrayLike, radius: float) -> Tuple[Array, Array]:
+        def query_radius(self, query: ArrayLike, radius: float) -> Union[Tuple[Array, Array], Tuple[Array, Array, Array]]:
             """Find all points within a given radius of the query point.
 
             Args:
@@ -1268,9 +1270,10 @@ class spatial:
                 radius: Search radius. All points with distance <= radius are returned.
 
             Returns:
-                Tuple of (indices, distances) where indices is an int64 Array and
-                distances is a float64 Array, both of length equal to the number of
-                points found, in arbitrary order.
+                For a single query: (indices, distances)
+                For a batch: (indices, distances, counts) where counts[i] is the
+                    number of results for query i. indices and distances are
+                    flattened; use counts to split them per query.
             """
             ...
 
@@ -1530,7 +1533,7 @@ class spatial:
             """
             ...
 
-        def query_radius(self, query: ArrayLike, radius: float) -> Tuple[Array, Array]:
+        def query_radius(self, query: ArrayLike, radius: float) -> Union[Tuple[Array, Array], Tuple[Array, Array, Array]]:
             """Find all points within a given radius of the query point.
 
             Args:
@@ -1538,9 +1541,10 @@ class spatial:
                 radius: Search radius. All points with distance <= radius are returned.
 
             Returns:
-                Tuple of (indices, distances) where indices is an int64 Array and
-                distances is a float64 Array, both of length equal to the number of
-                points found, in arbitrary order.
+                For a single query: (indices, distances)
+                For a batch: (indices, distances, counts) where counts[i] is the
+                    number of results for query i. indices and distances are
+                    flattened; use counts to split them per query.
             """
             ...
 
