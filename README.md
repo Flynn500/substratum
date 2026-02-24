@@ -28,10 +28,10 @@ You can also build with `maturin build --release` assuming maturin is installed.
 ## Spatial Trees
 Spatial trees support kNN, radius, and KDE queries.
 
-KDTree - axis-aligned splits, best for low-to-moderate dimensions
-BallTree - metric-based splits, handles higher dimensions well
-VPTree - vantage-point splits, strong in general metric spaces
-AggTree - approximate KDE via aggregated nodes, tunable accuracy via atol
+- KDTree - axis-aligned splits, best for low-to-moderate dimensions
+- BallTree - metric-based splits, handles higher dimensions well
+- VPTree - vantage-point splits, strong in general metric spaces
+- AggTree - approximate KDE via aggregated nodes, tunable accuracy via atol
 
 ## Tree-Based Models
 IronForest includes tree-based ML models that run entirely on the Rust core no external dependencies at runtime.
