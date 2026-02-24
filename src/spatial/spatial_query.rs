@@ -3,6 +3,8 @@ use crate::{array::{NdArray, Shape}, spatial::common::{DistanceMetric, HeapItem,
 use rayon::prelude::*;
 
 const KDE_PAR_THRESHOLD: usize = 512;
+const KNN_PAR_THRESHOLD: usize = 512;
+const RAD_PAR_THRESHOLD: usize = 512;
 
 pub trait SpatialQuery: Sync {
     type Node;
@@ -96,6 +98,72 @@ pub trait SpatialQuery: Sync {
         let (first, second) = self.knn_child_order(node_idx, query);
         self.query_knn_recursive(first, query, heap, k);
         self.query_knn_recursive(second, query, heap, k);
+    }
+
+    fn seq_knn_batch(&self, queries: &NdArray<f64>, n_queries: usize, dim: usize, k: usize) -> Vec<Vec<(usize, f64)>> {
+        (0..n_queries)
+            .map(|i| {
+                let query = &queries.as_slice()[i * dim..(i + 1) * dim];
+                self.query_knn(query, k)
+            })
+            .collect()
+    }
+
+    fn par_knn_batch(&self, queries: &NdArray<f64>, n_queries: usize, dim: usize, k: usize) -> Vec<Vec<(usize, f64)>> {
+        (0..n_queries)
+            .into_par_iter()
+            .map(|i| {
+                let query = &queries.as_slice()[i * dim..(i + 1) * dim];
+                self.query_knn(query, k)
+            })
+            .collect()
+    }
+
+    fn query_knn_batch(&self, queries: &NdArray<f64>, k: usize) -> Vec<Vec<(usize, f64)>> {
+        let shape = queries.shape().dims();
+        assert!(shape.len() == 2, "Expected 2D array (n_queries, dim)");
+        let n_queries = shape[0];
+        let dim = shape[1];
+        assert_eq!(dim, self.dim(), "Query dimension must match tree dimension");
+
+        if n_queries >= KNN_PAR_THRESHOLD {
+            self.par_knn_batch(queries, n_queries, dim, k)
+        } else {
+            self.seq_knn_batch(queries, n_queries, dim, k)
+        }
+    }
+
+    fn seq_radius_batch(&self, queries: &NdArray<f64>, n_queries: usize, dim: usize, radius: f64) -> Vec<Vec<(usize, f64)>> {
+        (0..n_queries)
+            .map(|i| {
+                let query = &queries.as_slice()[i * dim..(i + 1) * dim];
+                self.query_radius(query, radius)
+            })
+            .collect()
+    }
+
+    fn par_radius_batch(&self, queries: &NdArray<f64>, n_queries: usize, dim: usize, radius: f64) -> Vec<Vec<(usize, f64)>> {
+        (0..n_queries)
+            .into_par_iter()
+            .map(|i| {
+                let query = &queries.as_slice()[i * dim..(i + 1) * dim];
+                self.query_radius(query, radius)
+            })
+            .collect()
+    }
+
+    fn query_radius_batch(&self, queries: &NdArray<f64>, radius: f64) -> Vec<Vec<(usize, f64)>> {
+        let shape = queries.shape().dims();
+        assert!(shape.len() == 2, "Expected 2D array (n_queries, dim)");
+        let n_queries = shape[0];
+        let dim = shape[1];
+        assert_eq!(dim, self.dim(), "Query dimension must match tree dimension");
+
+        if n_queries >= RAD_PAR_THRESHOLD {
+            self.par_radius_batch(queries, n_queries, dim, radius)
+        } else {
+            self.seq_radius_batch(queries, n_queries, dim, radius)
+        }
     }
 
     fn kde_recursive(&self, node_idx: usize, query: &[f64], h: f64, density: &mut f64, kernel: KernelType) {

@@ -42,7 +42,6 @@ impl<'a, 'py> FromPyObject<'a, 'py> for ArrayLike {
             return Ok(ArrayLike::Vec(list));
         }
 
-        // Try i64 before f64 so Python ints route to IntScalar, not Scalar
         if let Ok(s) = ob.extract::<i64>() {
             return Ok(ArrayLike::IntScalar(s));
         }
@@ -58,6 +57,19 @@ impl<'a, 'py> FromPyObject<'a, 'py> for ArrayLike {
 }
 
 impl ArrayLike {
+    pub fn ndim(&self) -> usize {
+        match self {
+            ArrayLike::Array(a) => match &a.inner {
+                ArrayData::Float(f) => f.shape().dims().len(),
+                ArrayData::Int(i) => i.shape().dims().len(),
+            },
+            ArrayLike::Numpy { shape, .. } => shape.len(),
+            ArrayLike::Vec(_) => 1,
+            ArrayLike::Vec2D(_) => 2,
+            ArrayLike::Scalar(_) | ArrayLike::IntScalar(_) => 0,
+        }
+    }
+
     pub fn is_int(&self) -> bool {
         match self {
             ArrayLike::Array(a) => matches!(a.inner, ArrayData::Int(_)),
