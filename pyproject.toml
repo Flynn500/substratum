@@ -10,7 +10,7 @@ description = "An library supporting array-based computation, spatial analysis a
 readme = "README.md"
 
 [tool.maturin]
-features = ["pyo3/extension-module"]
+features = ["pyo3/extension-module", "pyo3/multiple-pymethods"]
 include = [
     "py/ironforest/_core.pyi",
     "py/ironforest/__init__.pyi",

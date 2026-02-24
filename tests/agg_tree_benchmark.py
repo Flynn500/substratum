@@ -16,7 +16,7 @@ def benchmark_aggtree(points, queries, bandwidth, leaf_size=32):
     result = (
         irn.spatial.AggTree.from_array(p, leaf_size=leaf_size, metric="euclidean",
                                         kernel="gaussian", bandwidth=bandwidth, atol=0.01)
-        .kernel_density(q, bandwidth=bandwidth, kernel="gaussian", normalize=True)
+        .kernel_density(q, normalize=True)
     )
     # result = (
     #     irn.spatial.KDTree.from_array(p, leaf_size=leaf_size, metric="euclidean")

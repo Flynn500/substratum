@@ -1577,21 +1577,12 @@ class spatial:
         def kernel_density(
             self,
             queries: ArrayLike,
-            bandwidth: float = 1.0,
-            kernel: Literal["gaussian", "epanechnikov", "uniform", "triangular"] = "gaussian",
             normalize: bool = True
         ) -> float:
             """Estimate kernel density at a single query point (with approximation).
 
             Args:
                 queries: Single query point (scalar, list, or array-like).
-                bandwidth: Bandwidth (smoothing parameter) for the kernel. Larger values
-                    produce smoother estimates. Defaults to 1.0.
-                kernel: Kernel function to use for density estimation. Options are:
-                    - "gaussian": Gaussian (normal) kernel (default)
-                    - "epanechnikov": Epanechnikov kernel
-                    - "uniform": Uniform (rectangular) kernel
-                    - "triangular": Triangular kernel
                 Normalize: Bool to control whether normalized values are returned.
 
             Returns:
@@ -1603,8 +1594,6 @@ class spatial:
         def kernel_density(
             self,
             queries: ArrayLike,
-            bandwidth: float = 1.0,
-            kernel: Literal["gaussian", "epanechnikov", "uniform", "triangular"] = "gaussian",
             normalize: bool = True
         ) -> List:
             """Estimate kernel density at multiple query points (with approximation).
@@ -1612,13 +1601,6 @@ class spatial:
             Args:
                 queries: 2D array-like of query points with shape (n_queries, n_features),
                     or 1D array-like representing a single point.
-                bandwidth: Bandwidth (smoothing parameter) for the kernel. Larger values
-                    produce smoother estimates. Defaults to 1.0.
-                kernel: Kernel function to use for density estimation. Options are:
-                    - "gaussian": Gaussian (normal) kernel (default)
-                    - "epanechnikov": Epanechnikov kernel
-                    - "uniform": Uniform (rectangular) kernel
-                    - "triangular": Triangular kernel
                 Normalize: Bool to control whether normalized values are returned.
 
             Returns:
@@ -1630,21 +1612,12 @@ class spatial:
         def kernel_density(
             self,
             queries: None = None,
-            bandwidth: float = 1.0,
-            kernel: Literal["gaussian", "epanechnikov", "uniform", "triangular"] = "gaussian",
             normalize: bool = True
         ) -> List:
             """Estimate kernel density at all training points (with approximation).
 
             Args:
                 queries: If None, computes density at each training point.
-                bandwidth: Bandwidth (smoothing parameter) for the kernel. Larger values
-                    produce smoother estimates. Defaults to 1.0.
-                kernel: Kernel function to use for density estimation. Options are:
-                    - "gaussian": Gaussian (normal) kernel (default)
-                    - "epanechnikov": Epanechnikov kernel
-                    - "uniform": Uniform (rectangular) kernel
-                    - "triangular": Triangular kernel
                 Normalize: Bool to control whether normalized values are returned.
 
             Returns:

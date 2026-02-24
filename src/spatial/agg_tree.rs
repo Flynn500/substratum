@@ -330,7 +330,7 @@ impl AggTree {
         results
     }
 
-    pub fn kernel_density(&self, queries: &NdArray<f64>, bandwidth: f64, kernel: KernelType, normalize: bool) -> NdArray<f64> {
+    pub fn kernel_density(&self, queries: &NdArray<f64>, normalize: bool) -> NdArray<f64> {
         let shape = queries.shape().dims();
         assert!(shape.len() == 2, "Expected 2D array (n_queries, dim)");
 
@@ -339,21 +339,21 @@ impl AggTree {
         assert_eq!(dim, self.dim, "Query dimension must match tree dimension");
 
         let mut results = if n_queries >= KDE_PAR_THRESHOLD {
-            self.par_kde_recursion(kernel, bandwidth, queries, n_queries, dim)
+            self.par_kde_recursion(self.kernel, self.bandwidth, queries, n_queries, dim)
         } else {
-            self.seq_kde_recursion(kernel, bandwidth, queries, n_queries, dim)
+            self.seq_kde_recursion(self.kernel, self.bandwidth, queries, n_queries, dim)
         };
 
         for i in 0..n_queries {
             let query = &queries.as_slice()[i * dim..(i + 1) * dim];
             let mut density = 0.0;
-            self.kde_recursive(0, query, bandwidth, &mut density, kernel);
+            self.kde_recursive(0, query, self.bandwidth, &mut density, self.kernel);
             results[i] = density;
         }
 
         if normalize {
-            let h_d = bandwidth.powi(dim as i32);
-            let c_k = kernel.normalization_constant(dim);
+            let h_d = self.bandwidth.powi(dim as i32);
+            let c_k = self.kernel.normalization_constant(dim);
             let norm = h_d * c_k;
             for val in &mut results {
                 *val /= norm;

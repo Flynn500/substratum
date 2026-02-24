@@ -92,7 +92,7 @@ def run_kde(points_np, grid_np, bandwidth=0.05, leaf_size=32):
     t0 = time.perf_counter()
     agg_density = irn.spatial.AggTree.from_array(
         points_irn, leaf_size=leaf_size, metric="euclidean", kernel="gaussian", bandwidth=bandwidth, atol=0.01,
-    ).kernel_density(grid_irn, bandwidth=bandwidth, kernel="gaussian", normalize=True)
+    ).kernel_density(grid_irn, normalize=True)
     agg_time = time.perf_counter() - t0
     agg = np.array(irn.Array.to_numpy(agg_density)) # type: ignore
 
