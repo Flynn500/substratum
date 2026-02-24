@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import ironforest as irn
 from sklearn.neighbors import KDTree
 from sklearn.datasets import make_blobs
-
+import sys
 
 def make_grid(resolution=200, extent=(0.0, 1.0)):
     """Create a 2D grid of query points."""
@@ -63,15 +63,15 @@ def gen_elliptical_clusters():
     return points, queries
 
 def gen_spherical_clusters():
-    seed = 0
-    n_points = 50000
+    seed = 5
+    n_points = 100000
     n_queries = 50
     d = 2
     rng = np.random.default_rng(seed)
     n_blobs = int(n_points * 0.8)
     n_noise = n_points - n_blobs
 
-    blobs, _ = make_blobs(n_samples=n_blobs, centers=10, cluster_std=0.1, n_features=d, random_state=seed)
+    blobs, _ = make_blobs(n_samples=n_blobs, centers=30, cluster_std=0.025, n_features=d, random_state=seed) # type: ignore
 
     blobs = (blobs - blobs.min(axis=0)) / (blobs.max(axis=0) - blobs.min(axis=0))
     noise = rng.uniform(0.0, 1.0, size=(n_noise, d))
@@ -79,7 +79,7 @@ def gen_spherical_clusters():
     points = np.vstack([blobs, noise])
     rng.shuffle(points)
 
-    queries, _ = make_blobs(n_samples=n_queries, centers=10, cluster_std=0.1, n_features=d, random_state=seed + 1)
+    queries, _ = make_blobs(n_samples=n_queries, centers=10, cluster_std=0.1, n_features=d, random_state=seed + 1) # type: ignore
     queries = (queries - queries.min(axis=0)) / (queries.max(axis=0) - queries.min(axis=0))
     return points, queries
 
@@ -91,7 +91,7 @@ def run_kde(points_np, grid_np, bandwidth=0.05, leaf_size=32):
     # --- AggTree ---
     t0 = time.perf_counter()
     agg_density = irn.spatial.AggTree.from_array(
-        points_irn, leaf_size=leaf_size, metric="euclidean", kernel="gaussian", bandwidth=bandwidth, atol=0.001,
+        points_irn, leaf_size=leaf_size, metric="euclidean", kernel="gaussian", bandwidth=bandwidth, atol=0.01,
     ).kernel_density(grid_irn, bandwidth=bandwidth, kernel="gaussian", normalize=True)
     agg_time = time.perf_counter() - t0
     agg = np.array(irn.Array.to_numpy(agg_density)) # type: ignore

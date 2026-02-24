@@ -167,7 +167,8 @@ pub trait SpatialQuery: Sync {
     }
 
     fn kde_recursive(&self, node_idx: usize, query: &[f64], h: f64, density: &mut f64, kernel: KernelType) {
-        if kernel.evaluate(self.min_distance_to_node(node_idx, query), h) < 1e-10 {
+        let n = (self.node_end(node_idx) - self.node_start(node_idx)) as f64;
+        if kernel.evaluate(self.min_distance_to_node(node_idx, query), h) * n < 1e-10 {
             return;
         }
 

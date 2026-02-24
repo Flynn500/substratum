@@ -37,7 +37,7 @@ def gen_spherical_clusters():
     n_blobs = int(n_points * 0.8)
     n_noise = n_points - n_blobs
 
-    blobs, _ = make_blobs(n_samples=n_blobs, centers=10, cluster_std=0.1, n_features=d, random_state=seed)
+    blobs, _ = make_blobs(n_samples=n_blobs, centers=10, cluster_std=0.1, n_features=d, random_state=seed) # type: ignore
 
     blobs = (blobs - blobs.min(axis=0)) / (blobs.max(axis=0) - blobs.min(axis=0))
     noise = rng.uniform(0.0, 1.0, size=(n_noise, d))
@@ -45,7 +45,7 @@ def gen_spherical_clusters():
     points = np.vstack([blobs, noise])
     rng.shuffle(points)
 
-    queries, _ = make_blobs(n_samples=n_queries, centers=10, cluster_std=0.1, n_features=d, random_state=seed + 1)
+    queries, _ = make_blobs(n_samples=n_queries, centers=10, cluster_std=0.1, n_features=d, random_state=seed + 1) # type: ignore
     queries = (queries - queries.min(axis=0)) / (queries.max(axis=0) - queries.min(axis=0))
     return points, queries
 

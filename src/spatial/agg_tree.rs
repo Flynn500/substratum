@@ -1,4 +1,7 @@
 use crate::{KernelType, Shape, array::NdArray, spatial::common::DistanceMetric};
+use rayon::prelude::*;
+
+const KDE_PAR_THRESHOLD: usize = 512;
 
 #[derive(Clone, Debug)]
 pub struct AggNode {
@@ -289,8 +292,8 @@ impl AggTree {
             }
             return;
         }
-
-        if kernel.evaluate(self.min_distance_to_node(node_idx, query), h) < 1e-10 {
+        let n = (self.nodes[node_idx].end - self.nodes[node_idx].start) as f64;
+        if kernel.evaluate(self.min_distance_to_node(node_idx, query), h) * n < 1e-10 {
             return;
         }
 
@@ -302,6 +305,30 @@ impl AggTree {
         }
     }
 
+    fn seq_kde_recursion(&self, kernel: KernelType, bandwidth: f64, queries: &NdArray<f64>, n_queries: usize, dim: usize) -> Vec<f64>{
+        let mut results = vec![0.0; n_queries];
+
+        for i in 0..n_queries {
+            let query = &queries.as_slice()[i * dim..(i + 1) * dim];
+            let mut density = 0.0;
+            self.kde_recursive(0, query, bandwidth, &mut density, kernel);
+            results[i] = density;
+        }
+        results
+    }
+
+    fn par_kde_recursion(&self, kernel: KernelType, bandwidth: f64, queries: &NdArray<f64>, n_queries: usize, dim: usize) -> Vec<f64>{
+        let results: Vec<f64> = (0..n_queries)
+            .into_par_iter()
+            .map(|i| {
+                let query = &queries.as_slice()[i * dim..(i + 1) * dim];
+                let mut density = 0.0;
+                self.kde_recursive(0, query, bandwidth, &mut density, kernel);
+                density
+            })
+            .collect();
+        results
+    }
 
     pub fn kernel_density(&self, queries: &NdArray<f64>, bandwidth: f64, kernel: KernelType, normalize: bool) -> NdArray<f64> {
         let shape = queries.shape().dims();
@@ -311,7 +338,11 @@ impl AggTree {
         let dim = shape[1];
         assert_eq!(dim, self.dim, "Query dimension must match tree dimension");
 
-        let mut results = vec![0.0; n_queries];
+        let mut results = if n_queries >= KDE_PAR_THRESHOLD {
+            self.par_kde_recursion(kernel, bandwidth, queries, n_queries, dim)
+        } else {
+            self.seq_kde_recursion(kernel, bandwidth, queries, n_queries, dim)
+        };
 
         for i in 0..n_queries {
             let query = &queries.as_slice()[i * dim..(i + 1) * dim];
