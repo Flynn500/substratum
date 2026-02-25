@@ -18,6 +18,10 @@ fn parse_dtype(dtype: Option<&str>) -> PyResult<bool> {
 
 #[pymethods]
 impl PyArray {
+    // -------------------------------------------------------------------------
+    // Construction
+    // -------------------------------------------------------------------------
+
     #[staticmethod]
     #[pyo3(signature = (shape, dtype=None))]
     pub fn zeros(shape: Vec<usize>, dtype: Option<&str>) -> PyResult<Self> {
@@ -135,6 +139,10 @@ impl PyArray {
         }
     }
 
+    // -------------------------------------------------------------------------
+    // Shape & Properties
+    // -------------------------------------------------------------------------
+
     #[getter]
     fn shape(&self) -> Vec<usize> {
         self.dims()
@@ -164,22 +172,30 @@ impl PyArray {
         }
     }
 
+    // -------------------------------------------------------------------------
+    // Conversion & Display
+    // -------------------------------------------------------------------------
+
     pub fn tolist(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {
         match &self.inner {
             ArrayData::Float(a) => {
                 if a.shape().ndim() == 0 {
                     return Ok(PyFloat::new(py, a.as_slice()[0]).unbind().into_any());
                 }
-                self.float_to_pylist_recursive(a, py, 0, 0)
+                self.to_pylist_recursive(a, py, 0, 0)
             }
             ArrayData::Int(a) => {
                 if a.shape().ndim() == 0 {
                     return Ok(a.as_slice()[0].into_pyobject(py)?.into_any().unbind());
                 }
-                self.int_to_pylist_recursive(a, py, 0, 0)
+                self.to_pylist_recursive(a, py, 0, 0)
             }
         }
     }
+
+    // -------------------------------------------------------------------------
+    // Math & Reduction
+    // -------------------------------------------------------------------------
 
     fn sin(&self) -> PyResult<Self> {
         Ok(PyArray { inner: ArrayData::Float(self.as_float()?.sin()) })
@@ -282,6 +298,10 @@ impl PyArray {
     fn all(&self) -> PyResult<bool> {
         Ok(self.as_float()?.all())
     }
+
+    // -------------------------------------------------------------------------
+    // Arithmetic ops
+    // -------------------------------------------------------------------------
 
     fn __add__(&self, other: ArrayLike) -> PyResult<Self> {
         match &self.inner {
@@ -438,6 +458,10 @@ impl PyArray {
             ArrayData::Int(a) => PyArray { inner: ArrayData::Int(-a) },
         }
     }
+
+    // -------------------------------------------------------------------------
+    // Comparison
+    // -------------------------------------------------------------------------
 
     fn __richcmp__(&self, other: ArrayLike, op: pyo3::basic::CompareOp) -> PyResult<PyArray> {
         match op {
@@ -631,6 +655,10 @@ impl PyArray {
     fn __len__(&self) -> usize {
         self.len_val()
     }
+
+    // -------------------------------------------------------------------------
+    // Indexing
+    // -------------------------------------------------------------------------
 
     fn __getitem__(&self, py: Python<'_>, key: &Bound<'_, PyAny>) -> PyResult<Py<PyAny>> {
         let dims = self.dims();
@@ -862,7 +890,12 @@ impl PyArray {
     }
 }
 
+// Private helpers — not exposed to Python. These support `__getitem__`, `__richcmp__`,
+// `tolist`, and other methods in the #[pymethods] block above.
 impl PyArray {
+    /// Applies a scalar comparison element-wise, returning a same-shape array of
+    /// `1.0`/`0.0` (float arrays) or `1`/`0` (int arrays). Both operands are
+    /// compared as `f64`; int arrays are cast before the predicate is evaluated.
     fn apply_cmp(&self, other: ArrayLike, cmp: impl Fn(f64, f64) -> bool) -> PyResult<Self> {
         match &self.inner {
             ArrayData::Float(a) => {
@@ -916,6 +949,8 @@ impl PyArray {
         }
     }
 
+    /// Filters the first axis by a boolean mask and returns the surviving rows as a PyArray.
+    /// Errors if `mask.len()` doesn't match the first dimension.
     fn apply_bool_mask_py(&self, mask: &[bool], py: Python<'_>) -> PyResult<Py<PyAny>> {
         let dims = self.dims();
         if dims.is_empty() {
@@ -934,6 +969,8 @@ impl PyArray {
         Ok(result.into_pyobject(py)?.into_any().unbind())
     }
 
+    /// Returns the shape dimensions as a `Vec`. Used internally instead of duplicating
+    /// the inner `match` everywhere shape information is needed.
     fn dims(&self) -> Vec<usize> {
         match &self.inner {
             ArrayData::Float(a) => a.shape().dims().to_vec(),
@@ -941,6 +978,7 @@ impl PyArray {
         }
     }
 
+    /// Returns the number of dimensions (rank) of the array.
     fn ndim_val(&self) -> usize {
         match &self.inner {
             ArrayData::Float(a) => a.ndim(),
@@ -948,6 +986,7 @@ impl PyArray {
         }
     }
 
+    /// Returns the total number of elements (product of all dimensions).
     fn len_val(&self) -> usize {
         match &self.inner {
             ArrayData::Float(a) => a.as_slice().len(),
@@ -955,6 +994,7 @@ impl PyArray {
         }
     }
 
+    /// Returns the element strides for each dimension (C-contiguous row-major layout).
     fn strides_val(&self) -> Vec<usize> {
         match &self.inner {
             ArrayData::Float(a) => a.strides().to_vec(),
@@ -962,6 +1002,7 @@ impl PyArray {
         }
     }
 
+    /// Returns the element at a flat (linearised) index as a Python scalar.
     fn scalar_at_flat(&self, flat_idx: usize, py: Python<'_>) -> PyResult<Py<PyAny>> {
         match &self.inner {
             ArrayData::Float(a) => Ok(a.as_slice()[flat_idx].into_pyobject(py)?.into_any().unbind()),
@@ -969,6 +1010,7 @@ impl PyArray {
         }
     }
 
+    /// Returns the element at a multi-dimensional index as a Python scalar.
     fn scalar_at_indices(&self, indices: &[usize], py: Python<'_>) -> PyResult<Py<PyAny>> {
         match &self.inner {
             ArrayData::Float(a) => {
@@ -982,6 +1024,8 @@ impl PyArray {
         }
     }
 
+    /// Extracts a contiguous sub-array starting at flat offset `start` with `size` elements,
+    /// reshaped to `dims`. Used by `__getitem__` for partial-tuple indexing (e.g. `a[2]` on a 3-D array).
     fn subarray_at(&self, dims: Vec<usize>, start: usize, size: usize) -> PyArray {
         match &self.inner {
             ArrayData::Float(a) => PyArray { inner: ArrayData::Float(
@@ -993,6 +1037,8 @@ impl PyArray {
         }
     }
 
+    /// Gathers elements at an arbitrary set of flat indices into a new 1-D array.
+    /// Used by fancy integer-array indexing on 1-D arrays.
     fn gather_flat_indices(&self, flat_indices: Vec<usize>) -> PyArray {
         match &self.inner {
             ArrayData::Float(a) => {
@@ -1006,6 +1052,9 @@ impl PyArray {
         }
     }
 
+    /// Gathers rows (or sub-tensors) starting at each flat offset in `row_starts`, each of length
+    /// `row_size`, and stacks them into an array with shape `result_dims`.
+    /// Used by fancy integer-array indexing on multi-dimensional arrays.
     fn gather_rows(&self, row_starts: Vec<usize>, row_size: usize, result_dims: Vec<usize>) -> PyArray {
         match &self.inner {
             ArrayData::Float(a) => {
@@ -1025,7 +1074,13 @@ impl PyArray {
         }
     }
 
-    fn float_to_pylist_recursive(&self, a: &NdArray<f64>, py: Python<'_>, dim: usize, offset: usize) -> PyResult<Py<PyAny>> {
+    /// Recursively converts an `NdArray<T>` to a nested Python list.
+    /// Works for both `f64` and `i64` elements; the recursion walks each dimension
+    /// in turn, using strides to slice the underlying flat buffer correctly.
+    fn to_pylist_recursive<T>(&self, a: &NdArray<T>, py: Python<'_>, dim: usize, offset: usize) -> PyResult<Py<PyAny>>
+    where
+        T: Copy + for<'py> pyo3::IntoPyObject<'py>,
+    {
         let data = a.as_slice();
         let dim_size = a.shape().dim(dim).unwrap();
         let strides = a.strides();
@@ -1036,27 +1091,13 @@ impl PyArray {
         }
 
         let items: Vec<Py<PyAny>> = (0..dim_size)
-            .map(|i| self.float_to_pylist_recursive(a, py, dim + 1, offset + i * strides[dim]))
+            .map(|i| self.to_pylist_recursive(a, py, dim + 1, offset + i * strides[dim]))
             .collect::<PyResult<_>>()?;
         Ok(PyList::new(py, items)?.into())
     }
 
-    fn int_to_pylist_recursive(&self, a: &NdArray<i64>, py: Python<'_>, dim: usize, offset: usize) -> PyResult<Py<PyAny>> {
-        let data = a.as_slice();
-        let dim_size = a.shape().dim(dim).unwrap();
-        let strides = a.strides();
-
-        if dim == a.ndim() - 1 {
-            let list = PyList::new(py, (0..dim_size).map(|i| data[offset + i * strides[dim]]))?;
-            return Ok(list.into());
-        }
-
-        let items: Vec<Py<PyAny>> = (0..dim_size)
-            .map(|i| self.int_to_pylist_recursive(a, py, dim + 1, offset + i * strides[dim]))
-            .collect::<PyResult<_>>()?;
-        Ok(PyList::new(py, items)?.into())
-    }
-
+    /// Applies fancy integer-array indexing along axis 0. Negative indices are normalised.
+    /// Returns a scalar for 1-D arrays or a sub-array for N-D arrays.
     fn apply_int_index_array_py(&self, indices: &[isize], py: Python<'_>) -> PyResult<Py<PyAny>> {
         let dims = self.dims();
         let dim0 = dims[0] as isize;

@@ -19,39 +19,39 @@ pub fn register_module(m: &Bound<'_, PyModule>) -> PyResult<()> {
 }
 
 #[pyfunction]
-fn sum(a: ArrayLike) -> f64 {
-    a.into_ndarray().unwrap().sum()
+fn sum(a: ArrayLike) -> PyResult<f64> {
+    Ok(a.into_ndarray()?.sum())
 }
 
 #[pyfunction]
-fn mean(a: ArrayLike) -> f64 {
-    a.into_ndarray().unwrap().mean()
+fn mean(a: ArrayLike) -> PyResult<f64> {
+    Ok(a.into_ndarray()?.mean())
 }
 
 #[pyfunction]
-fn var(a: ArrayLike) -> f64 {
-    a.into_ndarray().unwrap().var()
+fn var(a: ArrayLike) -> PyResult<f64> {
+    Ok(a.into_ndarray()?.var())
 }
 
 #[pyfunction]
 #[pyo3(name = "std")]
-fn std_dev(a: ArrayLike) -> f64 {
-    a.into_ndarray().unwrap().std()
+fn std_dev(a: ArrayLike) -> PyResult<f64> {
+    Ok(a.into_ndarray()?.std())
 }
 
 #[pyfunction]
-fn median(a: ArrayLike) -> f64 {
-    a.into_ndarray().unwrap().median()
+fn median(a: ArrayLike) -> PyResult<f64> {
+    Ok(a.into_ndarray()?.median())
 }
 
 #[pyfunction]
-fn max(a: ArrayLike) -> f64 {
-    a.into_ndarray().unwrap().max()
+fn max(a: ArrayLike) -> PyResult<f64> {
+    Ok(a.into_ndarray()?.max())
 }
 
 #[pyfunction]
-fn min(a: ArrayLike) -> f64 {
-    a.into_ndarray().unwrap().min()
+fn min(a: ArrayLike) -> PyResult<f64> {
+    Ok(a.into_ndarray()?.min())
 }
 
 #[pyfunction]
@@ -74,21 +74,21 @@ fn quantile(py: Python<'_>, a: &PyArray, q: ArrayLike) -> PyResult<Py<PyAny>> {
 }
 
 #[pyfunction]
-fn any(a: ArrayLike) -> bool {
-    a.into_ndarray().unwrap().any()
+fn any(a: ArrayLike) -> PyResult<bool> {
+    Ok(a.into_ndarray()?.any())
 }
 
 #[pyfunction]
-fn all(a: ArrayLike) -> bool {
-    a.into_ndarray().unwrap().all()
+fn all(a: ArrayLike) -> PyResult<bool> {
+    Ok(a.into_ndarray()?.all())
 }
 
 #[pyfunction]
-fn pearson(a: ArrayLike, b: ArrayLike) -> f64 {
-    a.into_ndarray().unwrap().pearson(&b.into_ndarray().unwrap())
+fn pearson(a: ArrayLike, b: ArrayLike) -> PyResult<f64> {
+    Ok(a.into_ndarray()?.pearson(&b.into_ndarray()?))
 }
 
 #[pyfunction]
-fn spearman(a: ArrayLike, b: ArrayLike) -> f64 {
-    a.into_ndarray().unwrap().spearman(&b.into_ndarray().unwrap())
+fn spearman(a: ArrayLike, b: ArrayLike) -> PyResult<f64> {
+    Ok(a.into_ndarray()?.spearman(&b.into_ndarray()?))
 }

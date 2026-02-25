@@ -5,6 +5,14 @@ use crate::array::{NdArray, Shape};
 use crate::spatial::{BallTree, KDTree, VPTree, AggTree, BruteForce, VantagePointSelection, DistanceMetric, KernelType, SpatialQuery};
 use super::{PyArray, ArrayData, ArrayLike};
 
+// =============================================================================
+// Result Type
+// =============================================================================
+//
+// Spatial Result object returns spatial queries in a more ergonomic format. Can
+// immediately get statistics, centroid etc. and split batch queries without the
+// headache of dealing with counts. 
+
 #[pyclass(name = "SpatialResult")]
 pub struct PySpatialResult {
     #[pyo3(get)]
@@ -15,18 +23,6 @@ pub struct PySpatialResult {
     counts: Option<PyArray>,
     n_queries: usize,
     k: Option<usize>,
-}
-
-//helper for spatial results
-fn scalar_or_array(py: Python<'_>, values: Vec<f64>, is_single: bool) -> PyResult<Py<PyAny>> {
-    if is_single {
-        Ok(values[0].into_pyobject(py)?.into_any().unbind())
-    } else {
-        let n = values.len();
-        Ok(PyArray {
-            inner: ArrayData::Float(NdArray::from_vec(Shape::d1(n), values)),
-        }.into_pyobject(py)?.into_any().unbind())
-    }
 }
 
 impl PySpatialResult {
@@ -63,83 +59,76 @@ impl PySpatialResult {
         }
     }
 
-    fn per_query_distances(&self) -> Vec<&[f64]> {
-        let dist_slice = self.distances.as_float().unwrap().as_slice();
+    /// Returns `(offset, length)` pairs for each query's result slice.
+    /// Handles three storage layouts:
+    /// - Single query (`n_queries == 1`): one chunk covering all results.
+    /// - Fixed-width KNN results (`k` is `Some`): equal-size chunks of width `k`.
+    /// - Variable-width radius results: chunk lengths read from the `counts` int array.
+    fn query_result_ranges(&self) -> Vec<(usize, usize)> {
         if self.n_queries == 1 {
-            vec![dist_slice]
+            let total = self.distances.as_float().unwrap().as_slice().len();
+            vec![(0, total)]
         } else if let Some(k) = self.k {
-            dist_slice.chunks_exact(k).collect()
+            (0..self.n_queries).map(|i| (i * k, k)).collect()
         } else {
             let counts = self.counts.as_ref().unwrap();
+            let counts_slice = counts.as_int().unwrap().as_slice();
             let mut offset = 0;
-            counts.as_float().unwrap().as_slice().iter().map(|&c| {
+            counts_slice.iter().map(|&c| {
                 let c = c as usize;
-                let slice = &dist_slice[offset..offset + c];
+                let range = (offset, c);
                 offset += c;
-                slice
+                range
             }).collect()
         }
     }
 
+    fn per_query_distances(&self) -> Vec<&[f64]> {
+        let dist_slice = self.distances.as_float().unwrap().as_slice();
+        self.query_result_ranges().into_iter()
+            .map(|(off, len)| &dist_slice[off..off + len])
+            .collect()
+    }
+
     fn per_query_indices(&self) -> Vec<&[i64]> {
         let idx_slice = self.indices.as_int().unwrap().as_slice();
-        if self.n_queries == 1 {
-            vec![idx_slice]
-        } else if let Some(k) = self.k {
-            idx_slice.chunks_exact(k).collect()
-        } else {
-            let counts = self.counts.as_ref().unwrap();
-            let mut offset = 0;
-            counts.as_float().unwrap().as_slice().iter().map(|&c| {
-                let c = c as usize;
-                let slice = &idx_slice[offset..offset + c];
-                offset += c;
-                slice
-            }).collect()
-        }
+        self.query_result_ranges().into_iter()
+            .map(|(off, len)| &idx_slice[off..off + len])
+            .collect()
+    }
+
+    fn aggregate_per_query<F: Fn(&NdArray<f64>) -> f64>(&self, f: F) -> Vec<f64> {
+        self.per_query_distances().iter().map(|d| {
+            if d.is_empty() { return f64::NAN; }
+            f(&NdArray::from_vec(Shape::d1(d.len()), d.to_vec()))
+        }).collect()
     }
 }
 
 #[pymethods]
 impl PySpatialResult {
-    // fn split(&self, py: Python<'_>) -> PyResult<Py<PyAny>>{
-
-    // }
-
     fn mean_distance(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {
-        let means: Vec<f64> = self.per_query_distances().iter().map(|d| {
-            if d.is_empty() { f64::NAN } else { d.iter().sum::<f64>() / d.len() as f64 }
-        }).collect();
-        scalar_or_array(py, means, self.n_queries == 1)
+        scalar_or_array(py, self.aggregate_per_query(|a| a.mean()), self.n_queries == 1)
     }
 
     fn min_distance(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {
-        let mins: Vec<f64> = self.per_query_distances().iter().map(|d| {
-            d.iter().copied().fold(f64::NAN, f64::min)
-        }).collect();
-        scalar_or_array(py, mins, self.n_queries == 1)
+        scalar_or_array(py, self.aggregate_per_query(|a| a.min()), self.n_queries == 1)
     }
 
     fn max_distance(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {
-        let maxes: Vec<f64> = self.per_query_distances().iter().map(|d| {
-            d.iter().copied().fold(f64::NAN, f64::max)
-        }).collect();
-        scalar_or_array(py, maxes, self.n_queries == 1)
+        scalar_or_array(py, self.aggregate_per_query(|a| a.max()), self.n_queries == 1)
     }
 
     fn median_distance(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {
-        let medians: Vec<f64> = self.per_query_distances().iter().map(|d| {
-            if d.is_empty() { return f64::NAN; }
-            let mut sorted: Vec<f64> = d.to_vec();
-            sorted.sort_unstable_by(|a, b| a.partial_cmp(b).unwrap());
-            let mid = sorted.len() / 2;
-            if sorted.len() % 2 == 0 {
-                (sorted[mid - 1] + sorted[mid]) / 2.0
-            } else {
-                sorted[mid]
-            }
-        }).collect();
-        scalar_or_array(py, medians, self.n_queries == 1)
+        scalar_or_array(py, self.aggregate_per_query(|a| a.median()), self.n_queries == 1)
+    }
+
+    fn var_distance(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {
+        scalar_or_array(py, self.aggregate_per_query(|a| a.var()), self.n_queries == 1)
+    }
+
+    fn std_distance(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {
+        scalar_or_array(py, self.aggregate_per_query(|a| a.std()), self.n_queries == 1)
     }
 
     fn count(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {
@@ -184,7 +173,32 @@ impl PySpatialResult {
     }
 }
 
+// =============================================================================
+// Helpers
+// =============================================================================
 
+/// Returns a Python scalar for single queries, or a 1-D `PyArray` for batch queries.
+/// Used by `SpatialResult` aggregation methods to match NumPy's scalar-vs-array
+/// return convention.
+fn scalar_or_array(py: Python<'_>, values: Vec<f64>, is_single: bool) -> PyResult<Py<PyAny>> {
+    if is_single {
+        Ok(values[0].into_pyobject(py)?.into_any().unbind())
+    } else {
+        let n = values.len();
+        Ok(PyArray {
+            inner: ArrayData::Float(NdArray::from_vec(Shape::d1(n), values)),
+        }.into_pyobject(py)?.into_any().unbind())
+    }
+}
+
+/// Recovers the original-order point matrix from a tree's internal (permuted) storage.
+///
+/// Trees reorder their input data during construction for cache efficiency; `tree_indices`
+/// maps each tree-internal position back to the caller's original row index. This function
+/// undoes that permutation so `data()` always returns rows in the order the user inserted them.
+///
+/// If `indices` is `Some`, only the specified original-order rows are returned (k × dim).
+/// If `indices` is `None`, all `n_points` rows are returned (n_points × dim).
 fn get_tree_data(
     tree_indices: &[usize],
     raw_data: &[f64],
@@ -231,14 +245,9 @@ fn get_tree_data(
     }
 }
 
-pub fn register_module(m: &Bound<'_, PyModule>) -> PyResult<()> {
-    m.add_class::<PyBallTree>()?;
-    m.add_class::<PyKDTree>()?;
-    m.add_class::<PyVPTree>()?;
-    m.add_class::<PyAggTree>()?;
-    m.add_class::<PyBruteForce>()?;
-    Ok(())
-}
+// =============================================================================
+// Parsing
+// =============================================================================
 
 fn parse_metric(metric: &str) -> PyResult<DistanceMetric> {
     match metric.to_lowercase().as_str() {
@@ -276,6 +285,14 @@ fn parse_vantage_selection(selection: &str) -> PyResult<VantagePointSelection> {
     }
 }
 
+// =============================================================================
+// Query Macro
+// =============================================================================
+
+// Generates query_radius, query_knn, kernel_density, and data methods for any
+// spatial index type whose inner field implements SpatialQuery. All four tree
+// types (BallTree, KDTree, VPTree, BruteForce) use this macro; AggTree is
+// excluded because its kernel_density signature differs.
 macro_rules! impl_spatial_query_methods {
     ($py_type:ty) => {
         #[pymethods]
@@ -368,6 +385,9 @@ impl_spatial_query_methods!(PyKDTree);
 impl_spatial_query_methods!(PyVPTree);
 impl_spatial_query_methods!(PyBruteForce);
 
+// =============================================================================
+// Tree Types
+// =============================================================================
 
 #[pyclass(name = "BallTree")]
 pub struct PyBallTree {
@@ -380,8 +400,7 @@ impl PyBallTree {
     #[pyo3(signature = (array, leaf_size=20, metric="euclidean"))]
     fn from_array(array: &PyArray, leaf_size: Option<usize>, metric: Option<&str>) -> PyResult<Self> {
         let leaf_size = leaf_size.unwrap_or(20);
-        let metric_str = metric.unwrap_or("euclidean");
-        let metric = parse_metric(metric_str)?;
+        let metric = parse_metric(metric.unwrap_or("euclidean"))?;
         let tree = BallTree::from_ndarray(array.as_float()?, leaf_size, metric);
         Ok(PyBallTree { inner: tree })
     }
@@ -398,8 +417,7 @@ impl PyKDTree {
     #[pyo3(signature = (array, leaf_size=20, metric="euclidean"))]
     fn from_array(array: &PyArray, leaf_size: Option<usize>, metric: Option<&str>) -> PyResult<Self> {
         let leaf_size = leaf_size.unwrap_or(20);
-        let metric_str = metric.unwrap_or("euclidean");
-        let metric = parse_metric(metric_str)?;
+        let metric = parse_metric(metric.unwrap_or("euclidean"))?;
         let tree = KDTree::from_ndarray(array.as_float()?, leaf_size, metric);
         Ok(PyKDTree { inner: tree })
     }
@@ -416,10 +434,8 @@ impl PyVPTree {
     #[pyo3(signature = (array, leaf_size=20, metric="euclidean", selection="first"))]
     fn from_array(array: &PyArray, leaf_size: Option<usize>, metric: Option<&str>, selection: Option<&str>) -> PyResult<Self> {
         let leaf_size = leaf_size.unwrap_or(20);
-        let metric_str = metric.unwrap_or("euclidean");
-        let metric = parse_metric(metric_str)?;
-        let selection_str = selection.unwrap_or("first");
-        let selection_method = parse_vantage_selection(selection_str)?;
+        let metric = parse_metric(metric.unwrap_or("euclidean"))?;
+        let selection_method = parse_vantage_selection(selection.unwrap_or("first"))?;
         let tree = VPTree::from_ndarray(array.as_float()?, leaf_size, metric, selection_method);
         Ok(PyVPTree { inner: tree })
     }
@@ -467,6 +483,9 @@ impl PyAggTree {
         Ok(PyAggTree { inner: tree })
     }
 
+    // AggTree's kernel_density has a different signature from the other trees: it
+    // does not take bandwidth or kernel parameters because those are baked in at
+    // construction time. It is therefore excluded from impl_spatial_query_methods!.
     #[pyo3(signature = (queries=None, normalize=true))]
     fn kernel_density(
         &self,
@@ -493,4 +512,18 @@ impl PyAggTree {
             Ok(PyArray { inner: ArrayData::Float(result) }.into_pyobject(py)?.into_any().unbind())
         }
     }
+}
+
+// =============================================================================
+// Module Registration
+// =============================================================================
+
+pub fn register_module(m: &Bound<'_, PyModule>) -> PyResult<()> {
+    m.add_class::<PySpatialResult>()?;
+    m.add_class::<PyBallTree>()?;
+    m.add_class::<PyKDTree>()?;
+    m.add_class::<PyVPTree>()?;
+    m.add_class::<PyAggTree>()?;
+    m.add_class::<PyBruteForce>()?;
+    Ok(())
 }

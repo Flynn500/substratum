@@ -5,6 +5,22 @@ use pyo3::{FromPyObject, Borrowed};
 use numpy::{PyReadonlyArrayDyn, PyUntypedArrayMethods};
 use crate::array::{NdArray, Shape};
 
+/// Validates that `v` is a non-empty, rectangular 2-D nested list.
+/// Returns `(rows, cols)` on success, or a `PyValueError` if the list is empty
+/// or has rows of inconsistent length.
+fn validate_vec2d<T>(v: &[Vec<T>]) -> PyResult<(usize, usize)> {
+    if v.is_empty() {
+        return Err(PyValueError::new_err("Cannot create array from empty nested list"));
+    }
+    let cols = v[0].len();
+    for row in v {
+        if row.len() != cols {
+            return Err(PyValueError::new_err("Nested lists must have consistent dimensions"));
+        }
+    }
+    Ok((v.len(), cols))
+}
+
 #[derive(Clone)]
 pub enum ArrayData {
     Float(NdArray<f64>),
@@ -89,16 +105,7 @@ impl ArrayLike {
             ArrayLike::Scalar(s) => Ok(NdArray::from_vec(Shape::scalar(), vec![s])),
             ArrayLike::Vec(v) => Ok(NdArray::from_vec(Shape::d1(v.len()), v)),
             ArrayLike::Vec2D(v) => {
-                if v.is_empty() {
-                    return Err(PyValueError::new_err("Cannot create array from empty nested list"));
-                }
-                let rows = v.len();
-                let cols = v[0].len();
-                for row in &v {
-                    if row.len() != cols {
-                        return Err(PyValueError::new_err("Nested lists must have consistent dimensions"));
-                    }
-                }
+                let (rows, cols) = validate_vec2d(&v)?;
                 let flat: Vec<f64> = v.into_iter().flatten().collect();
                 Ok(NdArray::from_vec(Shape::new(vec![rows, cols]), flat))
             }
@@ -176,16 +183,7 @@ impl ArrayLike {
                 Ok(NdArray::from_vec(Shape::d1(data.len()), data))
             }
             ArrayLike::Vec2D(v) => {
-                if v.is_empty() {
-                    return Err(PyValueError::new_err("Cannot create array from empty nested list"));
-                }
-                let rows = v.len();
-                let cols = v[0].len();
-                for row in &v {
-                    if row.len() != cols {
-                        return Err(PyValueError::new_err("Nested lists must have consistent dimensions"));
-                    }
-                }
+                let (rows, cols) = validate_vec2d(&v)?;
                 let data: Vec<i64> = v.into_iter().flatten().map(|x| x as i64).collect();
                 Ok(NdArray::from_vec(Shape::new(vec![rows, cols]), data))
             }
