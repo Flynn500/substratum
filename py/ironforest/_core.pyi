@@ -1077,6 +1077,22 @@ class spatial:
             medians for batch queries.
             """
             ...
+        
+        def var_distance(self) -> float | Array[float]:
+            """Variance of distance across results.
+
+            Returns a scalar for single queries, or an array of per-query
+            medians for batch queries.
+            """
+            ...
+        
+        def std_distance(self) -> float | Array[float]:
+            """Standard deviation of distance across results.
+
+            Returns a scalar for single queries, or an array of per-query
+            medians for batch queries.
+            """
+            ...
 
         def count(self) -> float | Array[int]:
             """Number of results per query.

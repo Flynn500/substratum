@@ -1,7 +1,8 @@
 use crate::array::shape::Shape;
 use crate::array::storage::Storage;
+use serde::{Serialize, Deserialize};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NdArray<T> {
     shape: Shape,
     strides: Vec<usize>,

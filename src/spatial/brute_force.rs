@@ -1,14 +1,15 @@
 use crate::{array::NdArray, spatial::common::DistanceMetric};
 use super::spatial_query::{SpatialQuery};
+use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct BFNode {
     pub start: usize,
     pub end: usize,
 }
 
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BruteForce {
     pub nodes: Vec<BFNode>,
     pub indices: Vec<usize>,

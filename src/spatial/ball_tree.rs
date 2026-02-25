@@ -1,8 +1,8 @@
 use crate::{array::NdArray, spatial::common::DistanceMetric};
 use super::spatial_query::{SpatialQuery};
+use serde::{Deserialize, Serialize};
 
-
-#[derive(Clone, Debug)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BallNode {
     pub center: Vec<f64>,
     pub radius: f64,
@@ -13,7 +13,7 @@ pub struct BallNode {
 }
 
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BallTree {
     pub nodes: Vec<BallNode>,
     pub indices: Vec<usize>,

@@ -5,7 +5,7 @@ import ironforest as irn
 def _tricube(d, max_d):
     """Tricube kernel: (1 - (d/max_d)^3)^3 for d < max_d, else 0."""
     if max_d == 0.0:
-        return irn.Array.ones(d.shape[0])
+        return irn.ndutils.ones(d.shape[0])
     u = d / max_d
     mask = u < 1.0
     w = (1.0 - u ** 3) ** 3
@@ -13,7 +13,7 @@ def _tricube(d, max_d):
 
 def _epanechnikov(d, max_d):
     if max_d == 0.0:
-        return irn.Array.ones(d.shape[0])
+        return irn.ndutils.ones(d.shape[0])
     u = d / max_d
     mask = u < 1.0
     return (1.0 - u ** 2) * mask
@@ -109,6 +109,7 @@ class LocalRegression:
         -------
         irn.Array of predicted values, shape (m,).
         """
+        
         kernel_fn = self.KERNELS[self.kernel]
         single = X_query.ndim == 1
         if single:

@@ -1,9 +1,12 @@
 use crate::{KernelType, Shape, array::NdArray, spatial::common::DistanceMetric};
 use rayon::prelude::*;
+use serde::{Deserialize, Serialize};
+
+
 
 const KDE_PAR_THRESHOLD: usize = 512;
 
-#[derive(Clone, Debug)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AggNode {
     pub center: Vec<f64>,
     pub radius: f64,
@@ -18,7 +21,7 @@ pub struct AggNode {
 }
 
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AggTree {
     pub nodes: Vec<AggNode>,
     pub indices: Vec<usize>,

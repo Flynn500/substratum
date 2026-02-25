@@ -1,7 +1,8 @@
 use std::{cmp::Ordering};
 use crate::stats::special::gamma;
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub enum DistanceMetric {
     Euclidean,
     Manhattan,
@@ -21,7 +22,7 @@ impl DistanceMetric {
 }
 
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
 pub enum KernelType {
     Gaussian,
     Epanechnikov,

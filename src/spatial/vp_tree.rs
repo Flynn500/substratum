@@ -2,7 +2,9 @@ use std::{cmp::Ordering};
 use crate::{array::{NdArray, Shape}, spatial::common::{DistanceMetric}};
 use crate::random::Generator;
 use super::spatial_query::{SpatialQuery};
-#[derive(Clone, Copy, Debug, Default)]
+use serde::{Deserialize, Serialize};
+
+#[derive(Clone, Copy, Debug, Default, Serialize, Deserialize)]
 pub enum VantagePointSelection {
     #[default]
     First,
@@ -23,7 +25,7 @@ impl VantagePointSelection{
 }
 
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct VPNode {
     pub start: usize,
     pub end: usize,
@@ -37,7 +39,7 @@ pub struct VPNode {
 }
 
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct VPTree {
     pub nodes: Vec<VPNode>,
     pub indices: Vec<usize>,

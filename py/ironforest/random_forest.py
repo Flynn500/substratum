@@ -88,7 +88,7 @@ class RandomForestClassifier:
         rng = random.Random(self.random_state)
 
         self.trees_ = []
-        for i in range(self.n_estimators):
+        for _ in range(self.n_estimators):
             indices = [rng.randint(0, n_samples - 1) for _ in range(n_samples)]
 
             X_boot = ndutils.asarray([X[idx, col] for idx in indices for col in range(n_features)])
