@@ -4,7 +4,8 @@ This file provides type hints for the Rust-based _core module, including
 tree_engine classes and other core functionality.
 """
 
-from typing import Optional
+from typing import Optional, TypeVar, Generic, Sequence
+T_co = TypeVar("T_co", covariant=True)
 
 class TaskType:
     """Task type for tree algorithms."""
@@ -217,22 +218,22 @@ class linalg:
     """Linear algebra functions."""
 
     @staticmethod
-    def matmul(a: ArrayLike, b: ArrayLike) -> Array:
+    def matmul(a: ArrayLike, b: ArrayLike) -> Array[float]:
         """Matrix multiplication."""
         ...
 
     @staticmethod
-    def dot(a: ArrayLike, b: ArrayLike) -> Array:
+    def dot(a: ArrayLike, b: ArrayLike) -> Array[float]:
         """Dot/matrix product."""
         ...
 
     @staticmethod
-    def transpose(a: ArrayLike) -> Array:
+    def transpose(a: ArrayLike) -> Array[float]:
         """Transpose a 2D matrix."""
         ...
 
     @staticmethod
-    def cholesky(a: ArrayLike) -> Array:
+    def cholesky(a: ArrayLike) -> Array[float]:
         """Compute Cholesky decomposition.
 
         Returns lower triangular matrix L where A = L @ L.T.
@@ -243,7 +244,7 @@ class linalg:
         ...
 
     @staticmethod
-    def qr(a: ArrayLike) -> tuple[Array, Array]:
+    def qr(a: ArrayLike) -> tuple[Array[float], Array[float]]:
         """QR decomposition.
 
         Returns (Q, R) where A = Q @ R, Q is orthogonal and R is upper triangular.
@@ -254,7 +255,7 @@ class linalg:
         ...
 
     @staticmethod
-    def lstsq(a: ArrayLike, b: ArrayLike) -> tuple[Array, Array]:
+    def lstsq(a: ArrayLike, b: ArrayLike) -> tuple[Array[float], Array[float]]:
         """Return the least-squares solution to a linear matrix equation.
 
         Solves the equation ax = b by computing a vector x that minimizes
@@ -273,7 +274,7 @@ class linalg:
         ...
 
     @staticmethod
-    def weighted_lstsq(a: ArrayLike, b: ArrayLike, weights: ArrayLike) -> tuple[Array, Array]:
+    def weighted_lstsq(a: ArrayLike, b: ArrayLike, weights: ArrayLike) -> tuple[Array[float], Array[float]]:
         """Return the weighted least-squares solution to a linear matrix equation.
 
         Solves the equation ax = b by computing a vector x that minimizes
@@ -294,7 +295,7 @@ class linalg:
         ...
 
     @staticmethod
-    def eig(a: ArrayLike) -> tuple[Array, Array]:
+    def eig(a: ArrayLike) -> tuple[Array[float], Array[float]]:
         """Compute eigenvalues and eigenvectors.
 
         Returns:
@@ -308,7 +309,7 @@ class linalg:
         ...
 
     @staticmethod
-    def eig_with_params(a: ArrayLike, max_iter: int = 1000, tol: float = 1e-10) -> tuple[Array, Array]:
+    def eig_with_params(a: ArrayLike, max_iter: int = 1000, tol: float = 1e-10) -> tuple[Array[float], Array[float]]:
         """Eigendecomposition with custom iteration parameters.
 
         Args:
@@ -325,7 +326,7 @@ class linalg:
         ...
 
     @staticmethod
-    def eigvals(a: ArrayLike) -> Array:
+    def eigvals(a: ArrayLike) -> Array[float]:
         """Compute eigenvalues only.
 
         More efficient than eig() when eigenvectors are not needed.
@@ -339,12 +340,12 @@ class linalg:
         ...
 
     @staticmethod
-    def diagonal(a: ArrayLike, k: int | None = None) -> Array:
+    def diagonal(a: ArrayLike, k: int | None = None) -> Array[float]:
         """Extract the k-th diagonal from a 2D array."""
         ...
 
     @staticmethod
-    def outer(a: ArrayLike, b: ArrayLike) -> Array:
+    def outer(a: ArrayLike, b: ArrayLike) -> Array[float]:
         """Compute the outer product of two 1D arrays.
 
         Args:
@@ -393,7 +394,7 @@ class stats:
 
     @overload
     @staticmethod
-    def quantile(a: ArrayLike, q: ArrayLike) -> Array:
+    def quantile(a: ArrayLike, q: ArrayLike) -> Array[float]:
         """Compute multiple quantiles at once (vectorized).
 
         Args:
@@ -462,11 +463,11 @@ class random:
             """Create a generator."""
             ...
 
-        def uniform(self, low: float, high: float, shape: Sequence[int]) -> Array: ...
-        def standard_normal(self, shape: Sequence[int]) -> Array: ...
-        def normal(self, mu: float, sigma: float, shape: Sequence[int]) -> Array: ...
+        def uniform(self, low: float, high: float, shape: Sequence[int]) -> Array[float]: ...
+        def standard_normal(self, shape: Sequence[int]) -> Array[float]: ...
+        def normal(self, mu: float, sigma: float, shape: Sequence[int]) -> Array[float]: ...
         def randint(self, low: int, high: int, shape: Sequence[int]) -> Array: ...
-        def gamma(self, shape_param: float, scale: float, shape: Sequence[int]) -> Array:
+        def gamma(self, shape_param: float, scale: float, shape: Sequence[int]) -> Array[float]:
             """Generate gamma-distributed random samples.
 
             Args:
@@ -478,7 +479,7 @@ class random:
                 Array of gamma-distributed samples.
             """
             ...
-        def beta(self, alpha: float, beta: float, shape: Sequence[int]) -> Array:
+        def beta(self, alpha: float, beta: float, shape: Sequence[int]) -> Array[float]:
             """Generate beta-distributed random samples.
 
             Args:
@@ -491,7 +492,7 @@ class random:
             """
             ...
 
-        def lognormal(self, mu: float, sigma: float, shape: Sequence[int]) -> Array:
+        def lognormal(self, mu: float, sigma: float, shape: Sequence[int]) -> Array[float]:
             """Generate log-normal distributed random samples.
 
             Args:
@@ -641,7 +642,7 @@ class ndutils:
         ...
 
 
-class Array(Sequence[float]):
+class Array(Sequence[T_co], Generic[T_co]):
     """N-dimensional array of float64 or int64 values."""
 
     def __init__(self, shape: Sequence[int], data: Sequence[float] | Sequence[int], dtype: Dtype | None = None) -> None:
@@ -765,28 +766,28 @@ class Array(Sequence[float]):
         """
         ...
 
-    def matmul(self, other: Array) -> Array:
+    def matmul(self, other: Array) -> Array[float]:
         """Matrix multiplication."""
         ...
 
-    def dot(self, other: Array) -> Array:
+    def dot(self, other: Array) -> Array[float]:
         """Dot/matrix product."""
         ...
 
-    def __matmul__(self, other: Array) -> Array:
+    def __matmul__(self, other: Array) -> Array[float]:
         """Matrix multiplication operator (@)."""
         ...
 
 
-    def sin(self) -> Array: ...
-    def cos(self) -> Array: ...
-    def tan(self) -> Array: ...
-    def arcsin(self) -> Array: ...
-    def arccos(self) -> Array: ...
-    def arctan(self) -> Array: ...
-    def exp(self) -> Array: ...
-    def sqrt(self) -> Array: ...
-    def log(self) -> Array:
+    def sin(self) -> Array[float]: ...
+    def cos(self) -> Array[float]: ...
+    def tan(self) -> Array[float]: ...
+    def arcsin(self) -> Array[float]: ...
+    def arccos(self) -> Array[float]: ...
+    def arctan(self) -> Array[float]: ...
+    def exp(self) -> Array[float]: ...
+    def sqrt(self) -> Array[float]: ...
+    def log(self) -> Array[float]:
         """Natural logarithm, element-wise."""
         ...
     def abs(self) -> Array:
@@ -823,7 +824,7 @@ class Array(Sequence[float]):
         """q-th quantile of all elements (q in [0, 1])."""
         ...
     @overload
-    def quantile(self, q: ArrayLike) -> Array:
+    def quantile(self, q: ArrayLike) -> Array[float]:
         """Compute multiple quantiles at once (vectorized).
 
         Args:
@@ -1027,6 +1028,77 @@ class models:
 class spatial:
     """Spatial data structures and algorithms."""
 
+    class SpatialResult:
+        """Result of a spatial query (knn or radius search).
+
+        Attributes:
+            indices: Array of indices into the original data.
+                Shape (n,) for single queries, (n_queries, k) for batch knn,
+                or flat (total,) for batch radius (use ``counts`` to split).
+            distances: Array of distances corresponding to each index.
+                Same shape as ``indices``.
+            counts: Only present for batch radius queries. Shape (n_queries,),
+                giving the number of results per query. Use to partition
+                ``indices`` and ``distances`` into per-query slices.
+        """
+
+        indices: Array[int]
+        distances: Array[float]
+        counts: Array[int] | None
+
+        def mean_distance(self) -> float | Array[float]:
+            """Mean distance across results.
+
+            Returns a scalar for single queries, or an array of per-query
+            means for batch queries.
+            """
+            ...
+
+        def min_distance(self) -> float | Array[float]:
+            """Minimum distance across results.
+
+            Returns a scalar for single queries, or an array of per-query
+            minimums for batch queries.
+            """
+            ...
+
+        def max_distance(self) -> float | Array[float]:
+            """Maximum distance across results.
+
+            Returns a scalar for single queries, or an array of per-query
+            maximums for batch queries.
+            """
+            ...
+
+        def median_distance(self) -> float | Array[float]:
+            """Median distance across results.
+
+            Returns a scalar for single queries, or an array of per-query
+            medians for batch queries.
+            """
+            ...
+
+        def count(self) -> float | Array[int]:
+            """Number of results per query.
+
+            Returns a scalar for single queries, or an array of per-query
+            counts for batch queries.
+            """
+            ...
+
+        def centroid(self, data: Array) -> Array[float]:
+            """Centroid of result points per query.
+
+            Args:
+                data: The tree's data in original index order, as returned
+                    by ``tree.data()``. Shape (n_points, dim).
+
+            Returns:
+                Shape (dim,) for single queries, or (n_queries, dim) for
+                batch queries. Returns NaN for queries with no results.
+            """
+            ...
+
     class BallTree:
         """Ball tree for efficient nearest neighbor queries.
 
@@ -1036,7 +1108,7 @@ class spatial:
 
         @staticmethod
         def from_array(
-            array: Array,
+            array: Array[float],
             leaf_size: int = 20,
             metric: Literal["euclidean", "manhattan", "chebyshev"] = "euclidean"
         ) -> "spatial.BallTree":
@@ -1062,7 +1134,7 @@ class spatial:
             """
             ...
 
-        def query_radius(self, query: ArrayLike, radius: float) -> Union[Tuple[Array, Array], Tuple[Array, Array, Array]]:
+        def query_radius(self, query: ArrayLike, radius: float) -> "spatial.SpatialResult":
             """Find all points within a given radius of the query point.
 
             Args:
@@ -1077,7 +1149,7 @@ class spatial:
             """
             ...
 
-        def query_knn(self, query: ArrayLike, k: int) -> Tuple[Array, Array]:
+        def query_knn(self, query: ArrayLike, k: int) -> "spatial.SpatialResult":
             """Find the k nearest neighbors to the query point.
 
             Args:
@@ -1092,7 +1164,7 @@ class spatial:
             ...
 
         @overload
-        def data(self, indices: ArrayLike) -> Array:
+        def data(self, indices: ArrayLike) -> Array[float]:
             """Return training-data rows at specific original indices.
 
             Args:
@@ -1108,7 +1180,7 @@ class spatial:
             ...
 
         @overload
-        def data(self, indices: None = None) -> Array:
+        def data(self, indices: None = None) -> Array[float]:
             """Return all training-data points in original index order.
 
             Returns:
@@ -1205,7 +1277,7 @@ class spatial:
 
         @staticmethod
         def from_array(
-            array: Array,
+            array: Array[float],
             leaf_size: int = 20,
             metric: Literal["euclidean", "manhattan", "chebyshev"] = "euclidean"
         ) -> "spatial.KDTree":
@@ -1231,7 +1303,7 @@ class spatial:
             """
             ...
 
-        def query_radius(self, query: ArrayLike, radius: float)-> Union[Tuple[Array, Array], Tuple[Array, Array, Array]]:
+        def query_radius(self, query: ArrayLike, radius: float)-> "spatial.SpatialResult":
             """Find all points within a given radius of the query point.
 
             Args:
@@ -1246,7 +1318,7 @@ class spatial:
             """
             ...
 
-        def query_knn(self, query: ArrayLike, k: int) -> Tuple[Array, Array]:
+        def query_knn(self, query: ArrayLike, k: int) -> "spatial.SpatialResult":
             """Find the k nearest neighbors to the query point.
 
             Args:
@@ -1366,7 +1438,7 @@ class spatial:
 
         @staticmethod
         def from_array(
-            array: Array,
+            array: Array[float],
             leaf_size: int = 20,
             metric: Literal["euclidean", "manhattan", "chebyshev"] = "euclidean",
             selection: Literal["first", "random"] = "first"
@@ -1397,7 +1469,7 @@ class spatial:
             """
             ...
 
-        def query_radius(self, query: ArrayLike, radius: float) -> Union[Tuple[Array, Array], Tuple[Array, Array, Array]]:
+        def query_radius(self, query: ArrayLike, radius: float) -> "spatial.SpatialResult":
             """Find all points within a given radius of the query point.
 
             Args:
@@ -1412,7 +1484,7 @@ class spatial:
             """
             ...
 
-        def query_knn(self, query: ArrayLike, k: int) -> Tuple[Array, Array]:
+        def query_knn(self, query: ArrayLike, k: int) -> "spatial.SpatialResult":
             """Find the k nearest neighbors to the query point.
 
             Args:
@@ -1427,9 +1499,9 @@ class spatial:
             ...
 
         @overload
-        def data(self, indices: ArrayLike) -> Array: ...
+        def data(self, indices: ArrayLike) -> Array[float]: ...
         @overload
-        def data(self, indices: None = None) -> Array:
+        def data(self, indices: None = None) -> Array[float]:
             """Return training-data rows at original indices, or all points if omitted.
 
             Args:
@@ -1532,7 +1604,7 @@ class spatial:
 
         @staticmethod
         def from_array(
-            array: Array,
+            array: Array[float],
             leaf_size: int = 20,
             metric: Literal["euclidean", "manhattan", "chebyshev"] = "euclidean",
             kernel: Literal["gaussian", "epanechnikov", "uniform", "triangular"] = "gaussian",
@@ -1635,7 +1707,7 @@ class spatial:
 
         @staticmethod
         def from_array(
-            array: Array,
+            array: Array[float],
             metric: Literal["euclidean", "manhattan", "chebyshev"] = "euclidean"
         ) -> "spatial.BruteForce":
             """Construct a BruteForce search structure from a 2D array of points.
@@ -1657,7 +1729,7 @@ class spatial:
             """
             ...
 
-        def query_radius(self, query: ArrayLike, radius: float) -> Union[Tuple[Array, Array], Tuple[Array, Array, Array]]:
+        def query_radius(self, query: ArrayLike, radius: float) -> "spatial.SpatialResult":
             """Find all points within a given radius of the query point.
 
             Args:
@@ -1672,7 +1744,7 @@ class spatial:
             """
             ...
 
-        def query_knn(self, query: ArrayLike, k: int) -> Tuple[Array, Array]:
+        def query_knn(self, query: ArrayLike, k: int) -> "spatial.SpatialResult":
             """Find the k nearest neighbors to the query point.
 
             Args:
@@ -1686,9 +1758,9 @@ class spatial:
             ...
 
         @overload
-        def data(self, indices: ArrayLike) -> Array: ...
+        def data(self, indices: ArrayLike) -> Array[float]: ...
         @overload
-        def data(self, indices: None = None) -> Array:
+        def data(self, indices: None = None) -> Array[float]:
             """Return training-data rows at original indices, or all points if omitted.
 
             Args:

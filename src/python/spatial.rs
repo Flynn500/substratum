@@ -5,6 +5,184 @@ use crate::array::{NdArray, Shape};
 use crate::spatial::{BallTree, KDTree, VPTree, AggTree, BruteForce, VantagePointSelection, DistanceMetric, KernelType, SpatialQuery};
 use super::{PyArray, ArrayData, ArrayLike};
 
+#[pyclass(name = "SpatialResult")]
+pub struct PySpatialResult {
+    #[pyo3(get)]
+    indices: PyArray,
+    #[pyo3(get)]
+    distances: PyArray,
+    #[pyo3(get)]
+    counts: Option<PyArray>,
+    n_queries: usize,
+    k: Option<usize>,
+}
+
+//helper for spatial results
+fn scalar_or_array(py: Python<'_>, values: Vec<f64>, is_single: bool) -> PyResult<Py<PyAny>> {
+    if is_single {
+        Ok(values[0].into_pyobject(py)?.into_any().unbind())
+    } else {
+        let n = values.len();
+        Ok(PyArray {
+            inner: ArrayData::Float(NdArray::from_vec(Shape::d1(n), values)),
+        }.into_pyobject(py)?.into_any().unbind())
+    }
+}
+
+impl PySpatialResult {
+    pub fn from_single(indices: Vec<i64>, distances: Vec<f64>) -> Self {
+        let n = indices.len();
+        PySpatialResult {
+            indices: PyArray { inner: ArrayData::Int(NdArray::from_vec(Shape::d1(n), indices)) },
+            distances: PyArray { inner: ArrayData::Float(NdArray::from_vec(Shape::d1(n), distances)) },
+            counts: None,
+            n_queries: 1,
+            k: None,
+        }
+    }
+
+    pub fn from_batch_knn(indices: Vec<i64>, distances: Vec<f64>, n_queries: usize, k: usize) -> Self {
+        PySpatialResult {
+            indices: PyArray { inner: ArrayData::Int(NdArray::from_vec(Shape::new(vec![n_queries, k]), indices)) },
+            distances: PyArray { inner: ArrayData::Float(NdArray::from_vec(Shape::new(vec![n_queries, k]), distances)) },
+            counts: None,
+            n_queries,
+            k: Some(k),
+        }
+    }
+
+    pub fn from_batch_radius(indices: Vec<i64>, distances: Vec<f64>, counts: Vec<i64>) -> Self {
+        let n_queries = counts.len();
+        let total = indices.len();
+        PySpatialResult {
+            indices: PyArray { inner: ArrayData::Int(NdArray::from_vec(Shape::d1(total), indices)) },
+            distances: PyArray { inner: ArrayData::Float(NdArray::from_vec(Shape::d1(total), distances)) },
+            counts: Some(PyArray { inner: ArrayData::Int(NdArray::from_vec(Shape::d1(n_queries), counts)) }),
+            n_queries,
+            k: None,
+        }
+    }
+
+    fn per_query_distances(&self) -> Vec<&[f64]> {
+        let dist_slice = self.distances.as_float().unwrap().as_slice();
+        if self.n_queries == 1 {
+            vec![dist_slice]
+        } else if let Some(k) = self.k {
+            dist_slice.chunks_exact(k).collect()
+        } else {
+            let counts = self.counts.as_ref().unwrap();
+            let mut offset = 0;
+            counts.as_float().unwrap().as_slice().iter().map(|&c| {
+                let c = c as usize;
+                let slice = &dist_slice[offset..offset + c];
+                offset += c;
+                slice
+            }).collect()
+        }
+    }
+
+    fn per_query_indices(&self) -> Vec<&[i64]> {
+        let idx_slice = self.indices.as_int().unwrap().as_slice();
+        if self.n_queries == 1 {
+            vec![idx_slice]
+        } else if let Some(k) = self.k {
+            idx_slice.chunks_exact(k).collect()
+        } else {
+            let counts = self.counts.as_ref().unwrap();
+            let mut offset = 0;
+            counts.as_float().unwrap().as_slice().iter().map(|&c| {
+                let c = c as usize;
+                let slice = &idx_slice[offset..offset + c];
+                offset += c;
+                slice
+            }).collect()
+        }
+    }
+}
+
+#[pymethods]
+impl PySpatialResult {
+    // fn split(&self, py: Python<'_>) -> PyResult<Py<PyAny>>{
+
+    // }
+
+    fn mean_distance(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {
+        let means: Vec<f64> = self.per_query_distances().iter().map(|d| {
+            if d.is_empty() { f64::NAN } else { d.iter().sum::<f64>() / d.len() as f64 }
+        }).collect();
+        scalar_or_array(py, means, self.n_queries == 1)
+    }
+
+    fn min_distance(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {
+        let mins: Vec<f64> = self.per_query_distances().iter().map(|d| {
+            d.iter().copied().fold(f64::NAN, f64::min)
+        }).collect();
+        scalar_or_array(py, mins, self.n_queries == 1)
+    }
+
+    fn max_distance(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {
+        let maxes: Vec<f64> = self.per_query_distances().iter().map(|d| {
+            d.iter().copied().fold(f64::NAN, f64::max)
+        }).collect();
+        scalar_or_array(py, maxes, self.n_queries == 1)
+    }
+
+    fn median_distance(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {
+        let medians: Vec<f64> = self.per_query_distances().iter().map(|d| {
+            if d.is_empty() { return f64::NAN; }
+            let mut sorted: Vec<f64> = d.to_vec();
+            sorted.sort_unstable_by(|a, b| a.partial_cmp(b).unwrap());
+            let mid = sorted.len() / 2;
+            if sorted.len() % 2 == 0 {
+                (sorted[mid - 1] + sorted[mid]) / 2.0
+            } else {
+                sorted[mid]
+            }
+        }).collect();
+        scalar_or_array(py, medians, self.n_queries == 1)
+    }
+
+    fn count(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {
+        let counts: Vec<f64> = self.per_query_distances().iter()
+            .map(|d| d.len() as f64)
+            .collect();
+        scalar_or_array(py, counts, self.n_queries == 1)
+    }
+
+    fn centroid(&self, data: &PyArray) -> PyResult<PyArray> {
+        let data_arr = data.as_float()?;
+        let data_slice = data_arr.as_slice();
+        let dim = data_arr.shape().dims()[1];
+        let chunks = self.per_query_indices();
+
+        let mut result = Vec::with_capacity(chunks.len() * dim);
+        for indices in &chunks {
+            if indices.is_empty() {
+                result.extend(std::iter::repeat(f64::NAN).take(dim));
+                continue;
+            }
+            let mut centroid = vec![0.0f64; dim];
+            for &idx in *indices {
+                let row = &data_slice[idx as usize * dim..(idx as usize + 1) * dim];
+                for (c, &v) in centroid.iter_mut().zip(row) {
+                    *c += v;
+                }
+            }
+            let n = indices.len() as f64;
+            for c in &mut centroid {
+                *c /= n;
+            }
+            result.extend(centroid);
+        }
+
+        let n_queries = chunks.len();
+        if self.n_queries == 1 {
+            Ok(PyArray { inner: ArrayData::Float(NdArray::from_vec(Shape::d1(dim), result)) })
+        } else {
+            Ok(PyArray { inner: ArrayData::Float(NdArray::from_vec(Shape::new(vec![n_queries, dim]), result)) })
+        }
+    }
+}
 
 
 fn get_tree_data(
@@ -102,7 +280,7 @@ macro_rules! impl_spatial_query_methods {
     ($py_type:ty) => {
         #[pymethods]
         impl $py_type {
-            fn query_radius(&self, py: Python<'_>, query: ArrayLike, radius: f64) -> PyResult<Py<PyAny>> {
+            fn query_radius(&self, query: ArrayLike, radius: f64) -> PyResult<PySpatialResult> {
                 let is_batch = query.ndim() == 2;
                 let queries_arr = query.into_spatial_query_ndarray(self.inner.dim)?;
                 if is_batch {
@@ -117,25 +295,17 @@ macro_rules! impl_spatial_query_methods {
                             all_distances.push(d);
                         }
                     }
-                    let total = all_indices.len();
-                    let n_queries = counts.len();
-                    let idx = PyArray { inner: ArrayData::Int(NdArray::from_vec(Shape::d1(total), all_indices)) };
-                    let dst = PyArray { inner: ArrayData::Float(NdArray::from_vec(Shape::d1(total), all_distances)) };
-                    let cnt = PyArray { inner: ArrayData::Int(NdArray::from_vec(Shape::d1(n_queries), counts)) };
-                    Ok((idx, dst, cnt).into_pyobject(py)?.into_any().unbind())
+                    Ok(PySpatialResult::from_batch_radius(all_indices, all_distances, counts))
                 } else {
                     let query_slice = &queries_arr.as_slice()[..self.inner.dim];
                     let results = self.inner.query_radius(query_slice, radius);
                     let (indices, distances): (Vec<i64>, Vec<f64>) = results.into_iter()
                         .map(|(i, d)| (i as i64, d)).unzip();
-                    let n = indices.len();
-                    let idx = PyArray { inner: ArrayData::Int(NdArray::from_vec(Shape::d1(n), indices)) };
-                    let dst = PyArray { inner: ArrayData::Float(NdArray::from_vec(Shape::d1(n), distances)) };
-                    Ok((idx, dst).into_pyobject(py)?.into_any().unbind())
+                    Ok(PySpatialResult::from_single(indices, distances))
                 }
             }
 
-            fn query_knn(&self, query: ArrayLike, k: usize) -> PyResult<(PyArray, PyArray)> {
+            fn query_knn(&self, query: ArrayLike, k: usize) -> PyResult<PySpatialResult> {
                 let is_batch = query.ndim() == 2;
                 let queries_arr = query.into_spatial_query_ndarray(self.inner.dim)?;
                 let n_queries = queries_arr.shape().dims()[0];
@@ -145,20 +315,13 @@ macro_rules! impl_spatial_query_methods {
                         .flatten()
                         .map(|(i, d)| (i as i64, d))
                         .unzip();
-                    Ok((
-                        PyArray { inner: ArrayData::Int(NdArray::from_vec(Shape::new(vec![n_queries, k]), indices)) },
-                        PyArray { inner: ArrayData::Float(NdArray::from_vec(Shape::new(vec![n_queries, k]), distances)) },
-                    ))
+                    Ok(PySpatialResult::from_batch_knn(indices, distances, n_queries, k))
                 } else {
                     let query_slice = &queries_arr.as_slice()[..self.inner.dim];
                     let results = self.inner.query_knn(query_slice, k);
                     let (indices, distances): (Vec<i64>, Vec<f64>) = results.into_iter()
                         .map(|(i, d)| (i as i64, d)).unzip();
-                    let n = indices.len();
-                    Ok((
-                        PyArray { inner: ArrayData::Int(NdArray::from_vec(Shape::d1(n), indices)) },
-                        PyArray { inner: ArrayData::Float(NdArray::from_vec(Shape::d1(n), distances)) },
-                    ))
+                    Ok(PySpatialResult::from_single(indices, distances))
                 }
             }
 
@@ -211,7 +374,7 @@ pub struct PyBallTree {
     inner: BallTree,
 }
 
-#[pymethods]
+#[pymethods] //not an error ide only
 impl PyBallTree {
     #[staticmethod]
     #[pyo3(signature = (array, leaf_size=20, metric="euclidean"))]
@@ -229,7 +392,7 @@ pub struct PyKDTree {
     inner: KDTree,
 }
 
-#[pymethods]
+#[pymethods] //not an error ide only
 impl PyKDTree {
     #[staticmethod]
     #[pyo3(signature = (array, leaf_size=20, metric="euclidean"))]
@@ -247,7 +410,7 @@ pub struct PyVPTree {
     inner: VPTree,
 }
 
-#[pymethods]
+#[pymethods] //not an error ide only
 impl PyVPTree {
     #[staticmethod]
     #[pyo3(signature = (array, leaf_size=20, metric="euclidean", selection="first"))]
@@ -267,7 +430,7 @@ pub struct PyBruteForce {
     inner: BruteForce,
 }
 
-#[pymethods]
+#[pymethods] //not an error ide only
 impl PyBruteForce {
     #[staticmethod]
     #[pyo3(signature = (array, metric="euclidean"))]

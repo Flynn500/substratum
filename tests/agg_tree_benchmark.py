@@ -18,13 +18,10 @@ def benchmark_aggtree(points, queries, bandwidth, leaf_size=32):
                                         kernel="gaussian", bandwidth=bandwidth, atol=0.01)
         .kernel_density(q, normalize=True)
     )
-    # result = (
-    #     irn.spatial.KDTree.from_array(p, leaf_size=leaf_size, metric="euclidean")
-    #     .kernel_density(q, bandwidth=bandwidth, kernel="gaussian", normalize=True)
-    # )
+
     t1 = time.perf_counter()
 
-    return np.array(irn.Array.to_numpy(result)), t1 - t0 # type: ignore
+    return np.array(irn.Array.to_numpy(result)), t1 - t0 
 
 
 def benchmark_sklearn(points, queries, bandwidth, leaf_size=32):

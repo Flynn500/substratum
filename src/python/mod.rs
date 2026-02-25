@@ -213,6 +213,15 @@ impl PyArray {
             )),
         }
     }
+
+    pub fn as_int(&self) -> PyResult<&NdArray<i64>> {
+        match &self.inner {
+            ArrayData::Int(a) => Ok(a),
+            ArrayData::Float(_) => Err(PyTypeError::new_err(
+                "operation not supported for integer arrays"
+            )),
+        }
+    }
 }
 
 pub mod array;

@@ -12,12 +12,14 @@ points = gen.uniform(0.0, 100.0, [100, 2])
 tree = irn.spatial.VPTree.from_array(points, leaf_size=10)
 
 query_point = [50.0, 50.0]
-neighbors = tree.query_knn(query_point, k=5)
+result = tree.query_knn(query_point, k=5)
 
-print(neighbors)
+for output_idx, original_idx in enumerate(result.indices):
+    print(f"point: {points[original_idx]}, dist: {result.distances[output_idx]}")
+
+print(f"{result.median_distance()}, {result.mean_distance()}, {result.min_distance()}")
 ```
-Output: 
-`[(28, 7.435055148638418), (34, 7.549053283615578), (3, 8.55705353151589), (43, 8.961446938534534), (45, 9.772273124615534)]`
+
 
 ## Installation
 
@@ -29,7 +31,7 @@ You can also build with `maturin build --release` assuming maturin is installed.
 Spatial trees support kNN, radius, and KDE queries.
 
 - KDTree - axis-aligned splits, best for low-to-moderate dimensions
-- BallTree - metric-based splits, handles higher dimensions well
+- BallTree - pivot-based splits, handles higher dimensions well
 - VPTree - vantage-point splits, strong in general metric spaces
 - AggTree - approximate KDE via aggregated nodes, tunable accuracy via atol
 
@@ -41,6 +43,10 @@ IronForest includes tree-based ML models that run entirely on the Rust core no e
 - Isolation Forest
 
 ## Supporting Modules
+
+### Additional Models
+- Linear Regression
+- Local Regression
 
 ### Array
 - An N-dimensional array object with broadcasting
