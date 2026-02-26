@@ -104,7 +104,7 @@ impl MTree {
                 self.insert_into_leaf(node_idx, point, point_idx, dist_to_parent)
             }
             MNode::Internal { .. } => {
-                 self.insert_into_internal(node_idx, point, point_idx, dist_to_parent)
+                 self.insert_into_internal(node_idx, point, point_idx)
             }
         }
     }
@@ -173,7 +173,7 @@ impl MTree {
         best_idx
     }
 
-    fn insert_into_internal(&mut self, node_idx: usize, point: Vec<f64>, point_idx: usize, dist_to_parent: f64) -> Option<(RoutingEntry, RoutingEntry)> {
+    fn insert_into_internal(&mut self, node_idx: usize, point: Vec<f64>, point_idx: usize) -> Option<(RoutingEntry, RoutingEntry)> {
         let best_entry_idx = self.pick_best_child(node_idx, &point);
 
         let MNode::Internal { entries, .. } = &self.nodes[node_idx] else { unreachable!() };
@@ -453,7 +453,8 @@ impl MTree {
                     } else {
                         0.0
                     };
-
+                    
+                    //single point so don't need to multiply by n
                     if kernel.evaluate(lb, h) < 1e-10 {
                         continue;
                     }

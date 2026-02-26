@@ -1177,6 +1177,34 @@ class spatial:
                 ValueError: If metric is not one of the valid options.
             """
             ...
+        
+        def __init__(
+            self,
+            data: ArrayLike,
+            leaf_size: int = 20,
+            metric: Literal["euclidean", "manhattan", "chebyshev"] = "euclidean"
+        ):
+            """Construct a ball tree from a 2D array of points.
+
+            Args:
+                data: ArrayLike (n_points, n_features) containing the data points.
+                leaf_size: Maximum number of points in a leaf node. Smaller values lead to
+                    faster queries but slower construction and more memory usage.
+                    Defaults to 20.
+                metric: Distance metric to use for measuring distances between points.
+                    Options are:
+                    - "euclidean": Standard Euclidean (L2) distance (default)
+                    - "manhattan": Manhattan (L1) distance (taxicab distance)
+                    - "chebyshev": Chebyshev (L∞) distance (maximum coordinate difference)
+
+            Returns:
+                A constructed BallTree instance.
+
+            Raises:
+                AssertionError: If array is not 2-dimensional.
+                ValueError: If metric is not one of the valid options.
+            """
+            ...
 
         def query_radius(self, query: ArrayLike, radius: float) -> "spatial.SpatialResult":
             """Find all points within a given radius of the query point.
@@ -1351,6 +1379,34 @@ class spatial:
 
             Args:
                 array: 2D array of shape (n_points, n_features) containing the data points.
+                leaf_size: Maximum number of points in a leaf node. Smaller values lead to
+                    faster queries but slower construction and more memory usage.
+                    Defaults to 20.
+                metric: Distance metric to use for measuring distances between points.
+                    Options are:
+                    - "euclidean": Standard Euclidean (L2) distance (default)
+                    - "manhattan": Manhattan (L1) distance (taxicab distance)
+                    - "chebyshev": Chebyshev (L∞) distance (maximum coordinate difference)
+
+            Returns:
+                A constructed KDTree instance.
+
+            Raises:
+                AssertionError: If array is not 2-dimensional.
+                ValueError: If metric is not one of the valid options.
+            """
+            ...
+
+        def __init__(
+            self,
+            data: ArrayLike,
+            leaf_size: int = 20,
+            metric: Literal["euclidean", "manhattan", "chebyshev"] = "euclidean"
+        ):
+            """Construct a KD-tree from a 2D array of points.
+
+            Args:
+                data: ArrayLike (n_points, n_features) containing the data points.
                 leaf_size: Maximum number of points in a leaf node. Smaller values lead to
                     faster queries but slower construction and more memory usage.
                     Defaults to 20.
@@ -1556,6 +1612,39 @@ class spatial:
                 ValueError: If metric or selection is not one of the valid options.
             """
             ...
+        
+        def __init__(
+            self,
+            data: ArrayLike,
+            leaf_size: int = 20,
+            metric: Literal["euclidean", "manhattan", "chebyshev"] = "euclidean",
+            selection: Literal["first", "random"] = "first"
+        ):
+            """Construct a vantage-point tree from a 2D array of points.
+
+            Args:
+                data: ArrayLike (n_points, n_features) containing the data points.
+                leaf_size: Maximum number of points in a leaf node. Smaller values lead to
+                    faster queries but slower construction and more memory usage.
+                    Defaults to 20.
+                metric: Distance metric to use for measuring distances between points.
+                    Options are:
+                    - "euclidean": Standard Euclidean (L2) distance (default)
+                    - "manhattan": Manhattan (L1) distance (taxicab distance)
+                    - "chebyshev": Chebyshev (L∞) distance (maximum coordinate difference)
+                selection: Method for selecting vantage points during tree construction.
+                    Options are:
+                    - "first": Always select the first point in the partition (default)
+                    - "random": Randomly select a point from the partition
+
+            Returns:
+                A constructed VPTree instance.
+
+            Raises:
+                AssertionError: If array is not 2-dimensional.
+                ValueError: If metric or selection is not one of the valid options.
+            """
+            ...
 
         def query_radius(self, query: ArrayLike, radius: float) -> "spatial.SpatialResult":
             """Find all points within a given radius of the query point.
@@ -1721,6 +1810,34 @@ class spatial:
 
             Args:
                 array: 2D array of shape (n_points, n_features) containing the data points.
+                capacity: Maximum number of entries per node before a split occurs.
+                    Larger values produce shallower trees but may slow queries.
+                    Defaults to 50.
+                metric: Distance metric to use for measuring distances between points.
+                    Options are:
+                    - "euclidean": Standard Euclidean (L2) distance (default)
+                    - "manhattan": Manhattan (L1) distance (taxicab distance)
+                    - "chebyshev": Chebyshev (L∞) distance (maximum coordinate difference)
+
+            Returns:
+                A constructed MTree instance.
+
+            Raises:
+                AssertionError: If array is not 2-dimensional.
+                ValueError: If metric is not one of the valid options.
+            """
+            ...
+        
+        def __init__(
+            self,
+            data: ArrayLike,
+            capacity: int = 50,
+            metric: Literal["euclidean", "manhattan", "chebyshev"] = "euclidean"
+        ):
+            """Construct an M-tree from a 2D array of points.
+
+            Args:
+                data: ArrayLike (n_points, n_features) containing the data points.
                 capacity: Maximum number of entries per node before a split occurs.
                     Larger values produce shallower trees but may slow queries.
                     Defaults to 50.
@@ -1959,6 +2076,49 @@ class spatial:
             """
             ...
         
+        def __init__(
+            self,
+            data: ArrayLike,
+            leaf_size: int = 20,
+            metric: Literal["euclidean", "manhattan", "chebyshev"] = "euclidean",
+            kernel: Literal["gaussian", "epanechnikov", "uniform", "triangular"] = "gaussian",
+            bandwidth: float = 1.0,
+            atol: float = 0.01,
+        ):
+            """Construct an aggregation tree from a 2D array of points.
+
+            Args:
+                data: ArrayLike (n_points, n_features) containing the data points.
+                leaf_size: Maximum number of points in a leaf node. Smaller values lead to
+                    faster queries but slower construction and more memory usage.
+                    Defaults to 20.
+                metric: Distance metric to use for measuring distances between points.
+                    Options are:
+                    - "euclidean": Standard Euclidean (L2) distance (default)
+                    - "manhattan": Manhattan (L1) distance (taxicab distance)
+                    - "chebyshev": Chebyshev (L∞) distance (maximum coordinate difference)
+                kernel: Kernel function used to determine node error bounds at build time.
+                    Options are:
+                    - "gaussian": Gaussian (normal) kernel (default)
+                    - "epanechnikov": Epanechnikov kernel
+                    - "uniform": Uniform (rectangular) kernel
+                    - "triangular": Triangular kernel
+                bandwidth: Bandwidth used when computing node error bounds at build time.
+                    Defaults to 1.0.
+                atol: Absolute tolerance for approximation. Nodes whose maximum
+                    absolute error is below this threshold are approximated using a
+                    Taylor expansion rather than evaluated exactly. Smaller values
+                    give more accurate results at the cost of speed. Defaults to 0.01.
+
+            Returns:
+                A constructed AggTree instance.
+
+            Raises:
+                AssertionError: If array is not 2-dimensional.
+                ValueError: If metric or kernel is not one of the valid options.
+            """
+            ...
+        
         def save(self, path: str) -> None:
             """Serialize the tree to disk in MessagePack format.
 
@@ -2055,6 +2215,30 @@ class spatial:
 
             Args:
                 array: 2D array of shape (n_points, n_features) containing the data points.
+                metric: Distance metric to use for measuring distances between points.
+                    Options are:
+                    - "euclidean": Standard Euclidean (L2) distance (default)
+                    - "manhattan": Manhattan (L1) distance (taxicab distance)
+                    - "chebyshev": Chebyshev (L∞) distance (maximum coordinate difference)
+
+            Returns:
+                A constructed BruteForce instance.
+
+            Raises:
+                AssertionError: If array is not 2-dimensional.
+                ValueError: If metric is not one of the valid options.
+            """
+            ...
+
+        def __init__(
+            self,
+            data: Array[float],
+            metric: Literal["euclidean", "manhattan", "chebyshev"] = "euclidean"
+        ):
+            """Construct a BruteForce search structure from a 2D array of points.
+
+            Args:
+                data: ArrayLike (n_points, n_features) containing the data points.
                 metric: Distance metric to use for measuring distances between points.
                     Options are:
                     - "euclidean": Standard Euclidean (L2) distance (default)

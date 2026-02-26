@@ -7,8 +7,18 @@ The spatial module holds a variety of tree structures, each possesing kNN, raidu
 
 ```python
 import ironforest as irn
+
+#from ArrayLike input - python list, numpy array, ironforest array
 data: Array = ...
 
+tree = irn.spatial.KDTree(
+    data,
+    leaf_size=20,
+    metric="euclidean"
+)
+
+#from ironforest Array
+data = ...
 
 tree = irn.spatial.KDTree.from_array(
     data,

@@ -494,6 +494,20 @@ impl PyBallTree {
         let tree = BallTree::from_ndarray(array.as_float()?, leaf_size, metric);
         Ok(PyBallTree { inner: Some(tree) })
     }
+
+    #[new]
+    #[pyo3(signature = (array, leaf_size=20, metric="euclidean"))]
+    fn __init__(
+        array: ArrayLike,
+        leaf_size: Option<usize>,
+        metric: Option<&str>,
+    ) -> PyResult<Self> {
+        let leaf_size = leaf_size.unwrap_or(20);
+        let metric = parse_metric(metric.unwrap_or("euclidean"))?;
+        let data = array.into_ndarray()?;
+        let tree = BallTree::from_ndarray(&data, leaf_size, metric);
+        Ok(PyBallTree { inner: Some(tree) })
+    }
 }
 
 #[pyclass(name = "KDTree")]
@@ -509,6 +523,20 @@ impl PyKDTree {
         let leaf_size = leaf_size.unwrap_or(20);
         let metric = parse_metric(metric.unwrap_or("euclidean"))?;
         let tree = KDTree::from_ndarray(array.as_float()?, leaf_size, metric);
+        Ok(PyKDTree { inner: Some(tree) })
+    }
+
+    #[new]
+    #[pyo3(signature = (array, leaf_size=20, metric="euclidean"))]
+    fn __init__(
+        array: ArrayLike,
+        leaf_size: Option<usize>,
+        metric: Option<&str>,
+    ) -> PyResult<Self> {
+        let leaf_size = leaf_size.unwrap_or(20);
+        let metric = parse_metric(metric.unwrap_or("euclidean"))?;
+        let data = array.into_ndarray()?;
+        let tree = KDTree::from_ndarray(&data, leaf_size, metric);
         Ok(PyKDTree { inner: Some(tree) })
     }
 }
@@ -529,6 +557,22 @@ impl PyVPTree {
         let tree = VPTree::from_ndarray(array.as_float()?, leaf_size, metric, selection_method);
         Ok(PyVPTree { inner: Some(tree) })
     }
+
+    #[new]
+    #[pyo3(signature = (array, leaf_size=20, metric="euclidean", selection="first"))]
+    fn __init__(
+        array: ArrayLike,
+        leaf_size: Option<usize>,
+        metric: Option<&str>,
+        selection: Option<&str>,
+    ) -> PyResult<Self> {
+        let leaf_size = leaf_size.unwrap_or(20);
+        let metric = parse_metric(metric.unwrap_or("euclidean"))?;
+        let selection_method = parse_vantage_selection(selection.unwrap_or("first"))?;
+        let data = array.into_ndarray()?;
+        let tree = VPTree::from_ndarray(&data, leaf_size, metric, selection_method);
+        Ok(PyVPTree { inner: Some(tree) })
+    }
 }
 
 #[pyclass(name = "BruteForce")]
@@ -543,6 +587,18 @@ impl PyBruteForce {
     fn from_array(array: &PyArray, metric: Option<&str>) -> PyResult<Self> {
         let metric = parse_metric(metric.unwrap_or("euclidean"))?;
         let tree = BruteForce::from_ndarray(array.as_float()?, metric);
+        Ok(PyBruteForce { inner: Some(tree) })
+    }
+
+    #[new]
+    #[pyo3(signature = (array, metric="euclidean"))]
+    fn __init__(
+        array: ArrayLike,
+        metric: Option<&str>,
+    ) -> PyResult<Self> {
+        let metric = parse_metric(metric.unwrap_or("euclidean"))?;
+        let data = array.into_ndarray()?;
+        let tree = BruteForce::from_ndarray(&data, metric);
         Ok(PyBruteForce { inner: Some(tree) })
     }
 }
@@ -570,6 +626,26 @@ impl PyAggTree {
         let bandwidth = bandwidth.unwrap_or(1.0);
         let atol = atol.unwrap_or(0.01);
         let tree = AggTree::from_ndarray(array.as_float()?, leaf_size, metric, kernel, bandwidth, atol);
+        Ok(PyAggTree { inner: Some(tree) })
+    }
+
+    #[new]
+    #[pyo3(signature = (array, leaf_size=20, metric="euclidean", kernel="gaussian", bandwidth=1.0, atol=0.01))]
+    fn __init__(
+        array: ArrayLike,
+        leaf_size: Option<usize>,
+        metric: Option<&str>,
+        kernel: Option<&str>,
+        bandwidth: Option<f64>,
+        atol: Option<f64>,
+    ) -> PyResult<Self> {
+        let leaf_size = leaf_size.unwrap_or(20);
+        let metric = parse_metric(metric.unwrap_or("euclidean"))?;
+        let kernel = parse_kernel(kernel.unwrap_or("gaussian"))?;
+        let bandwidth = bandwidth.unwrap_or(1.0);
+        let atol = atol.unwrap_or(0.01);
+        let data = array.into_ndarray()?;
+        let tree = AggTree::from_ndarray(&data, leaf_size, metric, kernel, bandwidth, atol);
         Ok(PyAggTree { inner: Some(tree) })
     }
 
@@ -617,6 +693,20 @@ impl PyMTree {
         let capacity = capacity.unwrap_or(50);
         let metric = parse_metric(metric.unwrap_or("euclidean"))?;
         let tree = MTree::from_ndarray(array.as_float()?, capacity, metric);
+        Ok(PyMTree { inner: Some(tree) })
+    }
+
+    #[new]
+    #[pyo3(signature = (array, capacity=20, metric="euclidean"))]
+    fn __init__(
+        array: ArrayLike,
+        capacity: Option<usize>,
+        metric: Option<&str>,
+    ) -> PyResult<Self> {
+        let capacity = capacity.unwrap_or(20);
+        let metric = parse_metric(metric.unwrap_or("euclidean"))?;
+        let data = array.into_ndarray()?;
+        let tree = MTree::from_ndarray(&data, capacity, metric);
         Ok(PyMTree { inner: Some(tree) })
     }
 

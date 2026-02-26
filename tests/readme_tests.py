@@ -12,3 +12,5 @@ for output_idx, original_idx in enumerate(result.indices):
 
 print(f"{result.median_distance()}, {result.mean_distance()}, {result.min_distance()}")
 
+print(result.split())
+
