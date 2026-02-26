@@ -1203,6 +1203,33 @@ class spatial:
                 float64 Array of shape ``(n_points, n_features)``.
             """
             ...
+        
+        def save(self, path: str) -> None:
+            """Serialize the tree to disk in MessagePack format.
+
+            Args:
+                path: File path to write to. Will be created or overwritten.
+
+            Example:
+                >>> tree = KDTree.from_array(data)
+                >>> tree.save("my_tree.mpack")
+            """
+            ...
+
+        @staticmethod
+        def load(path: str) -> "spatial.BallTree":
+            """Deserialize a tree from disk.
+
+            Args:
+                path: File path to read from.
+
+            Returns:
+                A ``KDTree`` instance restored from the saved state.
+
+            Example:
+                >>> tree = KDTree.load("my_tree.mpack")
+            """
+            ...
 
         @overload
         def kernel_density(
@@ -1361,6 +1388,33 @@ class spatial:
             Returns:
                 float64 Array of shape ``(len(indices), n_features)`` or
                 ``(n_points, n_features)`` when called without arguments.
+            """
+            ...
+        
+        def save(self, path: str) -> None:
+            """Serialize the tree to disk in MessagePack format.
+
+            Args:
+                path: File path to write to. Will be created or overwritten.
+
+            Example:
+                >>> tree = KDTree.from_array(data)
+                >>> tree.save("my_tree.mpack")
+            """
+            ...
+
+        @staticmethod
+        def load(path: str) -> "spatial.KDTree":
+            """Deserialize a tree from disk.
+
+            Args:
+                path: File path to read from.
+
+            Returns:
+                A ``KDTree`` instance restored from the saved state.
+
+            Example:
+                >>> tree = KDTree.load("my_tree.mpack")
             """
             ...
 
@@ -1529,6 +1583,33 @@ class spatial:
                 ``(n_points, n_features)`` when called without arguments.
             """
             ...
+        
+        def save(self, path: str) -> None:
+            """Serialize the tree to disk in MessagePack format.
+
+            Args:
+                path: File path to write to. Will be created or overwritten.
+
+            Example:
+                >>> tree = KDTree.from_array(data)
+                >>> tree.save("my_tree.mpack")
+            """
+            ...
+
+        @staticmethod
+        def load(path: str) -> "spatial.VPTree":
+            """Deserialize a tree from disk.
+
+            Args:
+                path: File path to read from.
+
+            Returns:
+                A ``KDTree`` instance restored from the saved state.
+
+            Example:
+                >>> tree = KDTree.load("my_tree.mpack")
+            """
+            ...
 
         @overload
         def kernel_density(
@@ -1660,6 +1741,33 @@ class spatial:
                 ValueError: If metric or kernel is not one of the valid options.
             """
             ...
+        
+        def save(self, path: str) -> None:
+            """Serialize the tree to disk in MessagePack format.
+
+            Args:
+                path: File path to write to. Will be created or overwritten.
+
+            Example:
+                >>> tree = KDTree.from_array(data)
+                >>> tree.save("my_tree.mpack")
+            """
+            ...
+
+        @staticmethod
+        def load(path: str) -> "spatial.AggTree":
+            """Deserialize a tree from disk.
+
+            Args:
+                path: File path to read from.
+
+            Returns:
+                A ``KDTree`` instance restored from the saved state.
+
+            Example:
+                >>> tree = KDTree.load("my_tree.mpack")
+            """
+            ...
 
         @overload
         def kernel_density(
@@ -1786,6 +1894,33 @@ class spatial:
             Returns:
                 float64 Array of shape ``(len(indices), n_features)`` or
                 ``(n_points, n_features)`` when called without arguments.
+            """
+            ...
+        
+        def save(self, path: str) -> None:
+            """Serialize the tree to disk in MessagePack format.
+
+            Args:
+                path: File path to write to. Will be created or overwritten.
+
+            Example:
+                >>> tree = KDTree.from_array(data)
+                >>> tree.save("my_tree.mpack")
+            """
+            ...
+
+        @staticmethod
+        def load(path: str) -> "spatial.BruteForce":
+            """Deserialize a tree from disk.
+
+            Args:
+                path: File path to read from.
+
+            Returns:
+                A ``KDTree`` instance restored from the saved state.
+
+            Example:
+                >>> tree = KDTree.load("my_tree.mpack")
             """
             ...
 

@@ -179,7 +179,3 @@ if __name__ == "__main__":
     print(f"  {'query':<8} {'AggTree':>12} {'irn.KDTree':>12} {'sklearn':>12}")
     for i in range(5):
         print(f"  {i:<8} {agg[i]:>12.6f} {kd[i]:>12.6f} {sk[i]:>12.6f}")
-
-
-
-

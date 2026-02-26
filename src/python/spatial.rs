@@ -4,6 +4,9 @@ use pyo3::types::PyAny;
 use crate::array::{NdArray, Shape};
 use crate::spatial::{BallTree, KDTree, VPTree, AggTree, BruteForce, VantagePointSelection, DistanceMetric, KernelType, SpatialQuery};
 use super::{PyArray, ArrayData, ArrayLike};
+use pyo3::types::PyBytes;
+use rmp_serde;
+use std::io::{Write, Read};
 
 // =============================================================================
 // Result Type
@@ -213,7 +216,7 @@ fn get_tree_data(
     dim: usize,
     indices: Option<ArrayLike>,
 ) -> PyResult<PyArray> {
-    use pyo3::exceptions::PyValueError;
+    
 
     let mut original_data = vec![0.0f64; n_points * dim];
     for (tree_pos, &orig_idx) in tree_indices.iter().enumerate() {
@@ -391,6 +394,63 @@ impl_spatial_query_methods!(PyBallTree);
 impl_spatial_query_methods!(PyKDTree);
 impl_spatial_query_methods!(PyVPTree);
 impl_spatial_query_methods!(PyBruteForce);
+
+
+// =============================================================================
+// Serialization Macro
+// =============================================================================
+//
+// Generates __get_state__ and __set_state__ methods for pickle compatibility and
+// a custom save and load method for direct saving and loading of spatial trees.
+
+
+macro_rules! impl_serialization_methods {
+    ($py_type:ty, $inner_type:ty, $constructor:ident) => {
+        #[pymethods]
+        impl $py_type {
+            fn __getstate__<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyBytes>> {
+                let bytes = rmp_serde::to_vec(tree!(self))
+                    .map_err(|e| PyValueError::new_err(e.to_string()))?;
+                Ok(PyBytes::new(py, &bytes))
+            }
+
+            fn __setstate__(&mut self, state: &Bound<'_, PyBytes>) -> PyResult<()> {
+                
+                self.inner = Some(
+                    rmp_serde::from_slice(state.as_bytes())
+                        .map_err(|e| PyValueError::new_err(e.to_string()))?
+                );
+                Ok(())
+            }
+
+            fn save(&self, path: &str) -> PyResult<()> {
+
+                let bytes = rmp_serde::to_vec(tree!(self))
+                    .map_err(|e| PyValueError::new_err(e.to_string()))?;
+                std::fs::File::create(path)
+                    .and_then(|mut f| f.write_all(&bytes))
+                    .map_err(|e| PyValueError::new_err(e.to_string()))
+            }
+
+            #[staticmethod]
+            fn load(path: &str) -> PyResult<$py_type> {
+                let mut bytes = Vec::new();
+                std::fs::File::open(path)
+                    .and_then(|mut f| f.read_to_end(&mut bytes))
+                    .map_err(|e| PyValueError::new_err(e.to_string()))?;
+                let inner = rmp_serde::from_slice(&bytes)
+                    .map_err(|e| PyValueError::new_err(e.to_string()))?;
+                Ok($constructor { inner: Some(inner) })
+            }
+        }
+    };
+}
+
+impl_serialization_methods!(PyBallTree, BallTree, PyBallTree);
+impl_serialization_methods!(PyKDTree, KDTree, PyKDTree);
+impl_serialization_methods!(PyVPTree, VPTree, PyVPTree);
+impl_serialization_methods!(PyBruteForce, BruteForce, PyBruteForce);
+impl_serialization_methods!(PyAggTree, AggTree, PyAggTree);
 
 // =============================================================================
 // Tree Types
