@@ -2,7 +2,6 @@ use pyo3::prelude::*;
 use pyo3::exceptions::PyValueError;
 use pyo3::types::PyAny;
 use crate::array::{NdArray, Shape};
-use crate::spatial::m_tree::MNode;
 use crate::spatial::{BallTree, KDTree, VPTree, AggTree, MTree, BruteForce, VantagePointSelection, DistanceMetric, KernelType, SpatialQuery};
 use super::{PyArray, ArrayData, ArrayLike};
 use pyo3::types::PyBytes;

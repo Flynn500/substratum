@@ -1,9 +1,24 @@
+"""Random Forest classifier and regressor built on tree_engine."""
 
 from typing import Optional, Literal
-from ironforest._core import Array, ndutils, Tree, TreeConfig, TaskType, SplitCriterion
-import random
+from ironforest._core import (
+    Array,
+    ndutils,
+    Ensemble,
+    EnsembleConfig,
+    TreeConfig,
+    TaskType,
+    SplitCriterion,
+)
+
 
 class RandomForestClassifier:
+    """Random forest classifier.
+
+    Builds an ensemble of decision trees on bootstrap samples
+    and aggregates predictions via majority voting.
+    """
+
     def __init__(
         self,
         *,
@@ -15,28 +30,16 @@ class RandomForestClassifier:
         criterion: Literal["gini", "entropy"] = "gini",
         random_state: int = 42,
     ):
-        """Random forest classifier.
-
-        Args:
-            n_estimators: int, default=100
-                The number of trees in the forest.
-            max_depth: int or None, default=None
-                The maximum depth of each tree. If None, nodes are expanded
-                until all leaves are pure or contain fewer than
-                min_samples_split samples.
-            min_samples_split: int, default=2
-                The minimum number of samples required to split an internal node.
-            min_samples_leaf: int, default=1
-                The minimum number of samples required to be at a leaf node.
-            max_features: int or None, default=None
-                The number of features to consider when looking for the best split.
-                If None, sqrt(n_features) is used.
-            criterion: {"gini", "entropy"}, default="gini"
-                The function to measure the quality of a split.
-            random_state: int, default=42
-                Controls the randomness of the bootstrapping and tree construction.
         """
-
+        Args:
+            n_estimators: Number of trees in the forest.
+            max_depth: Maximum depth of each tree. None for unlimited.
+            min_samples_split: Minimum samples required to split a node.
+            min_samples_leaf: Minimum samples required at a leaf node.
+            max_features: Features to consider per split. None uses sqrt(n_features).
+            criterion: Split quality measure, "gini" or "entropy".
+            random_state: Controls randomness of bootstrapping and tree construction.
+        """
         self.n_estimators = n_estimators
         self.max_depth = max_depth
         self.min_samples_split = min_samples_split
@@ -44,26 +47,20 @@ class RandomForestClassifier:
         self.max_features = max_features
         self.criterion = criterion
         self.random_state = random_state
-        self.trees_ = []
+        self.ensemble_ = None
         self.n_classes_ = None
         self.n_features_ = None
 
     def fit(self, X, y):
         """Build a random forest classifier from the training set (X, y).
 
-        The forest is built by training multiple decision trees on
-        bootstrap samples of the dataset and aggregating their predictions.
-
         Args:
-            X: Array or array-like of shape (n_samples, n_features)
-                The training input samples.
-            y: Array or array-like of shape (n_samples,)
-                The target values (class labels).
+            X: Array or array-like of shape (n_samples, n_features).
+            y: Array or array-like of shape (n_samples,), class labels.
 
         Returns:
-            self : RandomForestClassifier
+            self
         """
-
         if not isinstance(X, Array):
             X = ndutils.asarray(X)
         if not isinstance(y, Array):
@@ -83,50 +80,47 @@ class RandomForestClassifier:
         self.n_classes_ = int(y.max()) + 1
         self.n_features_ = n_features
 
-        max_features = self.max_features or int(n_features ** 0.5) or 1
-        
-        rng = random.Random(self.random_state)
+        criterion_map = {
+            "gini": SplitCriterion.gini(),
+            "entropy": SplitCriterion.entropy(),
+        }
 
-        self.trees_ = []
-        for _ in range(self.n_estimators):
-            indices = [rng.randint(0, n_samples - 1) for _ in range(n_samples)]
+        tree_config = TreeConfig(
+            task_type=TaskType.classification(),
+            n_classes=self.n_classes_,
+            max_depth=self.max_depth,
+            min_samples_split=self.min_samples_split,
+            min_samples_leaf=self.min_samples_leaf,
+            max_features=self.max_features,
+            criterion=criterion_map[self.criterion],
+            seed=self.random_state,
+        )
 
-            X_boot = ndutils.asarray([X[idx, col] for idx in indices for col in range(n_features)])
-            y_boot = ndutils.asarray([y[idx] for idx in indices])
+        config = EnsembleConfig(
+            n_trees=self.n_estimators,
+            tree_config=tree_config,
+            bootstrap=True,
+            max_samples=None,
+            seed=self.random_state,
+        )
 
-            config = TreeConfig(
-                task_type=TaskType.classification(),
-                n_classes=self.n_classes_,
-                max_depth=self.max_depth,
-                min_samples_split=self.min_samples_split,
-                min_samples_leaf=self.min_samples_leaf,
-                max_features=max_features,
-                criterion={"gini": SplitCriterion.gini(), "entropy": SplitCriterion.entropy()}[self.criterion],
-                seed=rng.randint(0, 2**31),
-            )
+        X_flat = X.ravel()
+        y_flat = y.ravel()
 
-            tree = Tree.fit(config, X_boot, y_boot, n_samples, n_features)
-            self.trees_.append(tree)
+        self.ensemble_ = Ensemble.fit(config, X_flat, y_flat, n_samples, n_features)
 
         return self
 
     def predict(self, X):
-        """Build a random forest classifier from the training set (X, y).
-
-        The forest is built by training multiple decision trees on
-        bootstrap samples of the dataset and aggregating their predictions.
+        """Predict class labels for samples in X.
 
         Args:
-            X: Array or array-like of shape (n_samples, n_features)
-                The training input samples.
-            y: Array or array-like of shape (n_samples,)
-                The target values (class labels).
+            X: Array or array-like of shape (n_samples, n_features).
 
         Returns:
-            self : RandomForestClassifier
+            Array of shape (n_samples,): predicted class labels.
         """
-
-        if not self.trees_:
+        if self.ensemble_ is None:
             raise ValueError("This RandomForestClassifier instance is not fitted yet")
 
         if not isinstance(X, Array):
@@ -138,19 +132,16 @@ class RandomForestClassifier:
         n_samples = X.shape[0]
         X_flat = X.ravel()
 
-        all_preds = [tree.predict(X_flat, n_samples) for tree in self.trees_]
-
-        results = []
-        for i in range(n_samples):
-            votes = [0] * self.n_classes_ # type: ignore
-            for preds in all_preds:
-                votes[int(preds[i])] += 1
-            results.append(float(votes.index(max(votes))))
-
-        return ndutils.asarray(results)
+        return self.ensemble_.predict(X_flat, n_samples)
 
 
 class RandomForestRegressor:
+    """Random forest regressor.
+
+    Builds an ensemble of decision trees on bootstrap samples
+    and averages their predictions.
+    """
+
     def __init__(
         self,
         *,
@@ -161,50 +152,34 @@ class RandomForestRegressor:
         max_features: Optional[int] = None,
         random_state: int = 42,
     ):
-        """Random forest regressor.
-
-        Args:
-            n_estimators: int, default=100
-                The number of trees in the forest.
-            max_depth: int or None, default=None
-                The maximum depth of each tree. If None, nodes are expanded
-                until all leaves contain fewer than min_samples_split samples.
-            min_samples_split: int, default=2
-                The minimum number of samples required to split an internal node.
-            min_samples_leaf: int, default=1
-                The minimum number of samples required to be at a leaf node.
-            max_features: int or None, default=None
-                The number of features to consider when looking for the best split.
-                If None, all features are considered.
-            random_state: int, default=42
-                Controls the randomness of the bootstrapping and tree construction.
         """
-
+        Args:
+            n_estimators: Number of trees in the forest.
+            max_depth: Maximum depth of each tree. None for unlimited.
+            min_samples_split: Minimum samples required to split a node.
+            min_samples_leaf: Minimum samples required at a leaf node.
+            max_features: Features to consider per split. None uses n_features/3.
+            random_state: Controls randomness of bootstrapping and tree construction.
+        """
         self.n_estimators = n_estimators
         self.max_depth = max_depth
         self.min_samples_split = min_samples_split
         self.min_samples_leaf = min_samples_leaf
         self.max_features = max_features
         self.random_state = random_state
-        self.trees_ = []
+        self.ensemble_ = None
         self.n_features_ = None
 
     def fit(self, X, y):
         """Build a random forest regressor from the training set (X, y).
 
-        The forest is built by training multiple decision trees on
-        bootstrap samples of the dataset and averaging their predictions.
-
         Args:
-            X: Array or array-like of shape (n_samples, n_features)
-                The training input samples.
-            y: Array or array-like of shape (n_samples,)
-                The target values.
+            X: Array or array-like of shape (n_samples, n_features).
+            y: Array or array-like of shape (n_samples,), target values.
 
         Returns:
-            self : RandomForestRegressor
+            self
         """
-
         if not isinstance(X, Array):
             X = ndutils.asarray(X)
         if not isinstance(y, Array):
@@ -223,49 +198,42 @@ class RandomForestRegressor:
 
         self.n_features_ = n_features
 
-        max_features = self.max_features or n_features
+        tree_config = TreeConfig(
+            task_type=TaskType.regression(),
+            n_classes=0,
+            max_depth=self.max_depth,
+            min_samples_split=self.min_samples_split,
+            min_samples_leaf=self.min_samples_leaf,
+            max_features=self.max_features,
+            criterion=SplitCriterion.mse(),
+            seed=self.random_state,
+        )
 
-        rng = random.Random(self.random_state)
+        config = EnsembleConfig(
+            n_trees=self.n_estimators,
+            tree_config=tree_config,
+            bootstrap=True,
+            max_samples=None,
+            seed=self.random_state,
+        )
 
-        self.trees_ = []
-        for _ in range(self.n_estimators):
-            indices = [rng.randint(0, n_samples - 1) for _ in range(n_samples)]
+        X_flat = X.ravel()
+        y_flat = y.ravel()
 
-            X_boot = ndutils.asarray([X[idx, col] for idx in indices for col in range(n_features)])
-            y_boot = ndutils.asarray([y[idx] for idx in indices])
-
-            config = TreeConfig(
-                task_type=TaskType.regression(),
-                n_classes=0,
-                max_depth=self.max_depth,
-                min_samples_split=self.min_samples_split,
-                min_samples_leaf=self.min_samples_leaf,
-                max_features=max_features,
-                criterion=SplitCriterion.mse(),
-                seed=rng.randint(0, 2**31),
-            )
-
-            tree = Tree.fit(config, X_boot, y_boot, n_samples, n_features)
-            self.trees_.append(tree)
+        self.ensemble_ = Ensemble.fit(config, X_flat, y_flat, n_samples, n_features)
 
         return self
-    
+
     def predict(self, X):
         """Predict regression targets for samples in X.
 
-        The predicted value for each sample is computed as the mean
-        prediction of all trees in the forest.
-
         Args:
-            X: Array or array-like of shape (n_samples, n_features)
-                The input samples.
+            X: Array or array-like of shape (n_samples, n_features).
 
         Returns:
-            Array of shape (n_samples,)
-                The predicted values.
+            Array of shape (n_samples,): predicted values.
         """
-
-        if not self.trees_:
+        if self.ensemble_ is None:
             raise ValueError("This RandomForestRegressor instance is not fitted yet")
 
         if not isinstance(X, Array):
@@ -277,11 +245,4 @@ class RandomForestRegressor:
         n_samples = X.shape[0]
         X_flat = X.ravel()
 
-        all_preds = [tree.predict(X_flat, n_samples) for tree in self.trees_]
-
-        results = []
-        for i in range(n_samples):
-            total = sum(preds[i] for preds in all_preds)
-            results.append(total / len(self.trees_))
-
-        return ndutils.asarray(results)
+        return self.ensemble_.predict(X_flat, n_samples)

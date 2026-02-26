@@ -1,8 +1,17 @@
 """Isolation Forest for anomaly detection built on tree_engine."""
 
 from typing import Optional
-from ironforest._core import Array, ndutils, Tree, TreeConfig, TaskType, SplitCriterion
-import random
+from ironforest._core import (
+    Array,
+    ndutils,
+    Ensemble,
+    EnsembleConfig,
+    Tree,
+    TreeConfig,
+    TaskType,
+    SplitCriterion,
+)
+
 
 class IsolationForest:
     """Isolation Forest for anomaly detection.
@@ -25,22 +34,13 @@ class IsolationForest:
         """Isolation forest for anomaly detection.
 
         Args:
-            n_estimators: int, default=100
-                The number of isolation trees in the forest.
-            max_samples: int, default=256
-                The number of samples to draw from X to train each tree.
-                If max_samples is larger than the number of samples provided,
-                all samples will be used for all trees (no sampling).
-            contamination: float, default=0.1
-                The proportion of outliers in the dataset. Used to define the
-                threshold for the decision function. Must be in (0, 0.5].
-            max_features: int or None, default=None
-                The number of features to consider when looking for the best split.
-                If None, all features are considered.
-            random_state: int, default=42
-                Controls the randomness of the sampling and tree construction.
+            n_estimators: Number of isolation trees in the forest.
+            max_samples: Number of samples to draw to train each tree.
+                If larger than n_samples, all samples are used.
+            contamination: Proportion of outliers in the dataset, in (0, 0.5].
+            max_features: Number of features per split. None uses all features.
+            random_state: Controls randomness of sampling and tree construction.
         """
-
         if contamination <= 0 or contamination > 0.5:
             raise ValueError(f"contamination must be in (0, 0.5], got {contamination}")
 
@@ -49,27 +49,20 @@ class IsolationForest:
         self.contamination = contamination
         self.max_features = max_features
         self.random_state = random_state
-        self.trees_ = []
+        self.ensemble_ = None
         self.n_features_ = None
-        self.offset_ = None
         self.threshold_ = None
 
     def fit(self, X, y=None):
         """Build an isolation forest from the training set X.
 
-        The forest is built by training multiple isolation trees on
-        random subsamples of the dataset.
-
         Args:
-            X: Array or array-like of shape (n_samples, n_features)
-                The training input samples.
-            y: Ignored
-                Not used, present for API consistency by convention.
+            X: Array or array-like of shape (n_samples, n_features).
+            y: Ignored. Present for API consistency.
 
         Returns:
-            self : IsolationForest
+            self
         """
-
         if not isinstance(X, Array):
             X = ndutils.asarray(X)
 
@@ -80,89 +73,72 @@ class IsolationForest:
         self.n_features_ = n_features
 
         max_samples = min(self.max_samples, n_samples)
-        max_features = self.max_features or n_features
 
-        rng = random.Random(self.random_state)
-
-        self.trees_ = []
-        for _ in range(self.n_estimators):
-            if max_samples < n_samples:
-                indices = rng.sample(range(n_samples), max_samples)
-            else:
-                indices = list(range(n_samples))
-
-            X_sample = ndutils.asarray([X[idx, col] for idx in indices for col in range(n_features)])
-
-            config = TreeConfig(
-                task_type=TaskType.anomaly_detection(),
-                n_classes=0,
-                max_depth=None,
-                min_samples_split=2,
-                min_samples_leaf=1,
-                max_features=max_features,
-                criterion=SplitCriterion.random(),
-                seed=rng.randint(0, 2**31),
+        if self.max_features is not None:
+            config = EnsembleConfig(
+                n_trees=self.n_estimators,
+                tree_config=TreeConfig(
+                    task_type=TaskType.anomaly_detection(),
+                    n_classes=0,
+                    max_depth=None,
+                    min_samples_split=2,
+                    min_samples_leaf=1,
+                    max_features=self.max_features,
+                    criterion=SplitCriterion.random(),
+                    seed=self.random_state,
+                ),
+                bootstrap=False,
+                max_samples=max_samples,
+                seed=self.random_state,
             )
+        else:
+            config = EnsembleConfig.isolation_forest(self.n_estimators, max_samples)
+            config.seed = self.random_state
 
-            y_dummy = ndutils.asarray([0.0] * len(indices))
-            tree = Tree.fit(config, X_sample, y_dummy, len(indices), n_features)
-            self.trees_.append(tree)
+        X_flat = X.ravel()
+        y_dummy = ndutils.asarray([0.0] * n_samples)
 
-        self.offset_ = self._compute_offset(max_samples)
+        self.ensemble_ = Ensemble.fit(config, X_flat, y_dummy, n_samples, n_features)
 
+        # Rust returns positive scores: higher = more anomalous
         scores = self.score_samples(X)
-        sorted_scores = sorted(scores.tolist())
+        sorted_scores = sorted(scores.tolist(), reverse=True)
         threshold_idx = int(self.contamination * len(sorted_scores))
-        self.threshold_ = sorted_scores[threshold_idx]
+        self.threshold_ = sorted_scores[max(threshold_idx, 0)]
 
         return self
 
     def predict(self, X):
-        """Predict if a particular sample is an outlier or not.
+        """Predict outlier labels.
 
         Args:
-            X: Array or array-like of shape (n_samples, n_features)
-                The input samples.
+            X: Array or array-like of shape (n_samples, n_features).
 
         Returns:
-            Array of shape (n_samples,)
-                Returns -1 for anomalies/outliers and 1 for inliers.
+            Array of shape (n_samples,): -1 for anomalies, 1 for inliers.
         """
-
-        if not self.trees_:
-            raise ValueError("This IsolationForest instance is not fitted yet")
-
-        if self.threshold_ is None:
+        if self.ensemble_ is None:
             raise ValueError("This IsolationForest instance is not fitted yet")
 
         scores = self.score_samples(X)
         results = []
         for score in scores:
-            results.append(-1.0 if score < self.threshold_ else 1.0)
+            results.append(-1.0 if score >= self.threshold_ else 1.0)  # type: ignore
 
         return ndutils.asarray(results)
 
-    def score_samples(self, X):
+    def score_samples(self, X) -> Array:
         """Compute the anomaly score of each sample.
 
-        The anomaly score is computed as the negative average path length
-        in the trees, normalized by the expected path length. Lower scores
-        indicate anomalies.
+        Higher scores indicate more anomalous samples.
 
         Args:
-            X: Array or array-like of shape (n_samples, n_features)
-                The input samples.
+            X: Array or array-like of shape (n_samples, n_features).
 
         Returns:
-            Array of shape (n_samples,)
-                The anomaly score of the input samples. Lower scores indicate
-                anomalies, higher scores indicate normal instances.
+            Array of shape (n_samples,): anomaly scores.
         """
-
-        if not self.trees_:
-            raise ValueError("This IsolationForest instance is not fitted yet")
-
-        if self.offset_ is None:
+        if self.ensemble_ is None:
             raise ValueError("This IsolationForest instance is not fitted yet")
 
         if not isinstance(X, Array):
@@ -174,47 +150,73 @@ class IsolationForest:
         n_samples = X.shape[0]
         X_flat = X.ravel()
 
-        all_path_lengths = [tree.predict_path_lengths(X_flat, n_samples) for tree in self.trees_]
-
-        results = []
-        for i in range(n_samples):
-            avg_path_length = sum(paths[i] for paths in all_path_lengths) / len(self.trees_)
-            score = -2.0 ** (-avg_path_length / self.offset_)
-            results.append(score)
-
-        return ndutils.asarray(results)
+        return self.ensemble_.predict(X_flat, n_samples)  # type: ignore
 
     def decision_function(self, X):
         """Average anomaly score of X.
 
-        The anomaly score is based on the average path length in the trees.
-
         Args:
-            X: Array or array-like of shape (n_samples, n_features)
-                The input samples.
+            X: Array or array-like of shape (n_samples, n_features).
 
         Returns:
-            Array of shape (n_samples,)
-                The anomaly score. The more negative, the more anomalous.
+            Array of shape (n_samples,): anomaly scores.
         """
         return self.score_samples(X)
 
-    @staticmethod
-    def _compute_offset(n):
-        """Compute the offset for normalizing path lengths.
 
-        This is the average path length of an unsuccessful search in a BST,
-        which is used to normalize the path lengths.
+if __name__ == "__main__":
+    import random
 
-        Args:
-            n: Number of samples
+    random.seed(42)
 
-        Returns:
-            The normalization offset
-        """
-        if n <= 1:
-            return 1.0
-        if n == 2:
-            return 1.0
-        harmonic = sum(1.0 / i for i in range(1, n))
-        return 2.0 * harmonic - 2.0 * (n - 1) / n
+    # Generate normal data: 200 samples, 2 features, centered around 0
+    n_normal = 200
+    n_features = 2
+    normal_data = [random.gauss(0, 1) for _ in range(n_normal * n_features)]
+
+    # Generate anomalies: 20 samples far from center
+    n_anomalies = 20
+    anomaly_data = [random.gauss(0, 1) + random.choice([-5, 5]) for _ in range(n_anomalies * n_features)]
+
+    all_data = normal_data + anomaly_data
+    n_total = n_normal + n_anomalies
+
+    X = ndutils.asarray(all_data).reshape([n_total, n_features])
+
+    print(f"Dataset: {n_total} samples ({n_normal} normal, {n_anomalies} anomalies)")
+
+    iforest = IsolationForest(
+        n_estimators=100,
+        max_samples=128,
+        contamination=n_anomalies / n_total,
+        random_state=42,
+    )
+    iforest.fit(X)
+
+    predictions = iforest.predict(X)
+    scores = iforest.score_samples(X)
+
+    pred_list = predictions.tolist()
+    score_list = scores.tolist()
+
+    n_detected = sum(1 for p in pred_list if p == -1.0)
+    print(f"Detected {n_detected} anomalies out of {n_total} samples")
+    print(f"Threshold: {iforest.threshold_:.4f}")
+
+    # Check how many true anomalies were caught
+    true_anomaly_preds = pred_list[n_normal:]
+    caught = sum(1 for p in true_anomaly_preds if p == -1.0)
+    print(f"True anomalies caught: {caught}/{n_anomalies}")
+
+    # Check false positives in normal data
+    normal_preds = pred_list[:n_normal]
+    false_positives = sum(1 for p in normal_preds if p == -1.0)
+    print(f"False positives: {false_positives}/{n_normal}")
+
+    # Print a few scores
+    print("\nSample scores (first 5 normal, first 5 anomaly):")
+    for i in range(5):
+        print(f"  Normal[{i}]: score={score_list[i]:.4f}, pred={pred_list[i]}")
+    for i in range(5):
+        idx = n_normal + i
+        print(f"  Anomaly[{i}]: score={score_list[idx]:.4f}, pred={pred_list[idx]}")

@@ -28,7 +28,7 @@ print(f"{result.median_distance()}, {result.std_distance()}, {result.min_distanc
 You can also build with `maturin build --release` assuming maturin is installed.
 
 ## Spatial Trees
-Spatial trees support kNN, radius, and KDE queries.
+Spatial trees support kNN, radius, and KDE queries. All spatial trees support serialization via `save()` & `load()`, alternatively you can use pickle.
 
 - KDTree - axis-aligned splits, best for low-to-moderate dimensions
 - BallTree - pivot-based splits, handles higher dimensions well
