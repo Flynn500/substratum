@@ -1,63 +1,81 @@
 # Spatial Module
 The spatial module holds a variety of tree structures, each possesing kNN, raidus and KDE queries. These queries function nearly the same in each, although pruning rules differ between. They each vastly speed up these queries and excel in different scenarios.
-
-**Wishlist**
-- aNN trees,
-  - Random Projection trees
-  - aNN methods for current trees
-- Dynamic Insertion Trees
-  - M-Tree
-  - R-Tree
  
 ## Methods
 
-### query_radius()
+### Tree Creation
+
+```python
+import ironforest as irn
+data: Array = ...
+
+
+tree = irn.spatial.KDTree.from_array(
+    data,
+    leaf_size=20,
+    metric="euclidean"
+)
+```
+
+### Radius Query
 
 Find all points within a given radius of the query point.
 
-**Args**:  
-query: Query point (scalar, list, or array-like).  
-radius: Search radius. All points with distance <= radius are returned.
+```python
+query = [0.5, 0.5]
+radius = 0.2
 
-**Returns**:
-Tuple of (indices, distances) where indices is an int64 Array and
-distances is a float64 Array, both of length equal to the number of
-points found, in arbitrary order.
+result = tree.query_radius(query, radius)
+
+print("indices:", result.indices)
+print("distances:", result.distances)
+```
 
 ### query_knn()
 
 Find the k nearest neighbors to the query point.
 
-**Args**:  
-query: Query point (scalar, list, or array-like).  
-k: Number of nearest neighbors to return.
+```python
+query = [0.5, 0.5]
+k = 5
 
-**Returns**:
-Tuple of (indices, distances) where indices is an int64 Array and
-distances is a float64 Array, both sorted by distance (closest first).
-The indices can be used to look up the actual points in the original data.
+result = tree.query_knn(query, k)
+
+print("nearest indices:", result.indices)
+print("nearest distances:", result.distances)
+```
 
 ### kernel_density()
 
 Estimate kernel density at a single query point.
 
-**Args**:  
-queries: Single query point (scalar, list, or array-like).
-bandwidth: Bandwidth (smoothing parameter) for the kernel. Larger values
-    produce smoother estimates. Defaults to 1.0.
+```python
+query = [0.5, 0.5]
 
-kernel: Kernel function to use for density estimation. Options are:
-- "gaussian": Gaussian (normal) kernel (default)
-- "epanechnikov": Epanechnikov kernel
-- "uniform": Uniform (rectangular) kernel
-- "triangular": Triangular kernel
+density = tree.kernel_density(
+    query,
+    bandwidth=0.1,
+    kernel="gaussian",
+    normalize=True
+)
 
-Normalize: Bool to control whether normalized values are returned.
+print("density:", density)
+```
 
-**Returns**:
-    Density estimate at the query point (float).
+### Spatial Result
 
+kNN & radius queries return a spatial result object. 
 
+```python
+result: SpatialResult = ...
+
+#get standard outputs
+print(result.indices)
+print(result.distances)
+
+#Get more comprehensive query results
+print(result.centroid, result.median_distance, result.std_distance) 
+```
 
 
 ## Benchmarks

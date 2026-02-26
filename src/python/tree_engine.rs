@@ -233,7 +233,6 @@ impl PyTree {
         let data_arr = data.into_ndarray()?;
         let labels_arr = labels.into_ndarray()?;
 
-        // Validate shapes
         if data_arr.shape().size() != n_samples * n_features {
             return Err(PyValueError::new_err(format!(
                 "Data size {} doesn't match n_samples * n_features ({})",

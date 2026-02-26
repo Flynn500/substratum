@@ -1158,10 +1158,7 @@ class spatial:
                 radius: Search radius. All points with distance <= radius are returned.
 
             Returns:
-                For a single query: (indices, distances)
-                For a batch: (indices, distances, counts) where counts[i] is the
-                    number of results for query i. indices and distances are
-                    flattened; use counts to split them per query.
+                Spatial result object
             """
             ...
 
@@ -1173,9 +1170,7 @@ class spatial:
                 k: Number of nearest neighbors to return.
 
             Returns:
-                Tuple of (indices, distances) where indices is an int64 Array and
-                distances is a float64 Array, both sorted by distance (closest first).
-                The indices can be used to look up the actual points in the original data.
+                Spatial result object
             """
             ...
 
@@ -1211,7 +1206,7 @@ class spatial:
                 path: File path to write to. Will be created or overwritten.
 
             Example:
-                >>> tree = KDTree.from_array(data)
+                >>> tree = BallTree.from_array(data)
                 >>> tree.save("my_tree.mpack")
             """
             ...
@@ -1224,10 +1219,10 @@ class spatial:
                 path: File path to read from.
 
             Returns:
-                A ``KDTree`` instance restored from the saved state.
+                A ``BallTree`` instance restored from the saved state.
 
             Example:
-                >>> tree = KDTree.load("my_tree.mpack")
+                >>> tree = BallTree.load("my_tree.mpack")
             """
             ...
 
@@ -1354,10 +1349,7 @@ class spatial:
                 radius: Search radius. All points with distance <= radius are returned.
 
             Returns:
-                For a single query: (indices, distances)
-                For a batch: (indices, distances, counts) where counts[i] is the
-                    number of results for query i. indices and distances are
-                    flattened; use counts to split them per query.
+                Spatial result object
             """
             ...
 
@@ -1369,9 +1361,7 @@ class spatial:
                 k: Number of nearest neighbors to return.
 
             Returns:
-                Tuple of (indices, distances) where indices is an int64 Array and
-                distances is a float64 Array, both sorted by distance (closest first).
-                The indices can be used to look up the actual points in the original data.
+                Spatial result object
             """
             ...
 
@@ -1547,10 +1537,7 @@ class spatial:
                 radius: Search radius. All points with distance <= radius are returned.
 
             Returns:
-                For a single query: (indices, distances)
-                For a batch: (indices, distances, counts) where counts[i] is the
-                    number of results for query i. indices and distances are
-                    flattened; use counts to split them per query.
+                Spatial result object
             """
             ...
 
@@ -1562,9 +1549,7 @@ class spatial:
                 k: Number of nearest neighbors to return.
 
             Returns:
-                Tuple of (indices, distances) where indices is an int64 Array and
-                distances is a float64 Array, both sorted by distance (closest first).
-                The indices can be used to look up the actual points in the original data.
+                Spatial result object
             """
             ...
 
@@ -1591,7 +1576,7 @@ class spatial:
                 path: File path to write to. Will be created or overwritten.
 
             Example:
-                >>> tree = KDTree.from_array(data)
+                >>> tree = VPTree.from_array(data)
                 >>> tree.save("my_tree.mpack")
             """
             ...
@@ -1604,10 +1589,10 @@ class spatial:
                 path: File path to read from.
 
             Returns:
-                A ``KDTree`` instance restored from the saved state.
+                A ``VPTree`` instance restored from the saved state.
 
             Example:
-                >>> tree = KDTree.load("my_tree.mpack")
+                >>> tree = VPTree.load("my_tree.mpack")
             """
             ...
 
@@ -1748,9 +1733,7 @@ class spatial:
                 radius: Search radius. All points with distance <= radius are returned.
 
             Returns:
-                For a single query: SpatialResult with indices and distances.
-                For a batch: SpatialResult with flattened indices, distances, and
-                    counts where counts[i] is the number of results for query i.
+                Spatial result object
             """
             ...
 
@@ -1762,8 +1745,7 @@ class spatial:
                 k: Number of nearest neighbors to return.
 
             Returns:
-                SpatialResult with indices and distances sorted by distance (closest first).
-                The indices can be used to look up the actual points via data().
+                Spatial result object
             """
             ...
 
@@ -1956,7 +1938,7 @@ class spatial:
                 path: File path to write to. Will be created or overwritten.
 
             Example:
-                >>> tree = KDTree.from_array(data)
+                >>> tree = AggTree.from_array(data)
                 >>> tree.save("my_tree.mpack")
             """
             ...
@@ -1969,10 +1951,10 @@ class spatial:
                 path: File path to read from.
 
             Returns:
-                A ``KDTree`` instance restored from the saved state.
+                A ``AggTree`` instance restored from the saved state.
 
             Example:
-                >>> tree = KDTree.load("my_tree.mpack")
+                >>> tree = AggTree.load("my_tree.mpack")
             """
             ...
 
@@ -2068,10 +2050,7 @@ class spatial:
                 radius: Search radius. All points with distance <= radius are returned.
 
             Returns:
-                For a single query: (indices, distances)
-                For a batch: (indices, distances, counts) where counts[i] is the
-                    number of results for query i. indices and distances are
-                    flattened; use counts to split them per query.
+                Spatial result object
             """
             ...
 
@@ -2083,8 +2062,7 @@ class spatial:
                 k: Number of nearest neighbors to return.
 
             Returns:
-                Tuple of (indices, distances) where indices is an int64 Array and
-                distances is a float64 Array, both sorted by distance (closest first).
+                Spatial result object
             """
             ...
 
@@ -2111,7 +2089,7 @@ class spatial:
                 path: File path to write to. Will be created or overwritten.
 
             Example:
-                >>> tree = KDTree.from_array(data)
+                >>> tree = AggTree.from_array(data)
                 >>> tree.save("my_tree.mpack")
             """
             ...
@@ -2124,10 +2102,10 @@ class spatial:
                 path: File path to read from.
 
             Returns:
-                A ``KDTree`` instance restored from the saved state.
+                A ``BruteForce`` instance restored from the saved state.
 
             Example:
-                >>> tree = KDTree.load("my_tree.mpack")
+                >>> tree = BruteForce.load("my_tree.mpack")
             """
             ...
 

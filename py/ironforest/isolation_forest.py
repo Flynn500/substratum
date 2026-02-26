@@ -100,11 +100,11 @@ class IsolationForest:
 
         self.ensemble_ = Ensemble.fit(config, X_flat, y_dummy, n_samples, n_features)
 
-        # Rust returns positive scores: higher = more anomalous
+        # score_samples negates the raw Rust output so lower = more anomalous (sklearn convention)
         scores = self.score_samples(X)
-        sorted_scores = sorted(scores.tolist(), reverse=True)
+        sorted_scores = sorted(scores.tolist())
         threshold_idx = int(self.contamination * len(sorted_scores))
-        self.threshold_ = sorted_scores[max(threshold_idx, 0)]
+        self.threshold_ = sorted_scores[min(threshold_idx, len(sorted_scores) - 1)]
 
         return self
 
@@ -123,14 +123,14 @@ class IsolationForest:
         scores = self.score_samples(X)
         results = []
         for score in scores:
-            results.append(-1.0 if score >= self.threshold_ else 1.0)  # type: ignore
+            results.append(-1.0 if score <= self.threshold_ else 1.0)  # type: ignore
 
         return ndutils.asarray(results)
 
     def score_samples(self, X) -> Array:
         """Compute the anomaly score of each sample.
 
-        Higher scores indicate more anomalous samples.
+        Lower scores indicate more anomalous samples (sklearn convention).
 
         Args:
             X: Array or array-like of shape (n_samples, n_features).
@@ -150,7 +150,7 @@ class IsolationForest:
         n_samples = X.shape[0]
         X_flat = X.ravel()
 
-        return self.ensemble_.predict(X_flat, n_samples)  # type: ignore
+        return -self.ensemble_.predict(X_flat, n_samples)  # type: ignore
 
     def decision_function(self, X):
         """Average anomaly score of X.
@@ -162,61 +162,3 @@ class IsolationForest:
             Array of shape (n_samples,): anomaly scores.
         """
         return self.score_samples(X)
-
-
-if __name__ == "__main__":
-    import random
-
-    random.seed(42)
-
-    # Generate normal data: 200 samples, 2 features, centered around 0
-    n_normal = 200
-    n_features = 2
-    normal_data = [random.gauss(0, 1) for _ in range(n_normal * n_features)]
-
-    # Generate anomalies: 20 samples far from center
-    n_anomalies = 20
-    anomaly_data = [random.gauss(0, 1) + random.choice([-5, 5]) for _ in range(n_anomalies * n_features)]
-
-    all_data = normal_data + anomaly_data
-    n_total = n_normal + n_anomalies
-
-    X = ndutils.asarray(all_data).reshape([n_total, n_features])
-
-    print(f"Dataset: {n_total} samples ({n_normal} normal, {n_anomalies} anomalies)")
-
-    iforest = IsolationForest(
-        n_estimators=100,
-        max_samples=128,
-        contamination=n_anomalies / n_total,
-        random_state=42,
-    )
-    iforest.fit(X)
-
-    predictions = iforest.predict(X)
-    scores = iforest.score_samples(X)
-
-    pred_list = predictions.tolist()
-    score_list = scores.tolist()
-
-    n_detected = sum(1 for p in pred_list if p == -1.0)
-    print(f"Detected {n_detected} anomalies out of {n_total} samples")
-    print(f"Threshold: {iforest.threshold_:.4f}")
-
-    # Check how many true anomalies were caught
-    true_anomaly_preds = pred_list[n_normal:]
-    caught = sum(1 for p in true_anomaly_preds if p == -1.0)
-    print(f"True anomalies caught: {caught}/{n_anomalies}")
-
-    # Check false positives in normal data
-    normal_preds = pred_list[:n_normal]
-    false_positives = sum(1 for p in normal_preds if p == -1.0)
-    print(f"False positives: {false_positives}/{n_normal}")
-
-    # Print a few scores
-    print("\nSample scores (first 5 normal, first 5 anomaly):")
-    for i in range(5):
-        print(f"  Normal[{i}]: score={score_list[i]:.4f}, pred={pred_list[i]}")
-    for i in range(5):
-        idx = n_normal + i
-        print(f"  Anomaly[{i}]: score={score_list[idx]:.4f}, pred={pred_list[idx]}")
