@@ -1046,6 +1046,28 @@ class spatial:
         distances: Array[float]
         counts: Array[int] | None
 
+        def count(self) -> float | Array[int]:
+            """Number of results per query.
+
+            Returns a scalar for single queries, or an array of per-query
+            counts for batch queries.
+            """
+            ...
+        
+        def split(self) -> list["spatial.SpatialResult"]:
+            """Splits a batch query into a list of singular spatial results.
+            
+            Returns a list of spatial results.
+            """
+            ...
+        
+        def is_empty(self) -> bool:
+            """Check if the query result is empty
+
+            Returns bool, if true the query returned no results
+            """
+            ...
+
         def mean_distance(self) -> float | Array[float]:
             """Mean distance across results.
 
@@ -1093,14 +1115,20 @@ class spatial:
             medians for batch queries.
             """
             ...
+        
+        def quantile_distance(self, q) -> float | Array[float]:
+            """Compute a distance quantile for each query's results.
+            Args:
+                q: Quantile value between 0 and 1 (e.g. 0.5 for median).
 
-        def count(self) -> float | Array[int]:
-            """Number of results per query.
-
-            Returns a scalar for single queries, or an array of per-query
-            counts for batch queries.
+            Returns:
+                A scalar if single query, or an array of quantiles for batch queries.
+                
+            Raises:
+                ValueError: If q is not in [0, 1].
             """
             ...
+
 
         def centroid(self, data: Array) -> Array[float]:
             """Centroid of result points per query.

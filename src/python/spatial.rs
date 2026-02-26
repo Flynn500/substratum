@@ -110,6 +110,28 @@ impl PySpatialResult {
 
 #[pymethods]
 impl PySpatialResult {
+    fn count(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {
+        let counts: Vec<f64> = self.per_query_distances().iter()
+            .map(|d| d.len() as f64)
+            .collect();
+        scalar_or_array(py, counts, self.n_queries == 1)
+    }
+
+    fn split(&self) -> Vec<PySpatialResult> {
+        let idx_chunks = self.per_query_indices();
+        let dist_chunks = self.per_query_distances();
+
+        idx_chunks.into_iter().zip(dist_chunks)
+            .map(|(idx, dist)| {
+                PySpatialResult::from_single(idx.to_vec(), dist.to_vec())
+            })
+            .collect()
+    }
+
+    fn is_empty(&self) -> bool {
+        self.indices.as_int().unwrap().as_slice().is_empty()
+    }
+    
     fn mean_distance(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {
         scalar_or_array(py, self.aggregate_per_query(|a| a.mean()), self.n_queries == 1)
     }
@@ -134,11 +156,11 @@ impl PySpatialResult {
         scalar_or_array(py, self.aggregate_per_query(|a| a.std()), self.n_queries == 1)
     }
 
-    fn count(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {
-        let counts: Vec<f64> = self.per_query_distances().iter()
-            .map(|d| d.len() as f64)
-            .collect();
-        scalar_or_array(py, counts, self.n_queries == 1)
+    fn quantile_distance(&self, py: Python<'_>, q: f64) -> PyResult<Py<PyAny>> {
+        if !(0.0..=1.0).contains(&q) {
+            return Err(pyo3::exceptions::PyValueError::new_err("quantile must be between 0 and 1"));
+        }
+        scalar_or_array(py, self.aggregate_per_query(|a| a.quantile(q)), self.n_queries == 1)
     }
 
     fn centroid(&self, data: &PyArray) -> PyResult<PyArray> {

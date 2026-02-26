@@ -74,8 +74,20 @@ print(result.indices)
 print(result.distances)
 
 #Get more comprehensive query results
-print(result.centroid, result.median_distance, result.std_distance) 
+print(result.centroid, result.median_distance, result.quantile_distance(0.1)) 
+
+#split a batch query into a list of single queries
+results = result.split()
 ```
+
+`SpatialResult` currently supports:
+- count, is_empty
+- split - split a batch query into a list of singular queries
+- mean_distance, median_distance
+- max_distance, min_distance
+- var_distance, std_distance
+- quantile_distance
+- centroid
 
 
 ## Benchmarks
