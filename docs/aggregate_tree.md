@@ -40,11 +40,11 @@ The error bounds are kernel-dependent. For the Gaussian kernel, we use a 5th-ord
 
 $$\epsilon \leq \frac{n}{120} \cdot \sup|K^{(5)}| \cdot \frac{R^5}{h^5}$$
 
-For compact-support kernels (Epanechnikov, Uniform, Triangular), the polynomial part of the kernel has exact finite-order derivatives, so the only source of error is points straddling the support boundary. We bound this as:
+For compact-support kernels (Epanechnikov, Uniform, Triangular), the polynomial part of the kernel has exact finite-order derivatives, so our source of error is points straddling the support boundary. We bound this as:
 
 $$\epsilon \leq n \cdot \frac{R}{h} \cdot K_{\max}$$
 
-Once aggregate nodes are identified, we recurse through the tree and free all data belonging to them, the only values needed to calculate their contribution are the precomputed moments.
+Once aggregate nodes are identified, we recurse through the tree and free all data belonging to them, the only values needed to calculate their contribution are the precomputed moments. This is one of the primary motivations behind computing error terms on tree creation, we can massively reduce serialization size, deserialization time and memory usage for large datasets. The reduction in size depends on how aggresive the approximation is, so you need to balance these bonuses with the error they introduce.
 
 For queries, we recurse through the tree pruning nodes that are too far away to make a meaninful contribution. This works the same as a ball tree until we reach an aggregate node. We use a 4th-order Taylor expansion to approximate the aggregate node's contribution:
 

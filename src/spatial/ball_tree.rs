@@ -194,6 +194,7 @@ impl SpatialQuery for BallTree {
     fn data(&self) -> &[f64] { &self.data }
     fn dim(&self) -> usize { self.dim }
     fn metric(&self) -> &DistanceMetric { &self.metric }
+    fn n_points(&self) -> usize {self.n_points}
 
     fn node_start(&self, idx: usize) -> usize { self.nodes[idx].start }
     fn node_end(&self, idx: usize) -> usize { self.nodes[idx].end }

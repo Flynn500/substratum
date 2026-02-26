@@ -33,7 +33,10 @@ Spatial trees support kNN, radius, and KDE queries.
 - KDTree - axis-aligned splits, best for low-to-moderate dimensions
 - BallTree - pivot-based splits, handles higher dimensions well
 - VPTree - vantage-point splits, strong in general metric spaces
+- MTree - pivot-based splits, supports dynamic insertion at the cost of query speed.
 - AggTree - approximate KDE via aggregated nodes, tunable accuracy via atol
+
+Radius & kNN queries return a `SpatialResult` object on all our trees. This provides a convienent way to split batch queries and get statistics on your results (centroid, median distance, etc.)
 
 ___
 
@@ -49,7 +52,7 @@ Speed comparison of our KDTree vs SciPy & Scikit-Learn on a randomly generated u
 
 </div>
 
-KDTree is the most commonly supported tree we offer, but some of our other trees scale better with dimensionality or provide better results depending on the nature of the dataset used, see `docs/spatial.md` & `docs/agg_tree.md` for more detailed information.
+KDTree is generally seen as the baseline spatial indesxing tree. Our other trees scale better with dimensionality or provide better results depending on the nature of the dataset used, see `docs/spatial.md` & `docs/agg_tree.md` for more detailed information.
 
 ## Tree-Based Models
 IronForest includes tree-based ML models that run entirely on the Rust core no external dependencies at runtime.

@@ -20,6 +20,7 @@ pub trait SpatialQuery: Sync {
     fn node_left(&self, idx: usize) -> Option<usize>;
     fn node_right(&self, idx: usize) -> Option<usize>;
 
+    fn root(&self) -> usize { 0 }
 
     fn min_distance_to_node(&self, node_idx: usize, query: &[f64]) -> f64;
 
@@ -32,13 +33,11 @@ pub trait SpatialQuery: Sync {
         &self.data()[i * dim..(i + 1) * dim]
     }
 
-    fn n_points(&self) -> usize {
-        self.data().len() / self.dim()
-    }
+    fn n_points(&self) -> usize;
 
     fn query_radius(&self, query: &[f64], radius: f64) -> Vec<(usize, f64)> {
         let mut results = Vec::new();
-        self.query_radius_recursive(0, query, radius, &mut results);
+        self.query_radius_recursive(self.root(), query, radius, &mut results);
         results
     }
 
@@ -66,11 +65,11 @@ pub trait SpatialQuery: Sync {
     }
 
     fn query_knn(&self, query: &[f64], k: usize) -> Vec<(usize, f64)> {
-        if k == 0 || self.indices().is_empty() {
+        if k == 0 || self.n_points() == 0 {
             return Vec::new();
         }
         let mut heap = BinaryHeap::with_capacity(k);
-        self.query_knn_recursive(0, query, &mut heap, k);
+        self.query_knn_recursive(self.root(), query, &mut heap, k);
         heap.into_sorted_vec()
             .into_iter()
             .map(|item| (item.index, item.distance))
@@ -194,7 +193,7 @@ pub trait SpatialQuery: Sync {
         for i in 0..n_queries {
             let query = &queries.as_slice()[i * dim..(i + 1) * dim];
             let mut density = 0.0;
-            self.kde_recursive(0, query, bandwidth, &mut density, kernel);
+            self.kde_recursive(self.root(), query, bandwidth, &mut density, kernel);
             results[i] = density;
         }
         results
@@ -206,7 +205,7 @@ pub trait SpatialQuery: Sync {
             .map(|i| {
                 let query = &queries.as_slice()[i * dim..(i + 1) * dim];
                 let mut density = 0.0;
-                self.kde_recursive(0, query, bandwidth, &mut density, kernel);
+                self.kde_recursive(self.root(), query, bandwidth, &mut density, kernel);
                 density
             })
             .collect();

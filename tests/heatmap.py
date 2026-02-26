@@ -6,6 +6,7 @@ from sklearn.neighbors import KDTree
 from sklearn.datasets import make_blobs
 import sys
 
+
 def make_grid(resolution=200, extent=(0.0, 1.0)):
     """Create a 2D grid of query points."""
     lo, hi = extent

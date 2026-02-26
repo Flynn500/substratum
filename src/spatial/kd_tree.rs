@@ -170,11 +170,13 @@ impl SpatialQuery for KDTree {
     fn data(&self) -> &[f64] { &self.data }
     fn dim(&self) -> usize { self.dim }
     fn metric(&self) -> &DistanceMetric { &self.metric }
+    fn n_points(&self) -> usize {self.n_points}
 
     fn node_start(&self, idx: usize) -> usize { self.nodes[idx].start }
     fn node_end(&self, idx: usize) -> usize { self.nodes[idx].end }
     fn node_left(&self, idx: usize) -> Option<usize> { self.nodes[idx].left }
     fn node_right(&self, idx: usize) -> Option<usize> { self.nodes[idx].right }
+
 
     fn min_distance_to_node(&self, node_idx: usize, query: &[f64]) -> f64 {
         let node = &self.nodes[node_idx];

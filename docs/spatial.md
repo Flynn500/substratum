@@ -64,7 +64,6 @@ Normalize: Bool to control whether normalized values are returned.
 
 I benchmarked my trees against SKlearn by sampling 100,000 points uniformly in two dimensions between 0-1. We then ran 500 batched KDE queries for each tree using euclidian distance and gaussian kernels. Note that a uniformly generated dataset does not equate to real world use cases.
 
-Two dimensions was chosen here as our greedy pruning only leads to a greater speed up as we move up in dimensions.
 
 ### Performance
 
@@ -85,7 +84,9 @@ Two dimensions was chosen here as our greedy pruning only leads to a greater spe
 
 </div>
 
-One reason our implementations are faster is that queries are parallelized using rayon. We get a huge speed up running multiple queries simultaneously. Scikit-learn supports this through other methods but not on these trees directly. Another reason for the increase is that once you make a IronForest Array, the data is already in our rust core. There is no handling of python objects input -> tree -> output all stays on the rust side of things.
+One reason our implementations are faster is that queries are parallelized using rayon. We get a huge speed up running multiple queries simultaneously. Scikit-learn supports this through other methods but not on these trees directly. 
+
+Another big reason for the increase is that once you make a IronForest Array, the data is already in our rust core. There is no handling of python objects input -> tree -> output all stays on the rust side of things.
 
 **Kernel Density Estimation**
 
@@ -110,11 +111,7 @@ query_mean   | 2.019398 sec | 0.577282 sec | 1.6940e-05 sec     |
 
 
 </div>
-The reason for the difference is largely due to our pruning differences. Our pruning logic is a simple cutoff value, where branches beyond this value are ignored. This does not take into account the possibilty that there could be branches beyond this cuttoff value with enough children to impact the likelihood. Scenarios like this will generally only influence the likelihood value marginally but it is worth noting. SKLearn on the other hand takes into account these scenarios and as such their results are more reliable. 
-
-The approximation test also is not fair to SKlearn as we are comparing an exact computation to an approximation, I am just trying to convey that in cases where query speed really matters over accuracy, the aggregate tree approximation option is well worth trying.
-
-Scenarios where our trees may be better are ones where you are willing to tolerate potential inaccuracies and your data is high-dimensional. More robust pruning methods can devolve into brute force KDE calculations in these cases while more naive hard threshold methods are able to maintain some of the performance benifits of tree based KDE. For these high-dimension  scenarios, I'd recommend our vantage point tree or ball tree. Our vantage point tree isn't compared here as it doesn't have an SKLearn equivalent, but it generally performs best in these situations. If you need even more speed and care even less about error margins our aggregate tree is the best option. It is both much more effiecent with memory usage and its query speeds are much faster.
+The approximation test is not fair to Scikit-Learn as we are comparing an exact computation to an approximation, I am just trying to convey that in cases where query speed really matters over accuracy, the aggregate tree approximation option is well worth trying.
 
 ### Accuracy
 This test was a simple 20 point query against 100,000 points distributed norammly in 4 dimensions with a bandwidth of 0.5. Our aggregate tree used a max span of 1.0, which is extreme, this value really should never be set above the bandwidth.
@@ -137,3 +134,5 @@ The aggregate tree has a higher error margin but significantly better performanc
 
 ## General Optmizations
 The biggest speedup I've implemented so far was making the trees more cache friendly. Previously the data array remained untouched, while we manipulated an index array to deal with in-tree computations. This seemed fine in principle as we want to return the indices as our result, but it is not cache friendly. After adding a reorder function we increased speeds by 30% across queries. This function just rearranges our data vector so that nodes close to each other a stored nearby. This makes it easier for the CPU to cache values as we aren't jumping to random points in our arrays.
+
+Parallelization via Rayon is another huge win for batch queries. All our trees do this automatically, where if a query size is great enough it is split across cores. Because of the nature of these spatial queries each core is traversing a tree that won't be mutated at least until the query is over. This makes implementation as simple as using rayon's parallel iterator instead of a standard loop.

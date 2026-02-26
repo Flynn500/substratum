@@ -2,7 +2,8 @@ use pyo3::prelude::*;
 use pyo3::exceptions::PyValueError;
 use pyo3::types::PyAny;
 use crate::array::{NdArray, Shape};
-use crate::spatial::{BallTree, KDTree, VPTree, AggTree, BruteForce, VantagePointSelection, DistanceMetric, KernelType, SpatialQuery};
+use crate::spatial::m_tree::MNode;
+use crate::spatial::{BallTree, KDTree, VPTree, AggTree, MTree, BruteForce, VantagePointSelection, DistanceMetric, KernelType, SpatialQuery};
 use super::{PyArray, ArrayData, ArrayLike};
 use pyo3::types::PyBytes;
 use rmp_serde;
@@ -188,8 +189,6 @@ macro_rules! tree {
 }
 
 /// Returns a Python scalar for single queries, or a 1-D `PyArray` for batch queries.
-/// Used by `SpatialResult` aggregation methods to match NumPy's scalar-vs-array
-/// return convention
 fn scalar_or_array(py: Python<'_>, values: Vec<f64>, is_single: bool) -> PyResult<Py<PyAny>> {
     if is_single {
         Ok(values[0].into_pyobject(py)?.into_any().unbind())
@@ -207,8 +206,8 @@ fn scalar_or_array(py: Python<'_>, values: Vec<f64>, is_single: bool) -> PyResul
 /// maps each tree-internal position back to the caller's original row index. This function
 /// undoes that permutation so `data()` always returns rows in the order the user inserted them.
 ///
-/// If `indices` is `Some`, only the specified original-order rows are returned (k × dim).
-/// If `indices` is `None`, all `n_points` rows are returned (n_points × dim).
+/// If `indices` is `Some`, only the specified original-order rows are returned
+/// If `indices` is `None`, all `n_points` rows are returned
 fn get_tree_data(
     tree_indices: &[usize],
     raw_data: &[f64],
@@ -302,7 +301,9 @@ fn parse_vantage_selection(selection: &str) -> PyResult<VantagePointSelection> {
 // Generates query_radius, query_knn, kernel_density, and data methods for any
 // spatial index type whose inner field implements SpatialQuery. All four tree
 // types (BallTree, KDTree, VPTree, BruteForce) use this macro; AggTree is
-// excluded because its kernel_density signature differs.
+// excluded because its kernel_density signature differs. M tree is excluded
+// because underlying data is managed differently so KDE without params becomes
+// difficult, maybe should split KDE out as it also won't really make sense for RPTree
 macro_rules! impl_spatial_query_methods {
     ($py_type:ty) => {
         #[pymethods]
@@ -406,7 +407,7 @@ impl_spatial_query_methods!(PyBruteForce);
 
 macro_rules! impl_serialization_methods {
     ($py_type:ty, $inner_type:ty, $constructor:ident) => {
-        #[pymethods]
+        #[pymethods] //ide error
         impl $py_type {
             fn __getstate__<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyBytes>> {
                 let bytes = rmp_serde::to_vec(tree!(self))
@@ -451,6 +452,7 @@ impl_serialization_methods!(PyKDTree, KDTree, PyKDTree);
 impl_serialization_methods!(PyVPTree, VPTree, PyVPTree);
 impl_serialization_methods!(PyBruteForce, BruteForce, PyBruteForce);
 impl_serialization_methods!(PyAggTree, AggTree, PyAggTree);
+impl_serialization_methods!(PyMTree, MTree, PyMTree);
 
 // =============================================================================
 // Tree Types
@@ -581,6 +583,142 @@ impl PyAggTree {
     }
 }
 
+#[pyclass(name = "MTree")]
+pub struct PyMTree {
+    inner: Option<MTree>,
+}
+
+#[pymethods] //ide error
+impl PyMTree {
+    #[staticmethod]
+    #[pyo3(signature = (array, capacity=50, metric="euclidean"))]
+    fn from_array(array: &PyArray, capacity: Option<usize>, metric: Option<&str>) -> PyResult<Self> {
+        let capacity = capacity.unwrap_or(50);
+        let metric = parse_metric(metric.unwrap_or("euclidean"))?;
+        let tree = MTree::from_ndarray(array.as_float()?, capacity, metric);
+        Ok(PyMTree { inner: Some(tree) })
+    }
+
+    fn insert(&mut self, point: ArrayLike) -> PyResult<()> {
+        let tree = self.inner.as_mut()
+            .ok_or_else(|| PyValueError::new_err("Tree is uninitialized"))?;
+        let arr = point.into_spatial_query_ndarray(tree.dim)?;
+        let point_idx = tree.n_points;
+        tree.insert(arr.as_slice().to_vec(), point_idx);
+        Ok(())
+    }
+
+    #[pyo3(signature = (indices=None))]
+    fn data(&self, indices: Option<ArrayLike>) -> PyResult<PyArray> {
+        let tree = tree!(self);
+        let data = tree.collect_data();
+
+        match indices {
+            None => Ok(PyArray {
+                inner: ArrayData::Float(NdArray::from_vec(
+                    Shape::new(vec![tree.n_points, tree.dim]),
+                    data,
+                )),
+            }),
+            Some(idx) => {
+                let idx_arr = idx.into_i64_ndarray()?;
+                let k = idx_arr.len();
+                let mut result = Vec::with_capacity(k * tree.dim);
+                for &i in idx_arr.as_slice() {
+                    let i = i as usize;
+                    if i >= tree.n_points {
+                        return Err(PyValueError::new_err(format!(
+                            "Index {} out of bounds for tree with {} points", i, tree.n_points
+                        )));
+                    }
+                    result.extend_from_slice(&data[i * tree.dim..(i + 1) * tree.dim]);
+                }
+                Ok(PyArray {
+                    inner: ArrayData::Float(NdArray::from_vec(Shape::new(vec![k, tree.dim]), result)),
+                })
+            }
+        }
+    }
+
+    fn query_radius(&self, query: ArrayLike, radius: f64) -> PyResult<PySpatialResult> {
+        let tree = tree!(self);
+        let is_batch = query.ndim() == 2;
+        let queries_arr = query.into_spatial_query_ndarray(tree.dim)?;
+        if is_batch {
+            let results = tree.query_radius_batch(&queries_arr, radius);
+            let mut all_indices = Vec::new();
+            let mut all_distances = Vec::new();
+            let mut counts = Vec::with_capacity(results.len());
+            for batch in results {
+                counts.push(batch.len() as i64);
+                for (i, d) in batch {
+                    all_indices.push(i as i64);
+                    all_distances.push(d);
+                }
+            }
+            Ok(PySpatialResult::from_batch_radius(all_indices, all_distances, counts))
+        } else {
+            let query_slice = &queries_arr.as_slice()[..tree.dim];
+            let results = tree.query_radius(query_slice, radius);
+            let (indices, distances): (Vec<i64>, Vec<f64>) = results.into_iter()
+                .map(|(i, d)| (i as i64, d)).unzip();
+            Ok(PySpatialResult::from_single(indices, distances))
+        }
+    }
+
+    fn query_knn(&self, query: ArrayLike, k: usize) -> PyResult<PySpatialResult> {
+        let tree = tree!(self);
+        let is_batch = query.ndim() == 2;
+        let queries_arr = query.into_spatial_query_ndarray(tree.dim)?;
+        let n_queries = queries_arr.shape().dims()[0];
+        if is_batch {
+            let results = tree.query_knn_batch(&queries_arr, k);
+            let (indices, distances): (Vec<i64>, Vec<f64>) = results.into_iter()
+                .flatten()
+                .map(|(i, d)| (i as i64, d))
+                .unzip();
+            Ok(PySpatialResult::from_batch_knn(indices, distances, n_queries, k))
+        } else {
+            let query_slice = &queries_arr.as_slice()[..tree.dim];
+            let results = tree.query_knn(query_slice, k);
+            let (indices, distances): (Vec<i64>, Vec<f64>) = results.into_iter()
+                .map(|(i, d)| (i as i64, d)).unzip();
+            Ok(PySpatialResult::from_single(indices, distances))
+        }
+    }
+
+    fn kernel_density(
+        &self,
+        py: Python<'_>,
+        queries: Option<ArrayLike>,
+        bandwidth: Option<f64>,
+        kernel: Option<&str>,
+        normalize: Option<bool>,
+    ) -> PyResult<Py<PyAny>> {
+        let tree = tree!(self);
+        let bandwidth = bandwidth.unwrap_or(1.0);
+        let kernel_type = parse_kernel(kernel.unwrap_or("gaussian"))?;
+        let normalize = normalize.unwrap_or(false);
+
+        let queries_arr = if let Some(q) = queries {
+            q.into_spatial_query_ndarray(tree.dim)?
+        } else {
+            NdArray::from_vec(
+                Shape::new(vec![tree.n_points, tree.dim]),
+                tree.collect_data(),
+            )
+        };
+
+        let result = tree.kernel_density(&queries_arr, bandwidth, kernel_type, normalize);
+
+        if result.shape().dims()[0] == 1 {
+            Ok(result.as_slice()[0].into_pyobject(py)?.into_any().unbind())
+        } else {
+            Ok(PyArray { inner: ArrayData::Float(result) }.into_pyobject(py)?.into_any().unbind())
+        }
+    }
+}
+
 // =============================================================================
 // Module Registration
 // =============================================================================
@@ -590,6 +728,7 @@ pub fn register_module(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyBallTree>()?;
     m.add_class::<PyKDTree>()?;
     m.add_class::<PyVPTree>()?;
+    m.add_class::<PyMTree>()?;
     m.add_class::<PyAggTree>()?;
     m.add_class::<PyBruteForce>()?;
     Ok(())

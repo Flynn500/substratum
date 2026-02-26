@@ -1690,6 +1690,213 @@ class spatial:
             """
             ...
 
+    class MTree:
+        """M-tree for efficient nearest neighbor queries with dynamic insertion.
+
+        An M-tree partitions data into nested hyperspheres using routing objects
+        that must be actual data points. Unlike static trees, the M-tree supports
+        dynamic insertion without requiring a full rebuild.
+        """
+
+        @staticmethod
+        def from_array(
+            array: Array[float],
+            capacity: int = 50,
+            metric: Literal["euclidean", "manhattan", "chebyshev"] = "euclidean"
+        ) -> "spatial.MTree":
+            """Construct an M-tree from a 2D array of points.
+
+            Args:
+                array: 2D array of shape (n_points, n_features) containing the data points.
+                capacity: Maximum number of entries per node before a split occurs.
+                    Larger values produce shallower trees but may slow queries.
+                    Defaults to 50.
+                metric: Distance metric to use for measuring distances between points.
+                    Options are:
+                    - "euclidean": Standard Euclidean (L2) distance (default)
+                    - "manhattan": Manhattan (L1) distance (taxicab distance)
+                    - "chebyshev": Chebyshev (L∞) distance (maximum coordinate difference)
+
+            Returns:
+                A constructed MTree instance.
+
+            Raises:
+                AssertionError: If array is not 2-dimensional.
+                ValueError: If metric is not one of the valid options.
+            """
+            ...
+
+        def insert(self, point: ArrayLike) -> None:
+            """Insert a single point into the tree.
+
+            The tree is updated in place. If a node exceeds capacity after insertion,
+            it is split and the split propagates upward as needed.
+
+            Args:
+                point: 1D array-like of shape (n_features,) representing the point to insert.
+
+            Raises:
+                ValueError: If point dimension does not match the tree's dimension.
+            """
+            ...
+
+        def query_radius(self, query: ArrayLike, radius: float) -> "spatial.SpatialResult":
+            """Find all points within a given radius of the query point.
+
+            Args:
+                query: Query point or 2D array of query points.
+                radius: Search radius. All points with distance <= radius are returned.
+
+            Returns:
+                For a single query: SpatialResult with indices and distances.
+                For a batch: SpatialResult with flattened indices, distances, and
+                    counts where counts[i] is the number of results for query i.
+            """
+            ...
+
+        def query_knn(self, query: ArrayLike, k: int) -> "spatial.SpatialResult":
+            """Find the k nearest neighbors to the query point.
+
+            Args:
+                query: Query point or 2D array of query points.
+                k: Number of nearest neighbors to return.
+
+            Returns:
+                SpatialResult with indices and distances sorted by distance (closest first).
+                The indices can be used to look up the actual points via data().
+            """
+            ...
+
+        @overload
+        def data(self, indices: ArrayLike) -> Array[float]:
+            """Return training-data rows at specific original indices.
+
+            Args:
+                indices: 1D int array-like of original point indices (as returned
+                    by ``query_knn`` or ``query_radius``).
+
+            Returns:
+                float64 Array of shape ``(len(indices), n_features)``.
+
+            Raises:
+                ValueError: If any index is out of bounds.
+            """
+            ...
+
+        @overload
+        def data(self, indices: None = None) -> Array[float]:
+            """Return all training-data points in original insertion order.
+
+            Returns:
+                float64 Array of shape ``(n_points, n_features)``.
+            """
+            ...
+
+        def save(self, path: str) -> None:
+            """Serialize the tree to disk in MessagePack format.
+
+            Args:
+                path: File path to write to. Will be created or overwritten.
+
+            Example:
+                >>> tree = MTree.from_array(data)
+                >>> tree.save("my_tree.mpack")
+            """
+            ...
+
+        @staticmethod
+        def load(path: str) -> "spatial.MTree":
+            """Deserialize a tree from disk.
+
+            Args:
+                path: File path to read from.
+
+            Returns:
+                An MTree instance restored from the saved state.
+
+            Example:
+                >>> tree = MTree.load("my_tree.mpack")
+            """
+            ...
+
+        @overload
+        def kernel_density(
+            self,
+            queries: ArrayLike,
+            bandwidth: float = 1.0,
+            kernel: Literal["gaussian", "epanechnikov", "uniform", "triangular"] = "gaussian",
+            normalize: bool = True
+        ) -> float:
+            """Estimate kernel density at a single query point.
+
+            Args:
+                queries: Single query point (scalar, list, or array-like).
+                bandwidth: Bandwidth (smoothing parameter) for the kernel. Larger values
+                    produce smoother estimates. Defaults to 1.0.
+                kernel: Kernel function to use for density estimation. Options are:
+                    - "gaussian": Gaussian (normal) kernel (default)
+                    - "epanechnikov": Epanechnikov kernel
+                    - "uniform": Uniform (rectangular) kernel
+                    - "triangular": Triangular kernel
+                normalize: Bool to control whether normalized values are returned.
+
+            Returns:
+                Density estimate at the query point (float).
+            """
+            ...
+
+        @overload
+        def kernel_density(
+            self,
+            queries: ArrayLike,
+            bandwidth: float = 1.0,
+            kernel: Literal["gaussian", "epanechnikov", "uniform", "triangular"] = "gaussian",
+            normalize: bool = True
+        ) -> List:
+            """Estimate kernel density at multiple query points.
+
+            Args:
+                queries: 2D array-like of query points with shape (n_queries, n_features).
+                bandwidth: Bandwidth (smoothing parameter) for the kernel. Larger values
+                    produce smoother estimates. Defaults to 1.0.
+                kernel: Kernel function to use for density estimation. Options are:
+                    - "gaussian": Gaussian (normal) kernel (default)
+                    - "epanechnikov": Epanechnikov kernel
+                    - "uniform": Uniform (rectangular) kernel
+                    - "triangular": Triangular kernel
+                normalize: Bool to control whether normalized values are returned.
+
+            Returns:
+                1D Array of density estimates, one for each query point.
+            """
+            ...
+
+        @overload
+        def kernel_density(
+            self,
+            queries: None = None,
+            bandwidth: float = 1.0,
+            kernel: Literal["gaussian", "epanechnikov", "uniform", "triangular"] = "gaussian",
+            normalize: bool = True
+        ) -> List:
+            """Estimate kernel density at all training points.
+
+            Args:
+                queries: If None, computes density at each training point.
+                bandwidth: Bandwidth (smoothing parameter) for the kernel. Larger values
+                    produce smoother estimates. Defaults to 1.0.
+                kernel: Kernel function to use for density estimation. Options are:
+                    - "gaussian": Gaussian (normal) kernel (default)
+                    - "epanechnikov": Epanechnikov kernel
+                    - "uniform": Uniform (rectangular) kernel
+                    - "triangular": Triangular kernel
+                normalize: Bool to control whether normalized values are returned.
+
+            Returns:
+                1D Array of density estimates at each training point.
+            """
+            ...
+
     class AggTree:
         """Aggregation tree for fast approximate kernel density estimation.
 

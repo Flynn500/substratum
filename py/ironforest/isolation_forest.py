@@ -4,7 +4,6 @@ from typing import Optional
 from ironforest._core import Array, ndutils, Tree, TreeConfig, TaskType, SplitCriterion
 import random
 
-
 class IsolationForest:
     """Isolation Forest for anomaly detection.
 
