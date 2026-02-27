@@ -25,7 +25,7 @@ pub struct AggNode {
 pub struct AggTree {
     pub nodes: Vec<AggNode>,
     pub indices: Vec<usize>,
-    pub data: Vec<f64>,
+    pub data: NdArray<f64>,
     pub n_points: usize,
     pub dim: usize,
     pub leaf_size: usize,
@@ -37,13 +37,18 @@ pub struct AggTree {
 
 impl AggTree {
     pub fn new(
-        points: &[f64], n_points: usize, dim: usize, leaf_size: usize,
-        metric: DistanceMetric, kernel: KernelType, bandwidth: f64, atol: f64,
+        data: &NdArray<f64>, leaf_size: usize,metric: DistanceMetric, 
+        kernel: KernelType, bandwidth: f64, atol: f64,
     ) -> Self {
+        let shape = data.shape().dims();
+        assert!(shape.len() == 2, "Expected 2D array (n_points, dim)");
+        let n_points = shape[0];
+        let dim = shape[1];
+
         let mut tree = AggTree {
             nodes: Vec::new(),
             indices: (0..n_points).collect(),
-            data: points.to_vec(),
+            data: data.clone(),
             n_points,
             dim,
             leaf_size,
@@ -63,30 +68,16 @@ impl AggTree {
 
         tree
     }
-
-    pub fn from_ndarray(array: &NdArray<f64>, leaf_size: usize,
-        metric: DistanceMetric, kernel: KernelType, bandwidth: f64, atol: f64,
-    ) -> Self {
-        let shape = array.shape().dims();
-        
-        assert!(shape.len() == 2, "Expected 2D array (n_points, dim)");
-        
-        let n_points = shape[0];
-        let dim = shape[1];
-        
-        Self::new(array.as_slice(), n_points, dim, leaf_size, metric, kernel, bandwidth, atol)
-    }
     
     fn reorder_data(&mut self) {
         let mut new_data = vec![0.0; self.data.len()];
-        
+
         for (new_idx, &old_idx) in self.indices.iter().enumerate() {
-            let src = old_idx * self.dim;
             let dst = new_idx * self.dim;
-            new_data[dst..dst + self.dim].copy_from_slice(&self.data[src..src + self.dim]);
+            new_data[dst..dst + self.dim].copy_from_slice(self.data.row(old_idx));
         }
-        
-        self.data = new_data;
+
+        self.data = NdArray::from_vec(Shape::new(vec![self.n_points, self.dim]), new_data);
     }
 
     fn collect_live_ranges(&self, node_idx: usize, live: &mut Vec<(usize, usize)>) {
@@ -113,14 +104,13 @@ impl AggTree {
 
         for &(start, end) in live {
             for i in start..end {
-                let offset = i * self.dim;
-                new_data.extend_from_slice(&self.data[offset..offset + self.dim]);
+                new_data.extend_from_slice(self.data.row(i));
                 remap[i] = new_idx;
                 new_idx += 1;
             }
         }
 
-        self.data = new_data;
+        self.data = NdArray::from_vec(Shape::new(vec![new_idx, self.dim]), new_data);
         remap
     }
 
@@ -137,22 +127,12 @@ impl AggTree {
         }
     }
 
-    fn get_point_from_idx(&self, i: usize) -> &[f64] {
-        let original_idx = self.indices[i];
-        &self.data[original_idx * self.dim..(original_idx + 1) * self.dim]
-    }
-
-    fn get_point(&self, i: usize) -> &[f64] {
-        let dim = self.dim;
-        &self.data[i * dim..(i + 1) * dim]
-    }
-
     fn init_node(&self, start: usize, end: usize) -> (Vec<f64>, f64, f64, f64, f64) {
         let n = (end - start) as f64;
         let mut centroid = vec![0.0; self.dim];
 
         for i in start..end {
-            let p = self.get_point_from_idx(i);
+            let p = self.data.row(i);
             for (j, &x) in p.iter().enumerate() {
                 centroid[j] += x;
             }
@@ -168,7 +148,7 @@ impl AggTree {
         let mut moment4 = 0.0;
 
         for i in start..end {
-            let p = self.get_point_from_idx(i);
+            let p = self.data.row(i);
             let dist = self.metric.distance(p, &centroid);
             if dist > max_dist { max_dist = dist; }
             let d2 = dist * dist;
@@ -188,8 +168,8 @@ impl AggTree {
     fn furthest_from(&self, query: &[f64], start: usize, end: usize) -> usize {
         (start..end)
             .max_by(|&a, &b| {
-                let da = self.metric.distance(query, self.get_point_from_idx(a));
-                let db = self.metric.distance(query, self.get_point_from_idx(b));
+                let da = self.metric.distance(query, self.data.row(a));
+                let db = self.metric.distance(query, self.data.row(b));
                 da.partial_cmp(&db).unwrap()
             })
             .unwrap()
@@ -197,16 +177,16 @@ impl AggTree {
 
     fn pivot_partition(&mut self, start: usize, end: usize, centroid: &[f64]) -> usize {
         let p1_slot = self.furthest_from(&centroid, start, end);
-        let p1 = self.get_point_from_idx(p1_slot).to_vec();
+        let p1 = self.data.row(p1_slot).to_vec();
 
         let p2_slot = self.furthest_from(&p1, start, end);
-        let p2 = self.get_point_from_idx(p2_slot).to_vec();
+        let p2 = self.data.row(p2_slot).to_vec();
 
         let axis: Vec<f64> = p2.iter().zip(&p1).map(|(a, b)| a - b).collect();
 
         let mut projections: Vec<(f64, usize)> = (start..end)
             .map(|i| {
-                let p = self.get_point_from_idx(i);
+                let p = self.data.row(i);
                 let proj = p.iter().zip(&axis).map(|(x, a)| x * a).sum::<f64>();
                 (proj, self.indices[i])
             })
@@ -289,7 +269,7 @@ impl AggTree {
                 *density += self.approx_kde_for_node(query, node, h, kernel);
             } else {
                 for i in node.start..node.end {
-                    let dist = self.metric.distance(query, self.get_point(i));
+                    let dist = self.metric.distance(query, self.data.row(i));
                     *density += kernel.evaluate(dist, h);
                 }
             }

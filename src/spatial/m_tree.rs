@@ -41,6 +41,9 @@ impl MNode{
     }
 }
 
+
+//MTree does not use our NdArray internally. Internal structure differs enough were
+//we just used vectors and overwrite query methods.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MTree {
     pub nodes: Vec<MNode>,

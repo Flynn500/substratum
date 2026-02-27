@@ -1,5 +1,5 @@
 use std::{cmp::Ordering};
-use crate::{array::{NdArray, Shape}, spatial::common::{DistanceMetric}};
+use crate::{array::{NdArray, Shape}, spatial::common::DistanceMetric};
 use crate::random::Generator;
 use super::spatial_query::{SpatialQuery};
 use serde::{Deserialize, Serialize};
@@ -43,7 +43,7 @@ pub struct VPNode {
 pub struct VPTree {
     pub nodes: Vec<VPNode>,
     pub indices: Vec<usize>,
-    pub data: Vec<f64>,
+    pub data: NdArray<f64>,
     pub n_points: usize,
     pub dim: usize,
     pub leaf_size: usize,
@@ -53,11 +53,16 @@ pub struct VPTree {
 
 
 impl VPTree {
-    pub fn new(points: &[f64], n_points: usize, dim: usize, leaf_size: usize, metric: DistanceMetric, selection_method: VantagePointSelection) -> Self{
+    pub fn new(data: &NdArray<f64>, leaf_size: usize, metric: DistanceMetric, selection_method: VantagePointSelection) -> Self{
+        let shape = data.shape().dims();
+        assert!(shape.len() == 2, "Expected 2D array (n_points, dim)");
+        let n_points = shape[0];
+        let dim = shape[1];
+        
         let mut tree = VPTree {
             nodes: Vec::new(),
             indices: (0..n_points).collect(),
-            data: points.to_vec(),
+            data: data.clone(),
             n_points,
             dim,
             leaf_size,
@@ -70,36 +75,15 @@ impl VPTree {
         tree
     }
 
-    pub fn from_ndarray(array: &NdArray<f64>, leaf_size: usize, metric: DistanceMetric, selection_method: VantagePointSelection ) -> Self {
-        let shape = array.shape().dims();
-        
-        assert!(shape.len() == 2, "Expected 2D array (n_points, dim)");
-        
-        let n_points = shape[0];
-        let dim = shape[1];
-        
-        Self::new(array.as_slice(), n_points, dim, leaf_size, metric, selection_method)
-    }
-
-    fn get_point(&self, i: usize) -> &[f64] {
-        &self.data[i * self.dim..(i + 1) * self.dim]
-    }
-
-    fn get_point_from_idx(&self, i: usize) -> &[f64] {
-        let original_idx = self.indices[i];
-        &self.data[original_idx * self.dim..(original_idx + 1) * self.dim]
-    }
-
     fn reorder_data(&mut self) {
         let mut new_data = vec![0.0; self.data.len()];
-        
+
         for (new_idx, &old_idx) in self.indices.iter().enumerate() {
-            let src = old_idx * self.dim;
             let dst = new_idx * self.dim;
-            new_data[dst..dst + self.dim].copy_from_slice(&self.data[src..src + self.dim]);
+            new_data[dst..dst + self.dim].copy_from_slice(self.data.row(old_idx));
         }
-        
-        self.data = new_data;
+
+        self.data = NdArray::from_vec(Shape::new(vec![self.n_points, self.dim]), new_data);
     }
 
     fn init_node(&mut self, start: usize, end: usize) -> (f64, f64, f64, usize) {
@@ -110,11 +94,11 @@ impl VPTree {
         let mut min = f64::INFINITY;
         let mut max = f64::NEG_INFINITY;
 
-        let vantage_point = self.get_point_from_idx(start).to_vec();
+        let vantage_point = self.data.row(start).to_vec();
 
         let mut idx_dist: Vec<(usize, f64)> = (start + 1..end)
             .map(|i| {
-                let p = self.get_point_from_idx(i);
+                let p = self.data.row(i);
                 let dist = self.metric.distance(p, &vantage_point);
                 min = min.min(dist);
                 max = max.max(dist);
@@ -182,7 +166,7 @@ impl SpatialQuery for VPTree {
 
     fn nodes(&self) -> &[VPNode] { &self.nodes }
     fn indices(&self) -> &[usize] { &self.indices }
-    fn data(&self) -> &[f64] { &self.data }
+    fn data(&self) -> &[f64] { self.data.as_slice() }
     fn dim(&self) -> usize { self.dim }
     fn metric(&self) -> &DistanceMetric { &self.metric }
     fn n_points(&self) -> usize {self.n_points}

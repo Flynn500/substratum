@@ -76,6 +76,13 @@ impl<T> NdArray<T> {
         Some(offset)
     }
 
+    pub fn row(&self, i: usize) -> &[T] {
+        assert!(self.ndim() >= 2, "row() requires at least 2 dimensions");
+        assert!(i < self.shape.dims()[0], "Row index {} out of bounds for axis 0 with size {}", i, self.shape.dims()[0]);
+        let start = i * self.strides[0];
+        &self.as_slice()[start..start + self.strides[0]]
+    }
+
     pub fn get(&self, indices: &[usize]) -> Option<&T> {
         self.flat_index(indices)
             .and_then(|i| self.storage.get(i))

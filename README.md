@@ -3,7 +3,7 @@ Fast spatial indexing and approximate density estimation for Python, powered by 
 
 ## Quickstart
 
-Quickly find the k nearest neighbours in high-dimensional space using our VPTree.
+Quickly find the k nearest neighbours in high-dimensional space using our VPTree. VPTree's split data based on the distance to a vantage point. They accel in moderate dimensions (25-50) often performing spatial queries faster than a KDTree or BallTree.
 
 ```python
 import ironforest as irn
@@ -23,7 +23,7 @@ for output_idx, original_idx in enumerate(result.indices):
     print(f"point: {points[original_idx]}, dist: {result.distances[output_idx]:.2f}")
 
 #print mean, meadian and max distances
-print(f"{result.mean():.2f}, {result.median():.2f}, {result.radius()}:.2f")
+print(f"{result.mean():.2f}, {result.median():.2f}, {result.radius():.2f}")
 ```
 
 

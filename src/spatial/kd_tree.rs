@@ -1,4 +1,4 @@
-use crate::{array::NdArray, spatial::common::DistanceMetric};
+use crate::{array::{NdArray, Shape}, spatial::common::DistanceMetric};
 use super::spatial_query::{SpatialQuery};
 use serde::{Deserialize, Serialize};
 
@@ -21,7 +21,7 @@ pub struct KDNode {
 pub struct KDTree {
     pub nodes: Vec<KDNode>,
     pub indices: Vec<usize>,
-    pub data: Vec<f64>,
+    pub data: NdArray<f64>,
     pub n_points: usize,
     pub dim: usize,
     pub leaf_size: usize,
@@ -29,11 +29,16 @@ pub struct KDTree {
 }
 
 impl KDTree {
-    pub fn new(points: &[f64], n_points: usize, dim: usize, leaf_size: usize, metric: DistanceMetric) -> Self{
+    pub fn new(data: &NdArray<f64>, leaf_size: usize, metric: DistanceMetric) -> Self {
+        let shape = data.shape().dims();
+        assert!(shape.len() == 2, "Expected 2D array (n_points, dim)");
+        let n_points = shape[0];
+        let dim = shape[1];
+
         let mut tree = KDTree {
             nodes: Vec::new(),
             indices: (0..n_points).collect(),
-            data: points.to_vec(),
+            data: data.clone(),
             n_points,
             dim,
             leaf_size,
@@ -45,33 +50,15 @@ impl KDTree {
         tree
     }
 
-    pub fn from_ndarray(array: &NdArray<f64>, leaf_size: usize, metric: DistanceMetric) -> Self {
-        let shape = array.shape().dims();
-        
-        assert!(shape.len() == 2, "Expected 2D array (n_points, dim)");
-        
-        let n_points = shape[0];
-        let dim = shape[1];
-        
-        Self::new(array.as_slice(), n_points, dim, leaf_size, metric)
-    }
-
     fn reorder_data(&mut self) {
         let mut new_data = vec![0.0; self.data.len()];
-        
+
         for (new_idx, &old_idx) in self.indices.iter().enumerate() {
-            let src = old_idx * self.dim;
             let dst = new_idx * self.dim;
-            new_data[dst..dst + self.dim].copy_from_slice(&self.data[src..src + self.dim]);
+            new_data[dst..dst + self.dim].copy_from_slice(self.data.row(old_idx));
         }
-        
-        self.data = new_data;
-    }
 
-
-    fn get_point_from_idx(&self, i: usize) -> &[f64] {
-        let original_idx = self.indices[i];
-        &self.data[original_idx * self.dim..(original_idx + 1) * self.dim]
+        self.data = NdArray::from_vec(Shape::new(vec![self.n_points, self.dim]), new_data);
     }
 
     fn init_node(&self, start: usize, end: usize) -> (Vec<f64>, Vec<f64>, usize) {
@@ -79,7 +66,7 @@ impl KDTree {
         let mut max = vec![f64::NEG_INFINITY; self.dim];
 
         for i in start..end {
-            let p = self.get_point_from_idx(i);
+            let p = self.data.row(self.indices[i]);
             for (j, &x) in p.iter().enumerate() {
                 max[j] = max[j].max(x);
                 min[j] = min[j].min(x);
@@ -101,7 +88,7 @@ impl KDTree {
 
     fn partition(&mut self, start: usize, end: usize, dim: usize) -> usize {
         let mut slots: Vec<(f64, usize)> = (start..end)
-            .map(|slot| (self.get_point_from_idx(slot)[dim], slot))
+            .map(|slot| (self.data.row(self.indices[slot])[dim], slot))
             .collect();
 
         let mid_offset = (end - start) / 2;
@@ -143,7 +130,7 @@ impl KDTree {
         }
 
         let mut mid = self.partition(start, end, axis);
-        let split = self.get_point_from_idx(mid)[axis];
+        let split = self.data.row(self.indices[mid])[axis];
         self.nodes[node_idx].split = split;
 
         if mid == start {
@@ -167,7 +154,7 @@ impl SpatialQuery for KDTree {
 
     fn nodes(&self) -> &[KDNode] { &self.nodes }
     fn indices(&self) -> &[usize] { &self.indices }
-    fn data(&self) -> &[f64] { &self.data }
+    fn data(&self) -> &[f64] { self.data.as_slice() }
     fn dim(&self) -> usize { self.dim }
     fn metric(&self) -> &DistanceMetric { &self.metric }
     fn n_points(&self) -> usize {self.n_points}

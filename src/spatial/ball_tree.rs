@@ -1,4 +1,4 @@
-use crate::{array::NdArray, spatial::common::DistanceMetric};
+use crate::{Shape, array::NdArray, spatial::common::DistanceMetric};
 use super::spatial_query::{SpatialQuery};
 use serde::{Deserialize, Serialize};
 
@@ -17,7 +17,7 @@ pub struct BallNode {
 pub struct BallTree {
     pub nodes: Vec<BallNode>,
     pub indices: Vec<usize>,
-    pub data: Vec<f64>,
+    pub data: NdArray<f64>,
     pub n_points: usize,
     pub dim: usize,
     pub leaf_size: usize,
@@ -25,11 +25,16 @@ pub struct BallTree {
 }
 
 impl BallTree {
-    pub fn new(points: &[f64], n_points: usize, dim: usize, leaf_size: usize, metric: DistanceMetric) -> Self{
+    pub fn new(data: &NdArray<f64>, leaf_size: usize, metric: DistanceMetric) -> Self {
+        let shape = data.shape().dims();
+        assert!(shape.len() == 2, "Expected 2D array (n_points, dim)");
+        let n_points = shape[0];
+        let dim = shape[1];
+
         let mut tree = BallTree {
             nodes: Vec::new(),
             indices: (0..n_points).collect(),
-            data: points.to_vec(),
+            data: data.clone(),
             n_points,
             dim,
             leaf_size,
@@ -41,33 +46,15 @@ impl BallTree {
         tree
     }
 
-    pub fn from_ndarray(array: &NdArray<f64>, leaf_size: usize, metric: DistanceMetric) -> Self {
-        let shape = array.shape().dims();
-        
-        assert!(shape.len() == 2, "Expected 2D array (n_points, dim)");
-        
-        let n_points = shape[0];
-        let dim = shape[1];
-        
-        Self::new(array.as_slice(), n_points, dim, leaf_size, metric)
-    }
-    
     fn reorder_data(&mut self) {
         let mut new_data = vec![0.0; self.data.len()];
-        
+
         for (new_idx, &old_idx) in self.indices.iter().enumerate() {
-            let src = old_idx * self.dim;
             let dst = new_idx * self.dim;
-            new_data[dst..dst + self.dim].copy_from_slice(&self.data[src..src + self.dim]);
+            new_data[dst..dst + self.dim].copy_from_slice(self.data.row(old_idx));
         }
-        
-        self.data = new_data;
-    }
 
-
-    fn get_point_from_idx(&self, i: usize) -> &[f64] {
-        let original_idx = self.indices[i];
-        &self.data[original_idx * self.dim..(original_idx + 1) * self.dim]
+        self.data = NdArray::from_vec(Shape::new(vec![self.n_points, self.dim]), new_data);
     }
 
     fn init_node(&self, start: usize, end: usize) -> (Vec<f64>, f64) {
@@ -75,7 +62,7 @@ impl BallTree {
         let mut centroid = vec![0.0; self.dim];
 
         for i in start..end {
-            let p = self.get_point_from_idx(i);
+            let p = self.data.row(self.indices[i]);
             for (j, &x) in p.iter().enumerate() {
                 centroid[j] += x;
             }
@@ -88,7 +75,7 @@ impl BallTree {
 
         let mut max_dist: f64 = 0.0;
         for i in start..end {
-            let p = self.get_point_from_idx(i);
+            let p = self.data.row(self.indices[i]);
             let dist = self.metric.distance(p, &centroid);
 
             if  dist > max_dist {
@@ -101,8 +88,8 @@ impl BallTree {
     fn furthest_from(&self, query: &[f64], start: usize, end: usize) -> usize {
         (start..end)
             .max_by(|&a, &b| {
-                let da = self.metric.distance(query, self.get_point_from_idx(a));
-                let db = self.metric.distance(query, self.get_point_from_idx(b));
+                let da = self.metric.distance(query, self.data.row(self.indices[a]));
+                let db = self.metric.distance(query, self.data.row(self.indices[b]));
                 da.partial_cmp(&db).unwrap()
             })
             .unwrap()
@@ -113,23 +100,23 @@ impl BallTree {
             let n = (end - start) as f64;
             let mut c = vec![0.0; self.dim];
             for i in start..end {
-                let p = self.get_point_from_idx(i);
+                let p = self.data.row(self.indices[i]);
                 for (j, &x) in p.iter().enumerate() { c[j] += x / n; }
             }
             c
         };
 
         let p1_slot = self.furthest_from(&centroid, start, end);
-        let p1 = self.get_point_from_idx(p1_slot).to_vec();
+        let p1 = self.data.row(self.indices[p1_slot]).to_vec();
 
         let p2_slot = self.furthest_from(&p1, start, end);
-        let p2 = self.get_point_from_idx(p2_slot).to_vec();
+        let p2 = self.data.row(self.indices[p2_slot]).to_vec();
 
         let axis: Vec<f64> = p2.iter().zip(&p1).map(|(a, b)| a - b).collect();
 
         let mut projections: Vec<(f64, usize)> = (start..end)
             .map(|i| {
-                let p = self.get_point_from_idx(i);
+                let p = self.data.row(self.indices[i]);
                 let proj = p.iter().zip(&axis).map(|(x, a)| x * a).sum::<f64>();
                 (proj, self.indices[i])
             })
@@ -191,7 +178,7 @@ impl SpatialQuery for BallTree {
 
     fn nodes(&self) -> &[BallNode] { &self.nodes }
     fn indices(&self) -> &[usize] { &self.indices }
-    fn data(&self) -> &[f64] { &self.data }
+    fn data(&self) -> &[f64] { self.data.as_slice() }
     fn dim(&self) -> usize { self.dim }
     fn metric(&self) -> &DistanceMetric { &self.metric }
     fn n_points(&self) -> usize {self.n_points}

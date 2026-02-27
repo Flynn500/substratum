@@ -13,7 +13,7 @@ pub struct BFNode {
 pub struct BruteForce {
     pub nodes: Vec<BFNode>,
     pub indices: Vec<usize>,
-    pub data: Vec<f64>,
+    pub data: NdArray<f64>,
     pub n_points: usize,
     pub dim: usize,
     pub leaf_size: usize,
@@ -21,7 +21,12 @@ pub struct BruteForce {
 }
 
 impl BruteForce {
-    pub fn new(points: &[f64], n_points: usize, dim: usize, metric: DistanceMetric) -> Self {
+    pub fn new(data: &NdArray<f64>, metric: DistanceMetric) -> Self {
+        let shape = data.shape().dims();
+        assert!(shape.len() == 2, "Expected 2D array (n_points, dim)");
+        let n_points = shape[0];
+        let dim = shape[1];
+        
         let root = BFNode {
             start: 0,
             end: n_points,
@@ -29,23 +34,12 @@ impl BruteForce {
         BruteForce {
             nodes: vec![root],
             indices: (0..n_points).collect(),
-            data: points.to_vec(),
+            data: data.clone(),
             n_points,
             dim,
             leaf_size: n_points,
             metric,
         }
-    }
-
-    pub fn from_ndarray(array: &NdArray<f64>, metric: DistanceMetric) -> Self {
-        let shape = array.shape().dims();
-        
-        assert!(shape.len() == 2, "Expected 2D array (n_points, dim)");
-        
-        let n_points = shape[0];
-        let dim = shape[1];
-        
-        Self::new(array.as_slice(), n_points, dim, metric)
     }
 }
 
@@ -54,7 +48,7 @@ impl SpatialQuery for BruteForce {
 
     fn nodes(&self) -> &[BFNode] { &self.nodes }
     fn indices(&self) -> &[usize] { &self.indices }
-    fn data(&self) -> &[f64] { &self.data }
+    fn data(&self) -> &[f64] { &self.data.as_slice() }
     fn dim(&self) -> usize { self.dim }
     fn metric(&self) -> &DistanceMetric { &self.metric }
     fn n_points(&self) -> usize {self.n_points}
