@@ -131,32 +131,36 @@ impl PySpatialResult {
     fn is_empty(&self) -> bool {
         self.indices.as_int().unwrap().as_slice().is_empty()
     }
-    
-    fn mean_distance(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {
-        scalar_or_array(py, self.aggregate_per_query(|a| a.mean()), self.n_queries == 1)
-    }
 
-    fn min_distance(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {
+    fn min(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {
         scalar_or_array(py, self.aggregate_per_query(|a| a.min()), self.n_queries == 1)
     }
 
-    fn max_distance(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {
+    fn max(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {
         scalar_or_array(py, self.aggregate_per_query(|a| a.max()), self.n_queries == 1)
     }
 
-    fn median_distance(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {
+    fn radius(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {
+        self.max(py)
+    }
+    
+    fn mean(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {
+        scalar_or_array(py, self.aggregate_per_query(|a| a.mean()), self.n_queries == 1)
+    }
+
+    fn median(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {
         scalar_or_array(py, self.aggregate_per_query(|a| a.median()), self.n_queries == 1)
     }
 
-    fn var_distance(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {
+    fn var(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {
         scalar_or_array(py, self.aggregate_per_query(|a| a.var()), self.n_queries == 1)
     }
 
-    fn std_distance(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {
+    fn std(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {
         scalar_or_array(py, self.aggregate_per_query(|a| a.std()), self.n_queries == 1)
     }
 
-    fn quantile_distance(&self, py: Python<'_>, q: f64) -> PyResult<Py<PyAny>> {
+    fn quantile(&self, py: Python<'_>, q: f64) -> PyResult<Py<PyAny>> {
         if !(0.0..=1.0).contains(&q) {
             return Err(pyo3::exceptions::PyValueError::new_err("quantile must be between 0 and 1"));
         }

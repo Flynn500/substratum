@@ -9,7 +9,7 @@ The spatial module holds a variety of tree structures, each possesing kNN, raidu
 import ironforest as irn
 
 #from ArrayLike input - python list, numpy array, ironforest array
-data: Array = ...
+data = ...
 
 tree = irn.spatial.KDTree(
     data,
@@ -18,7 +18,7 @@ tree = irn.spatial.KDTree(
 )
 
 #from ironforest Array
-data = ...
+data: Array = ...
 
 tree = irn.spatial.KDTree.from_array(
     data,
@@ -84,7 +84,7 @@ print(result.indices)
 print(result.distances)
 
 #Get more comprehensive query results
-print(result.centroid, result.median_distance, result.quantile_distance(0.1)) 
+print(result.centroid, result.median, result.quantile(0.1)) 
 
 #split a batch query into a list of single queries
 results = result.split()
@@ -93,10 +93,9 @@ results = result.split()
 `SpatialResult` currently supports:
 - count, is_empty
 - split - split a batch query into a list of singular queries
-- mean_distance, median_distance
-- max_distance, min_distance
-- var_distance, std_distance
-- quantile_distance
+- mean, median
+- max & radius, min
+- var, std, quantile
 - centroid
 
 

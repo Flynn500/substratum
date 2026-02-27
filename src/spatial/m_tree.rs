@@ -318,6 +318,7 @@ impl MTree {
         (left_entry, right_entry)
     }
 
+    //Have to recreate query methods manually as M-tree differs substantially from the others
     fn knn_recursive_inner(
         &self,
         node_idx: usize,

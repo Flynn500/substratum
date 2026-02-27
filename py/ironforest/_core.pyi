@@ -1068,15 +1068,7 @@ class spatial:
             """
             ...
 
-        def mean_distance(self) -> float | Array[float]:
-            """Mean distance across results.
-
-            Returns a scalar for single queries, or an array of per-query
-            means for batch queries.
-            """
-            ...
-
-        def min_distance(self) -> float | Array[float]:
+        def min(self) -> float | Array[float]:
             """Minimum distance across results.
 
             Returns a scalar for single queries, or an array of per-query
@@ -1084,7 +1076,7 @@ class spatial:
             """
             ...
 
-        def max_distance(self) -> float | Array[float]:
+        def max(self) -> float | Array[float]:
             """Maximum distance across results.
 
             Returns a scalar for single queries, or an array of per-query
@@ -1092,7 +1084,23 @@ class spatial:
             """
             ...
 
-        def median_distance(self) -> float | Array[float]:
+        def radius(self) -> float | Array[float]:
+            """Maximum distance across results.
+
+            Returns a scalar for single queries, or an array of per-query
+            maximums for batch queries.
+            """
+            ...
+
+        def mean(self) -> float | Array[float]:
+            """Mean distance across results.
+
+            Returns a scalar for single queries, or an array of per-query
+            means for batch queries.
+            """
+            ...
+
+        def median(self) -> float | Array[float]:
             """Median distance across results.
 
             Returns a scalar for single queries, or an array of per-query
@@ -1100,7 +1108,7 @@ class spatial:
             """
             ...
         
-        def var_distance(self) -> float | Array[float]:
+        def var(self) -> float | Array[float]:
             """Variance of distance across results.
 
             Returns a scalar for single queries, or an array of per-query
@@ -1108,7 +1116,7 @@ class spatial:
             """
             ...
         
-        def std_distance(self) -> float | Array[float]:
+        def std(self) -> float | Array[float]:
             """Standard deviation of distance across results.
 
             Returns a scalar for single queries, or an array of per-query
@@ -1116,7 +1124,7 @@ class spatial:
             """
             ...
         
-        def quantile_distance(self, q) -> float | Array[float]:
+        def quantile(self, q) -> float | Array[float]:
             """Compute a distance quantile for each query's results.
             Args:
                 q: Quantile value between 0 and 1 (e.g. 0.5 for median).
