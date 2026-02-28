@@ -23,7 +23,7 @@ def bench_array_creation(size=1000):
     shape_ss = [size, size]
     shape_np = (size, size)
     
-    ss_time = benchmark(lambda: irn.ndutils.zeros(shape_ss), "substratum zeros")
+    ss_time = benchmark(lambda: irn.ndutils.zeros(shape_ss), "ironforest zeros")
     np_time = benchmark(lambda: np.zeros(shape_np), "numpy zeros")
     
     print(f"Ratio (numpy/substratum): {np_time/ss_time:.2f}x")

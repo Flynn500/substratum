@@ -1,8 +1,10 @@
 //Xoshiro256** Generator
 use std::time::{SystemTime, UNIX_EPOCH};
-
+use serde::{Deserialize, Serialize};
 use crate::array::ndarray::NdArray;
 use crate::array::shape::Shape;
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Generator {
     state: [u64; 4],
 }
@@ -62,8 +64,18 @@ impl Generator {
         result
     }
     pub fn next_f64(&mut self) -> f64 {
-        let bits = self.next_u64() >> 11;
-        bits as f64 * (1.0 / (1u64 << 53) as f64)
+            let bits = self.next_u64() >> 11;
+            bits as f64 * (1.0 / (1u64 << 53) as f64)
+        }
+
+        pub fn next_gaussian(&mut self) -> f64 {
+        let pi = std::f64::consts::PI;
+        let mut r1 = self.next_f64();
+        while r1 == 0.0 {
+            r1 = self.next_f64();
+        }
+        let r2 = self.next_f64();
+        f64::sqrt(-2.0 * f64::ln(r1)) * f64::sin(2.0 * pi * r2)
     }
 
     pub fn randint(&mut self, low: i64, high: i64, shape: Shape) -> NdArray<i64> {

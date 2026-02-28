@@ -1,6 +1,57 @@
 use crate::array::ndarray::NdArray;
 use crate::array::shape::Shape;
 
+
+#[cfg(target_arch = "x86_64")]
+#[target_feature(enable = "avx2,fma")]
+unsafe fn simd_dot_avx2_fma(a: &[f64], b: &[f64]) -> f64 {
+    use std::arch::x86_64::*;
+
+    let n = a.len();
+    let chunks = n / 4;
+    let remainder = n % 4;
+
+    let mut acc = _mm256_setzero_pd();
+
+    let a_ptr = a.as_ptr();
+    let b_ptr = b.as_ptr();
+
+    for i in 0..chunks {
+        let offset = i * 4;
+        let va = _mm256_loadu_pd(a_ptr.add(offset));
+        let vb = _mm256_loadu_pd(b_ptr.add(offset));
+        acc = _mm256_fmadd_pd(va, vb, acc);
+    }
+
+    let hi = _mm256_extractf128_pd(acc, 1);
+    let lo = _mm256_castpd256_pd128(acc);
+    let sum128 = _mm_add_pd(hi, lo);
+    let upper = _mm_unpackhi_pd(sum128, sum128);
+    let mut result = _mm_cvtsd_f64(_mm_add_sd(sum128, upper));
+
+    let tail_start = chunks * 4;
+    for i in 0..remainder {
+        result += a[tail_start + i] * b[tail_start + i];
+    }
+
+    result
+}
+
+
+#[inline]
+pub fn simd_dot(a: &[f64], b: &[f64]) -> f64 {
+    debug_assert_eq!(a.len(), b.len());
+
+    #[cfg(target_arch = "x86_64")]
+    {
+        if is_x86_feature_detected!("avx2") && is_x86_feature_detected!("fma") {
+            return unsafe { simd_dot_avx2_fma(a, b) };
+        }
+    }
+
+    a.iter().zip(b).map(|(x, y)| x * y).sum()
+}
+
 impl<T: Copy> NdArray<T> {
     pub fn transpose(&self) -> Self {
         assert_eq!(self.ndim(), 2, "transpose requires 2D array");
@@ -80,9 +131,8 @@ impl NdArray<f64> {
                 assert_eq!(k, other.len(), "Inner dimensions must match");
                 let mut data = Vec::with_capacity(n);
                 for i in 0..n {
-                    let sum: f64 = (0..k)
-                        .map(|j| self.get(&[i, j]).unwrap() * other.get(&[j]).unwrap())
-                        .sum();
+                    let row = &self.as_slice()[i * k..(i + 1) * k];
+                    let sum = simd_dot(row, other.as_slice());
                     data.push(sum);
                 }
                 NdArray::from_vec(Shape::d1(n), data)

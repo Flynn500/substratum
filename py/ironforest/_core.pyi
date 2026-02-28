@@ -2032,6 +2032,148 @@ class spatial:
             """
             ...
 
+    class RPTree:
+        """Random Projection tree for efficient nearest neighbor queries.
+
+        An RP-tree recursively partitions data by projecting points onto random
+        directions and splitting at the median. This is more effective than
+        axis-aligned splits (KD-tree) in high-dimensional spaces.
+        """
+
+        @staticmethod
+        def from_array(
+            array: Array[float],
+            leaf_size: int = 20,
+            metric: Literal["euclidean", "manhattan", "chebyshev"] = "euclidean",
+            projection: Literal["gaussian"] = "gaussian",
+            seed: Optional[int] = None,
+        ) -> "spatial.RPTree":
+            """Construct an RP-tree from a 2D array of points.
+
+            Args:
+                array: 2D array of shape (n_points, n_features) containing the data points.
+                leaf_size: Maximum number of points in a leaf node. Defaults to 20.
+                metric: Distance metric. Options: "euclidean", "manhattan", "chebyshev".
+                    Defaults to "euclidean".
+                projection: Random projection type used for splitting. Options: "gaussian".
+                    Defaults to "gaussian".
+                seed: Optional RNG seed for reproducible tree construction.
+
+            Returns:
+                A constructed RPTree instance.
+
+            Raises:
+                AssertionError: If array is not 2-dimensional.
+                ValueError: If metric or projection is not a valid option.
+            """
+            ...
+
+        def __init__(
+            self,
+            data: ArrayLike,
+            leaf_size: int = 20,
+            metric: Literal["euclidean", "manhattan", "chebyshev"] = "euclidean",
+            projection: Literal["gaussian"] = "gaussian",
+            seed: Optional[int] = None,
+        ):
+            """Construct an RP-tree from array-like data.
+
+            Args:
+                data: ArrayLike (n_points, n_features) containing the data points.
+                leaf_size: Maximum number of points in a leaf node. Defaults to 20.
+                metric: Distance metric. Options: "euclidean", "manhattan", "chebyshev".
+                    Defaults to "euclidean".
+                projection: Random projection type used for splitting. Options: "gaussian".
+                    Defaults to "gaussian".
+                seed: Optional RNG seed for reproducible tree construction.
+
+            Returns:
+                A constructed RPTree instance.
+
+            Raises:
+                AssertionError: If array is not 2-dimensional.
+                ValueError: If metric or projection is not a valid option.
+            """
+            ...
+
+        def query_radius(self, query: ArrayLike, radius: float) -> "spatial.SpatialResult":
+            """Find all points within a given radius of the query point.
+
+            Args:
+                query: Query point (scalar, list, or array-like).
+                radius: Search radius. All points with distance <= radius are returned.
+
+            Returns:
+                Spatial result object.
+            """
+            ...
+
+        def query_knn(self, query: ArrayLike, k: int) -> "spatial.SpatialResult":
+            """Find the k nearest neighbors to the query point.
+
+            Args:
+                query: Query point (scalar, list, or array-like).
+                k: Number of nearest neighbors to return.
+
+            Returns:
+                Spatial result object.
+            """
+            ...
+
+        @overload
+        def data(self, indices: ArrayLike) -> Array: ...
+        @overload
+        def data(self, indices: None = None) -> Array:
+            """Return training-data rows at original indices, or all points if omitted.
+
+            Args:
+                indices: 1D int array-like of original indices, or None to return all points.
+
+            Returns:
+                float64 Array of shape (len(indices), n_features) or
+                (n_points, n_features) when called without arguments.
+            """
+            ...
+
+        @overload
+        def kernel_density(
+            self,
+            queries: ArrayLike,
+            bandwidth: float = 1.0,
+            kernel: Literal["gaussian", "epanechnikov", "uniform", "triangular"] = "gaussian",
+            normalize: bool = True,
+        ) -> float: ...
+
+        @overload
+        def kernel_density(
+            self,
+            queries: ArrayLike,
+            bandwidth: float = 1.0,
+            kernel: Literal["gaussian", "epanechnikov", "uniform", "triangular"] = "gaussian",
+            normalize: bool = True,
+        ) -> List: ...
+
+        @overload
+        def kernel_density(
+            self,
+            queries: None = None,
+            bandwidth: float = 1.0,
+            kernel: Literal["gaussian", "epanechnikov", "uniform", "triangular"] = "gaussian",
+            normalize: bool = True,
+        ) -> List:
+            """Estimate kernel density at query points.
+
+            Args:
+                queries: Query points, or None for leave-one-out on training data.
+                bandwidth: Smoothing parameter. Defaults to 1.0.
+                kernel: Kernel function. Defaults to "gaussian".
+                normalize: Whether to return normalized values. Defaults to True.
+
+            Returns:
+                Float for single query, or 1D Array of density estimates.
+            """
+            ...
+
     class AggTree:
         """Aggregation tree for fast approximate kernel density estimation.
 

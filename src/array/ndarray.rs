@@ -185,8 +185,6 @@ impl<T: Copy> NdArray<T> {
         NdArray::from_vec(Shape::d1(data.len()), data)
     }
 
-    /// Select elements/rows along the first axis where `mask` is true.
-    /// Mask length must equal the size of the first dimension.
     pub fn boolean_mask(&self, mask: &[bool]) -> Self {
         let n_rows = if self.ndim() == 0 { 0 } else { self.shape().dims()[0] };
         assert_eq!(

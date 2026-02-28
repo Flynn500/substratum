@@ -5,6 +5,7 @@ pub mod spatial;
 pub mod stats;
 pub mod linalg;
 pub mod tree_engine;
+pub mod projection;
 
 pub use array::{NdArray, Shape, Storage, BroadcastIter};
 pub use random::Generator;

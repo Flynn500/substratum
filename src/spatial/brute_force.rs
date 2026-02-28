@@ -55,8 +55,8 @@ impl SpatialQuery for BruteForce {
 
     fn node_start(&self, idx: usize) -> usize { self.nodes[idx].start }
     fn node_end(&self, idx: usize) -> usize { self.nodes[idx].end }
-    fn node_left(&self, _idx: usize) -> Option<usize> { Some(0) }
-    fn node_right(&self, _idx: usize) -> Option<usize> { Some(0) }
+    fn node_left(&self, _idx: usize) -> Option<usize> { None }
+    fn node_right(&self, _idx: usize) -> Option<usize> { None }
 
     fn min_distance_to_node(&self, _node_idx: usize, _query: &[f64]) -> f64 { 0.0 }
 

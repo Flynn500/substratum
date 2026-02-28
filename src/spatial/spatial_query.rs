@@ -28,6 +28,13 @@ pub trait SpatialQuery: Sync {
         (self.node_left(node_idx).unwrap(), self.node_right(node_idx).unwrap())
     }
 
+    //combination of min dist to node and knn order
+    fn node_projection(&self, node_idx: usize, query: &[f64]) -> (usize, usize, f64) {
+        let dist = self.min_distance_to_node(node_idx, query);
+        let (first, second) = self.knn_child_order(node_idx, query);
+        (first, second, dist)
+    }
+
     fn get_point(&self, i: usize) -> &[f64] {
         let dim = self.dim();
         &self.data()[i * dim..(i + 1) * dim]
@@ -77,10 +84,6 @@ pub trait SpatialQuery: Sync {
     }
 
     fn query_knn_recursive(&self, node_idx: usize, query: &[f64], heap: &mut BinaryHeap<HeapItem>, k: usize) {
-        if heap.len() == k && self.min_distance_to_node(node_idx, query) > heap.peek().unwrap().distance {
-            return;
-        }
-
         if self.node_left(node_idx).is_none() {
             for i in self.node_start(node_idx)..self.node_end(node_idx) {
                 let dist = self.metric().distance(query, self.get_point(i));
@@ -94,7 +97,12 @@ pub trait SpatialQuery: Sync {
             return;
         }
 
-        let (first, second) = self.knn_child_order(node_idx, query);
+        let (first, second, node_dist) = self.node_projection(node_idx, query);
+
+        if heap.len() == k && node_dist > heap.peek().unwrap().distance {
+            return;
+        }
+
         self.query_knn_recursive(first, query, heap, k);
         self.query_knn_recursive(second, query, heap, k);
     }

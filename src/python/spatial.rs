@@ -2,7 +2,8 @@ use pyo3::prelude::*;
 use pyo3::exceptions::PyValueError;
 use pyo3::types::PyAny;
 use crate::array::{NdArray, Shape};
-use crate::spatial::{BallTree, KDTree, VPTree, AggTree, MTree, BruteForce, VantagePointSelection, DistanceMetric, KernelType, SpatialQuery};
+use crate::projection::ProjectionType;
+use crate::spatial::{AggTree, BallTree, BruteForce, DistanceMetric, KDTree, KernelType, MTree, RPTree, SpatialQuery, VPTree, VantagePointSelection};
 use super::{PyArray, ArrayData, ArrayLike};
 use pyo3::types::PyBytes;
 use rmp_serde;
@@ -319,6 +320,18 @@ fn parse_vantage_selection(selection: &str) -> PyResult<VantagePointSelection> {
     }
 }
 
+fn parse_projection_type(projection: &str) -> PyResult<ProjectionType> {
+    match projection.to_lowercase().as_str() {
+        "gaussian" => Ok(ProjectionType::Gaussian),
+        // "sparse" => Ok(ProjectionType::Sparse(density)),
+        // "achlioptas" => Ok(ProjectionType::Achlioptas),
+        _ => Err(PyValueError::new_err(format!(
+            "Unknown projection type '{}'. Valid options: 'gaussian'",
+            projection
+        ))),
+    }
+}
+
 // =============================================================================
 // Query Macro
 // =============================================================================
@@ -420,6 +433,7 @@ impl_spatial_query_methods!(PyBallTree);
 impl_spatial_query_methods!(PyKDTree);
 impl_spatial_query_methods!(PyVPTree);
 impl_spatial_query_methods!(PyBruteForce);
+impl_spatial_query_methods!(PyRPTree);
 
 
 // =============================================================================
@@ -478,6 +492,7 @@ impl_serialization_methods!(PyVPTree, VPTree, PyVPTree);
 impl_serialization_methods!(PyBruteForce, BruteForce, PyBruteForce);
 impl_serialization_methods!(PyAggTree, AggTree, PyAggTree);
 impl_serialization_methods!(PyMTree, MTree, PyMTree);
+impl_serialization_methods!(PyRPTree, RPTree, PyRPTree);
 
 // =============================================================================
 // Tree Types
@@ -576,6 +591,41 @@ impl PyVPTree {
         let data = array.into_ndarray()?;
         let tree = VPTree::new(&data, leaf_size, metric, selection_method);
         Ok(PyVPTree { inner: Some(tree) })
+    }
+}
+
+#[pyclass(name = "RPTree")]
+pub struct PyRPTree{
+    inner: Option<RPTree>,
+}
+
+#[pymethods] //not an error ide only
+impl PyRPTree {
+    #[staticmethod]
+    #[pyo3(signature = (array, leaf_size=20, metric="euclidean", projection="gaussian", seed=0))]
+    fn from_array(array: &PyArray, leaf_size: Option<usize>, metric: Option<&str>, projection: Option<&str>, seed: u64) -> PyResult<Self> {
+        let leaf_size = leaf_size.unwrap_or(20);
+        let metric = parse_metric(metric.unwrap_or("euclidean"))?;
+        let projection_method = parse_projection_type(projection.unwrap_or("gaussian"))?;
+        let tree = RPTree::new(array.as_float()?, leaf_size, metric, projection_method, seed);
+        Ok(PyRPTree { inner: Some(tree) })
+    }
+
+    #[new]
+    #[pyo3(signature = (array, leaf_size=20, metric="euclidean", projection="gaussian", seed=0))]
+    fn __init__(
+        array: ArrayLike,
+        leaf_size: Option<usize>,
+        metric: Option<&str>,
+        projection: Option<&str>,
+        seed: u64,
+    ) -> PyResult<Self> {
+        let leaf_size = leaf_size.unwrap_or(20);
+        let metric = parse_metric(metric.unwrap_or("euclidean"))?;
+        let projection_method = parse_projection_type(projection.unwrap_or("gaussian"))?;
+        let data = array.into_ndarray()?;
+        let tree = RPTree::new(&data, leaf_size, metric, projection_method, seed);
+        Ok(PyRPTree{ inner: Some(tree) })
     }
 }
 
@@ -843,5 +893,6 @@ pub fn register_module(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyMTree>()?;
     m.add_class::<PyAggTree>()?;
     m.add_class::<PyBruteForce>()?;
+    m.add_class::<PyRPTree>()?;
     Ok(())
 }
