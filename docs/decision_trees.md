@@ -27,7 +27,7 @@ clf = DecisionTreeClassifier(
     min_samples_leaf=1,
     max_features=None, 
     criterion="gini",
-    random_state=42,
+    random_state=0,
 )
 
 clf.fit(X, y)
@@ -44,7 +44,7 @@ reg = DecisionTreeRegressor(
     min_samples_split=2,
     min_samples_leaf=1,
     max_features=None,
-    random_state=42,
+    random_state=0,
 )
 
 reg.fit(X, y)
@@ -56,7 +56,7 @@ Identical to the classifier, but uses MSE as the split criterion (no `criterion`
 **Impurity measures:**
 - Gini: `1 - Σ pᵢ²`
 - Entropy: `-Σ pᵢ log₂(pᵢ)`
-- MSE: `(Σy² / n) - (Σy / n)²` — clipped to ≥ 0 to guard against floating-point underflow
+- MSE: `(Σy² / n) - (Σy / n)²` clipped to ≥ 0 to guard against floating-point underflow
 
 ### Limitations
 
@@ -172,4 +172,4 @@ Ensemble training uses Rayon under the hood. All trees in a forest or isolation 
 
 ### Serialization
 
-Tree and ensemble objects are in-memory only — there is currently no `save`/`load` method exposed for tree models. If persistence is needed, refit the model from saved training data. (The spatial module does support serialization via `save`/`load` for `BallTree`, `KDTree`, etc.)
+Tree and ensemble objects are in-memory only, there is currently no `save`/`load` method exposed for tree models. If persistence is needed, refit the model from saved training data. (The spatial module does support serialization via `save`/`load` for `BallTree`, `KDTree`, etc.)

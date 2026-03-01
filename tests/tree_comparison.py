@@ -13,7 +13,8 @@ TREES = {
     "RPTree":   lambda d, ls: spatial.RPTree.from_array(d, leaf_size=ls),
 }
 
-DIMS = [2, 4, 8, 16, 32, 64, 128, 256]
+DIMS = [2, 4, 8, 16, 32, 64, 128, 256, 512]
+INTRINISC_DIMS = [2, 2, 4, 4, 8, 8, 16, 16, 32]
 
 
 def time_call(fn, repeat=3):
@@ -67,21 +68,32 @@ def plot_results(results, dims, tree_names, title="kNN Query Time vs Dimensions"
     plt.savefig("tree_comparison.png", dpi=150)
 
 
-def run_benchmark(n=50_000, k=10, leaf_size=80, n_queries=5_000):
-    rng = np.random.default_rng(42)
+def run_benchmark(n=50_000, k=10, leaf_size=80, n_queries=1_000):
+    rng = np.random.default_rng(0)
     results = {}
     n_clusters = 20
     cluster_std = 0.05
-    for dim in DIMS:
+    for i in range(0, len(DIMS)):
+        dim = DIMS[i]
+        idim = INTRINISC_DIMS[i]
         print(f"  dim={dim}", flush=True)
         results[dim] = {}
 
-        centers = rng.random((n_clusters, dim))
-        labels = rng.integers(0, n_clusters, size=n)
-        data = centers[labels] + cluster_std * rng.standard_normal((n, dim))
+        # centers = rng.random((n_clusters, dim))
+        # labels = rng.integers(0, n_clusters, size=n)
+        # data = centers[labels] + cluster_std * rng.standard_normal((n, dim))
 
-        query_labels = rng.integers(0, n_clusters, size=n_queries)
-        queries = centers[query_labels] + cluster_std * rng.standard_normal((n_queries, dim))
+        # query_labels = rng.integers(0, n_clusters, size=n_queries)
+        # queries = centers[query_labels] + cluster_std * rng.standard_normal((n_queries, dim))
+
+        low_d_data = rng.standard_normal((n, idim))
+        q, _ = np.linalg.qr(rng.standard_normal((dim, dim)))
+        projection_matrix = q[:idim, :] 
+        
+        data = low_d_data @ projection_matrix
+        data += 0.01 * rng.standard_normal((n, dim))
+
+        queries = rng.standard_normal((n_queries, idim)) @ projection_matrix
 
         irn_data = irn.ndutils.from_numpy(data)
 
@@ -98,7 +110,6 @@ def run_benchmark(n=50_000, k=10, leaf_size=80, n_queries=5_000):
 
 
 if __name__ == "__main__":
-    print("Running kNN benchmark: n=100,000 | k=10 | queries=10,000 | leaf_size=40\n")
     results = run_benchmark()
     md = format_md_table(results, DIMS, list(TREES.keys()))
     plot_results(results, DIMS, list(TREES.keys()))

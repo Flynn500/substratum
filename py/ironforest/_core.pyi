@@ -1593,7 +1593,7 @@ class spatial:
             array: Array[float],
             leaf_size: int = 20,
             metric: Literal["euclidean", "manhattan", "chebyshev"] = "euclidean",
-            selection: Literal["first", "random"] = "first"
+            selection: Literal["first", "random", "variance"] = "variance"
         ) -> "spatial.VPTree":
             """Construct a vantage-point tree from a 2D array of points.
 
@@ -1611,6 +1611,7 @@ class spatial:
                     Options are:
                     - "first": Always select the first point in the partition (default)
                     - "random": Randomly select a point from the partition
+                    - "variance: Selects the point with the greatest distance variance from a subset of data
 
             Returns:
                 A constructed VPTree instance.
@@ -1626,7 +1627,7 @@ class spatial:
             data: ArrayLike,
             leaf_size: int = 20,
             metric: Literal["euclidean", "manhattan", "chebyshev"] = "euclidean",
-            selection: Literal["first", "random"] = "first"
+            selection: Literal["first", "random", "variance"] = "variance"
         ):
             """Construct a vantage-point tree from a 2D array of points.
 
@@ -1644,6 +1645,7 @@ class spatial:
                     Options are:
                     - "first": Always select the first point in the partition (default)
                     - "random": Randomly select a point from the partition
+                    - "variance: Selects the point with the greatest distance variance from a subset of data
 
             Returns:
                 A constructed VPTree instance.
@@ -2045,7 +2047,7 @@ class spatial:
             array: Array[float],
             leaf_size: int = 20,
             metric: Literal["euclidean", "manhattan", "chebyshev"] = "euclidean",
-            projection: Literal["gaussian"] = "gaussian",
+            projection: Literal["gaussian", "sparse"] = "gaussian",
             seed: Optional[int] = None,
         ) -> "spatial.RPTree":
             """Construct an RP-tree from a 2D array of points.
@@ -2055,7 +2057,7 @@ class spatial:
                 leaf_size: Maximum number of points in a leaf node. Defaults to 20.
                 metric: Distance metric. Options: "euclidean", "manhattan", "chebyshev".
                     Defaults to "euclidean".
-                projection: Random projection type used for splitting. Options: "gaussian".
+                projection: Random projection type used for splitting. Options: "gaussian", , "sparse".
                     Defaults to "gaussian".
                 seed: Optional RNG seed for reproducible tree construction.
 
@@ -2073,7 +2075,7 @@ class spatial:
             data: ArrayLike,
             leaf_size: int = 20,
             metric: Literal["euclidean", "manhattan", "chebyshev"] = "euclidean",
-            projection: Literal["gaussian"] = "gaussian",
+            projection: Literal["gaussian", "sparse"] = "gaussian",
             seed: Optional[int] = None,
         ):
             """Construct an RP-tree from array-like data.
@@ -2083,7 +2085,7 @@ class spatial:
                 leaf_size: Maximum number of points in a leaf node. Defaults to 20.
                 metric: Distance metric. Options: "euclidean", "manhattan", "chebyshev".
                     Defaults to "euclidean".
-                projection: Random projection type used for splitting. Options: "gaussian".
+                projection: Random projection type used for splitting. Options: "gaussian", , "sparse".
                     Defaults to "gaussian".
                 seed: Optional RNG seed for reproducible tree construction.
 

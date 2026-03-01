@@ -167,46 +167,10 @@ impl SpatialQuery for KDTree {
 
     fn min_distance_to_node(&self, node_idx: usize, query: &[f64]) -> f64 {
         let node = &self.nodes[node_idx];
-        match self.metric {
-            DistanceMetric::Euclidean => {
-                let mut sum = 0.0;
-                for d in 0..query.len() {
-                    if query[d] < node.bbox_min[d] {
-                        let diff = node.bbox_min[d] - query[d];
-                        sum += diff * diff;
-                    } else if query[d] > node.bbox_max[d] {
-                        let diff = query[d] - node.bbox_max[d];
-                        sum += diff * diff;
-                    }
-                }
-                sum.sqrt()
-            }
-            DistanceMetric::Manhattan => {
-                let mut sum = 0.0;
-                for d in 0..query.len() {
-                    if query[d] < node.bbox_min[d] {
-                        sum += node.bbox_min[d] - query[d];
-                    } else if query[d] > node.bbox_max[d] {
-                        sum += query[d] - node.bbox_max[d];
-                    }
-                }
-                sum
-            }
-            DistanceMetric::Chebyshev => {
-                let mut max_dist: f64 = 0.0;
-                for d in 0..query.len() {
-                    let dist = if query[d] < node.bbox_min[d] {
-                        node.bbox_min[d] - query[d]
-                    } else if query[d] > node.bbox_max[d] {
-                        query[d] - node.bbox_max[d]
-                    } else {
-                        0.0
-                    };
-                    max_dist = max_dist.max(dist);
-                }
-                max_dist
-            }
-        }
+        let clamped: Vec<f64> = query.iter().enumerate()
+            .map(|(d, &q)| q.clamp(node.bbox_min[d], node.bbox_max[d]))
+            .collect();
+        self.metric.distance(&clamped, query)
     }
 
     fn knn_child_order(&self, node_idx: usize, query: &[f64]) -> (usize, usize) {

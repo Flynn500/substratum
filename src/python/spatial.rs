@@ -313,6 +313,7 @@ fn parse_vantage_selection(selection: &str) -> PyResult<VantagePointSelection> {
     match selection.to_lowercase().as_str() {
         "first" => Ok(VantagePointSelection::First),
         "random" => Ok(VantagePointSelection::Random),
+        "variance" => Ok(VantagePointSelection::Variance { sample_size: 10 }),
         _ => Err(PyValueError::new_err(format!(
             "Unknown vantage point selection method '{}'. Valid options: 'first', 'random'",
             selection
@@ -320,10 +321,10 @@ fn parse_vantage_selection(selection: &str) -> PyResult<VantagePointSelection> {
     }
 }
 
-fn parse_projection_type(projection: &str) -> PyResult<ProjectionType> {
+fn parse_projection_type(projection: &str, density: f64) -> PyResult<ProjectionType> {
     match projection.to_lowercase().as_str() {
         "gaussian" => Ok(ProjectionType::Gaussian),
-        // "sparse" => Ok(ProjectionType::Sparse(density)),
+        "sparse" => Ok(ProjectionType::Sparse(density)),
         // "achlioptas" => Ok(ProjectionType::Achlioptas),
         _ => Err(PyValueError::new_err(format!(
             "Unknown projection type '{}'. Valid options: 'gaussian'",
@@ -568,17 +569,17 @@ pub struct PyVPTree {
 #[pymethods] //not an error ide only
 impl PyVPTree {
     #[staticmethod]
-    #[pyo3(signature = (array, leaf_size=20, metric="euclidean", selection="first"))]
+    #[pyo3(signature = (array, leaf_size=20, metric="euclidean", selection="variance"))]
     fn from_array(array: &PyArray, leaf_size: Option<usize>, metric: Option<&str>, selection: Option<&str>) -> PyResult<Self> {
         let leaf_size = leaf_size.unwrap_or(20);
         let metric = parse_metric(metric.unwrap_or("euclidean"))?;
-        let selection_method = parse_vantage_selection(selection.unwrap_or("first"))?;
+        let selection_method = parse_vantage_selection(selection.unwrap_or("random"))?;
         let tree = VPTree::new(array.as_float()?, leaf_size, metric, selection_method);
         Ok(PyVPTree { inner: Some(tree) })
     }
 
     #[new]
-    #[pyo3(signature = (array, leaf_size=20, metric="euclidean", selection="first"))]
+    #[pyo3(signature = (array, leaf_size=20, metric="euclidean", selection="variance"))]
     fn __init__(
         array: ArrayLike,
         leaf_size: Option<usize>,
@@ -587,7 +588,7 @@ impl PyVPTree {
     ) -> PyResult<Self> {
         let leaf_size = leaf_size.unwrap_or(20);
         let metric = parse_metric(metric.unwrap_or("euclidean"))?;
-        let selection_method = parse_vantage_selection(selection.unwrap_or("first"))?;
+        let selection_method = parse_vantage_selection(selection.unwrap_or("random"))?;
         let data = array.into_ndarray()?;
         let tree = VPTree::new(&data, leaf_size, metric, selection_method);
         Ok(PyVPTree { inner: Some(tree) })
@@ -604,10 +605,11 @@ impl PyRPTree {
     #[staticmethod]
     #[pyo3(signature = (array, leaf_size=20, metric="euclidean", projection="gaussian", seed=0))]
     fn from_array(array: &PyArray, leaf_size: Option<usize>, metric: Option<&str>, projection: Option<&str>, seed: u64) -> PyResult<Self> {
+        let data = array.as_float()?;
         let leaf_size = leaf_size.unwrap_or(20);
         let metric = parse_metric(metric.unwrap_or("euclidean"))?;
-        let projection_method = parse_projection_type(projection.unwrap_or("gaussian"))?;
-        let tree = RPTree::new(array.as_float()?, leaf_size, metric, projection_method, seed);
+        let projection_method = parse_projection_type(projection.unwrap_or("gaussian"), 1.0/(data.ndim() as f64).sqrt())?;
+        let tree = RPTree::new(data, leaf_size, metric, projection_method, seed);
         Ok(PyRPTree { inner: Some(tree) })
     }
 
@@ -620,10 +622,12 @@ impl PyRPTree {
         projection: Option<&str>,
         seed: u64,
     ) -> PyResult<Self> {
-        let leaf_size = leaf_size.unwrap_or(20);
-        let metric = parse_metric(metric.unwrap_or("euclidean"))?;
-        let projection_method = parse_projection_type(projection.unwrap_or("gaussian"))?;
         let data = array.into_ndarray()?;
+        let leaf_size = leaf_size.unwrap_or(20);
+        
+        let metric = parse_metric(metric.unwrap_or("euclidean"))?;
+        let projection_method = parse_projection_type(projection.unwrap_or("gaussian"), 1.0/f64::sqrt(data.ndim() as f64))?;
+
         let tree = RPTree::new(&data, leaf_size, metric, projection_method, seed);
         Ok(PyRPTree{ inner: Some(tree) })
     }

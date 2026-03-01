@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 pub enum ProjectionType {
     Gaussian,
     Sparse(f64),
-    // Achlioptas,       // future: ±1/0 with p=1/3
+    // Achlioptas,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

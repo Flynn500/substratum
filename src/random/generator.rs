@@ -63,12 +63,17 @@ impl Generator {
         
         result
     }
+    
+    pub fn next_usize(&mut self) -> usize{
+        self.next_u64() as usize
+    }
+
     pub fn next_f64(&mut self) -> f64 {
             let bits = self.next_u64() >> 11;
             bits as f64 * (1.0 / (1u64 << 53) as f64)
         }
 
-        pub fn next_gaussian(&mut self) -> f64 {
+    pub fn next_gaussian(&mut self) -> f64 {
         let pi = std::f64::consts::PI;
         let mut r1 = self.next_f64();
         while r1 == 0.0 {

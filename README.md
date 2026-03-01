@@ -3,7 +3,7 @@ Fast spatial indexing and approximate density estimation for Python, powered by 
 
 ## Quickstart
 
-Quickly find the k nearest neighbours in high-dimensional space using our VPTree. VPTree's split data based on the distance to a vantage point. They accel in moderate dimensions (25-50) often performing spatial queries faster than a KDTree or BallTree.
+Quickly find the k nearest neighbours in high-dimensional space using our Random Projection Tree.
 
 ```python
 import ironforest as irn
@@ -14,11 +14,11 @@ k = 10
 
 gen = irn.random.Generator.from_seed(0)
 points = gen.uniform(0.0, 100.0, [n, dims])
-tree = irn.spatial.VPTree.from_array(points, leaf_size=50)
+tree = irn.spatial.RPTree.from_array(points, leaf_size=50)
 query_point = [50.0] * 50
 result = tree.query_knn(query_point, k=k)
 
-#k nearest neighbours
+#approximate k nearest neighbours
 for output_idx, original_idx in enumerate(result.indices):
     print(f"point: {points[original_idx]}, dist: {result.distances[output_idx]:.2f}")
 
@@ -39,10 +39,9 @@ Spatial trees support kNN, radius, and KDE queries. All spatial trees support se
 - KDTree - axis-aligned splits, best for low-to-moderate dimensions
 - BallTree - pivot-based splits, handles higher dimensions well
 - VPTree - vantage-point splits, strong in general metric spaces
+- RPTree - random-projection splits, strong in high dimensions with low intrinsic dimensionality. 
 - MTree - pivot-based splits, supports dynamic insertion at the cost of query speed.
 - AggTree - approximate KDE via aggregated nodes, tunable accuracy via atol
-
-Radius & kNN queries return a `SpatialResult` object on all our trees. This provides a convienent way to split batch queries and get statistics on your results (centroid, median distance, etc.)
 
 ___
 
@@ -52,13 +51,13 @@ Speed comparison of our KDTree vs SciPy & Scikit-Learn on a randomly generated u
 
 | Dataset | Structure | Build (s) | kNN (s) | Radius (s) | KDE (s) | k | radius | bandwidth |
 |---|---|---|---|---|---|---|---|---|
-| 50000x8 | sklearn.KDTree | 0.048036 | 0.367485 | 1.977652 | 15.304560 | 10 | 0.5 | 0.5 |
-| 50000x8 | scipy.KDTree | 0.011791 | 0.152537 | 1.146680 | N/A | 10 | 0.5 | 0.5 |
-| 50000x8 | irn.KDTree | 0.010846 | 0.021540 | 0.093523 | 0.719237 | 10 | 0.5 | 0.5 |
+| 50000x8 | sklearn KDTree | 0.048036 | 0.367485 | 1.977652 | 15.304560 | 10 | 0.5 | 0.5 |
+| 50000x8 | scipy KDTree | 0.011791 | 0.152537 | 1.146680 | N/A | 10 | 0.5 | 0.5 |
+| 50000x8 | irn KDTree | 0.010846 | 0.021540 | 0.093523 | 0.719237 | 10 | 0.5 | 0.5 |
 
 </div>
 
-KDTree is generally seen as the baseline spatial indesxing tree. Our other trees scale better with dimensionality or provide better results depending on the nature of the dataset used, see `docs/spatial.md` & `docs/agg_tree.md` for more detailed information.
+KDTree is generally seen as the baseline spatial indexing tree. Our other trees scale better with dimensionality or provide better results depending on the nature of the dataset used, see `docs/spatial.md` & `docs/agg_tree.md` for more detailed information.
 
 ## Tree-Based Models
 IronForest includes tree-based ML models that run entirely on the Rust core no external dependencies at runtime.

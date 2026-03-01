@@ -9,16 +9,49 @@ pub enum VantagePointSelection {
     #[default]
     First,
     Random,
+    Variance { sample_size: usize },
 }
 
 impl VantagePointSelection{
-    fn select_vantage(&self, start: usize, end: usize) -> usize {
+    fn select_vantage(
+    &self,
+    start: usize,
+    end: usize,
+    data: &NdArray<f64>,
+    indices: &[usize],
+    metric: &DistanceMetric,
+) -> usize {
         match self {
             VantagePointSelection::First => start,
             VantagePointSelection::Random => {
                 let mut rng = Generator::new();
                 let i = rng.randint(start as i64, end as i64, Shape::scalar());
                 i.item() as usize
+            },
+            VantagePointSelection::Variance { sample_size } => {
+                let mut rng = Generator::new();
+                let n = end - start;
+                let k = (*sample_size).min(n);
+
+                let candidates: Vec<usize> = (0..k)
+                    .map(|_| rng.randint(start as i64, end as i64, Shape::scalar()).item() as usize)
+                    .collect();
+
+                candidates.iter().max_by(|&&a, &&b| {
+                    let pa = data.row(indices[a]).to_vec();
+                    let var_a = candidates.iter().map(|&j| {
+                        let d = metric.distance(data.row(indices[j]), &pa);
+                        d * d
+                    }).sum::<f64>();
+
+                    let pb = data.row(indices[b]).to_vec();
+                    let var_b = candidates.iter().map(|&j| {
+                        let d = metric.distance(data.row(indices[j]), &pb);
+                        d * d
+                    }).sum::<f64>();
+
+                    var_a.partial_cmp(&var_b).unwrap_or(Ordering::Equal)
+                }).copied().unwrap_or(start)
             },
         }
     }
@@ -87,8 +120,14 @@ impl VPTree {
     }
 
     fn init_node(&mut self, start: usize, end: usize) -> (f64, f64, f64, usize) {
-        let vantage_idx = self.selection_method.select_vantage(start, end); 
-        self.indices.swap(start, vantage_idx);
+        let vantage_idx = self.selection_method.select_vantage(
+            start,
+            end,
+            &self.data,
+            &self.indices,
+            &self.metric,
+        ); 
+        self.indices.swap(start, vantage_idx);  
 
 
         let mut min = f64::INFINITY;
