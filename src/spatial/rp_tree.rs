@@ -2,7 +2,10 @@ use std::collections::BinaryHeap;
 
 use crate::{Generator, array::{NdArray, Shape}, projection::{ProjectionType, RandomProjection, random_projection::ProjectionDirection}, spatial::{HeapItem, common::DistanceMetric}};
 use super::spatial_query::{SpatialQuery};
+use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
+
+const KNN_PAR_THRESHOLD: usize = 512;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct RPNode {
@@ -144,6 +147,92 @@ impl RPTree {
 
         self.knn_recursive_inner(first, query, heap, k, accumulated_dist_sq);
         self.knn_recursive_inner(second, query, heap, k, accumulated_dist_sq + margin * margin);
+    }
+
+    fn ann_candidates_inner(
+        &self,
+        query: &[f64],
+        k: usize,
+        n_candidates: usize,
+    ) -> Vec<(usize, f64)> {
+        let mut queue: BinaryHeap<std::cmp::Reverse<HeapItem>> = BinaryHeap::new();
+        let mut candidates: BinaryHeap<HeapItem> = BinaryHeap::new();
+
+        queue.push(std::cmp::Reverse(HeapItem { distance: 0.0, index: 0 }));
+
+        while let Some(std::cmp::Reverse(HeapItem { distance: node_dist, index: node_idx })) = queue.pop() {
+            if candidates.len() >= k {
+                let worst_k = candidates.peek().unwrap().distance;
+                if node_dist > worst_k {
+                    break;
+                }
+            }
+            
+            let node = &self.nodes[node_idx];
+
+            if node.left.is_none() {
+                for i in node.start..node.end {
+                    let dist = self.metric.distance(query, self.get_point(i));
+                    if candidates.len() < n_candidates {
+                        candidates.push(HeapItem { distance: dist, index: self.indices[i] });
+                    } else if dist < candidates.peek().unwrap().distance {
+                        candidates.pop();
+                        candidates.push(HeapItem { distance: dist, index: self.indices[i] });
+                    }
+                }
+                if candidates.len() >= n_candidates {
+                    break;
+                }
+            } else {
+                let (first, second, margin) = self.node_projection(node_idx, query);
+                queue.push(std::cmp::Reverse(HeapItem { distance: 0.0, index: first }));
+                queue.push(std::cmp::Reverse(HeapItem { distance: margin, index: second }));
+            }
+        }
+
+        let mut results: Vec<(usize, f64)> = candidates.into_iter()
+            .map(|item| (item.index, item.distance))
+            .collect();
+        results.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap());
+        results.truncate(k);
+        results
+    }
+
+    fn seq_ann_batch(&self, queries: &NdArray<f64>, n_queries: usize, dim: usize, k: usize, n_candidates: usize) -> Vec<Vec<(usize, f64)>> {
+        (0..n_queries)
+            .map(|i| {
+                let query = &queries.as_slice()[i * dim..(i + 1) * dim];
+                self.query_ann(query, k, n_candidates)
+            })
+            .collect()
+    }
+
+    fn par_ann_batch(&self, queries: &NdArray<f64>, n_queries: usize, dim: usize, k: usize, n_candidates: usize) -> Vec<Vec<(usize, f64)>> {
+        (0..n_queries)
+            .into_par_iter()
+            .map(|i| {
+                let query = &queries.as_slice()[i * dim..(i + 1) * dim];
+                self.query_ann(query, k, n_candidates)
+            })
+            .collect()
+    }
+
+    pub fn query_ann_batch(&self, queries: &NdArray<f64>, k: usize, n_candidates: usize) -> Vec<Vec<(usize, f64)>> {
+        let shape = queries.shape().dims();
+        assert!(shape.len() == 2, "Expected 2D array (n_queries, dim)");
+        let n_queries = shape[0];
+        let dim = shape[1];
+        assert_eq!(dim, self.dim(), "Query dimension must match tree dimension");
+
+        if n_queries >= KNN_PAR_THRESHOLD {
+            self.par_ann_batch(queries, n_queries, dim, k, n_candidates)
+        } else {
+            self.seq_ann_batch(queries, n_queries, dim, k, n_candidates)
+        }
+    }
+
+    pub fn query_ann(&self, query: &[f64], k: usize, n_candidates: usize) -> Vec<(usize, f64)> {
+        self.ann_candidates_inner(query, k, n_candidates.max(k))
     }
 
     fn radius_recursive_inner(

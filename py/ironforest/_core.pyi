@@ -2121,6 +2121,19 @@ class spatial:
                 Spatial result object.
             """
             ...
+        
+        def query_ann(self, query: ArrayLike, k: int, n_candidates: int) -> "spatial.SpatialResult":
+            """Find the approximate k nearest neighbors to the query point.
+
+            Args:
+                query: Query point (scalar, list, or array-like).
+                k: Number of nearest neighbors to return.
+                n_candidates: Number of candidates to check before returning the result.
+
+            Returns:
+                Spatial result object.
+            """
+            ...
 
         @overload
         def data(self, indices: ArrayLike) -> Array: ...

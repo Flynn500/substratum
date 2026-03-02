@@ -1,12 +1,10 @@
 use crate::array::ndarray::NdArray;
 use crate::array::shape::Shape;
-
+use std::arch::x86_64::*;
 
 #[cfg(target_arch = "x86_64")]
 #[target_feature(enable = "avx2,fma")]
 unsafe fn simd_dot_avx2_fma(a: &[f64], b: &[f64]) -> f64 {
-    use std::arch::x86_64::*;
-
     let n = a.len();
     let chunks = n / 4;
     let remainder = n % 4;
@@ -18,9 +16,12 @@ unsafe fn simd_dot_avx2_fma(a: &[f64], b: &[f64]) -> f64 {
 
     for i in 0..chunks {
         let offset = i * 4;
-        let va = _mm256_loadu_pd(a_ptr.add(offset));
-        let vb = _mm256_loadu_pd(b_ptr.add(offset));
-        acc = _mm256_fmadd_pd(va, vb, acc);
+        unsafe {
+            let va = _mm256_loadu_pd(a_ptr.add(offset));
+            let vb = _mm256_loadu_pd(b_ptr.add(offset));
+        
+            acc = _mm256_fmadd_pd(va, vb, acc);
+        }
     }
 
     let hi = _mm256_extractf128_pd(acc, 1);

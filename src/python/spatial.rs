@@ -631,6 +631,28 @@ impl PyRPTree {
         let tree = RPTree::new(&data, leaf_size, metric, projection_method, seed);
         Ok(PyRPTree{ inner: Some(tree) })
     }
+    
+    #[pyo3(signature = (query, k, n_candidates=None))]
+    fn query_ann(&self, query: ArrayLike, k: usize, n_candidates: Option<usize>) -> PyResult<PySpatialResult> {
+        let n_candidates = n_candidates.unwrap_or(k);
+        let is_batch = query.ndim() == 2;
+        let queries_arr = query.into_spatial_query_ndarray(tree!(self).dim)?;
+        let n_queries = queries_arr.shape().dims()[0];
+        if is_batch {
+            let results = tree!(self).query_ann_batch(&queries_arr, k, n_candidates);
+            let (indices, distances): (Vec<i64>, Vec<f64>) = results.into_iter()
+                .flatten()
+                .map(|(i, d)| (i as i64, d))
+                .unzip();
+            Ok(PySpatialResult::from_batch_knn(indices, distances, n_queries, k))
+        } else {
+            let query_slice = &queries_arr.as_slice()[..tree!(self).dim];
+            let results = tree!(self).query_ann(query_slice, k, n_candidates);
+            let (indices, distances): (Vec<i64>, Vec<f64>) = results.into_iter()
+                .map(|(i, d)| (i as i64, d)).unzip();
+            Ok(PySpatialResult::from_single(indices, distances))
+        }
+    }
 }
 
 #[pyclass(name = "BruteForce")]
