@@ -100,7 +100,17 @@ results = result.split()
 
 ## Tree Selection
 
-The following test was run on a randomly generated dataset with lowered intrinsic dimensionality  
+The following test was run on a randomly generated dataset with lowered intrinsic dimensionality than is displayed. RPTree used aNN while the other trees all performed exact kNN.
+
+<img width="2708" height="855" alt="tree_compare" src="https://github.com/Flynn500/ironforest/blob/a7e48aaaa58bddc7ba14d3dd90943d09be86b57c/docs/tree_comparison.png" />
+
+In low dimensions Ball or KD trees are generally the best choice. For a sensible default KDTree will suffice in most situations.
+
+In higher dimensions, RPTrees perform best and are by far the best choice when approximate aNN is acceptable. VPTree also theoretically performs better in higher dimensions although these theoretical benefits aren't present in this particular dataset. 
+
+VPTree also has the advantage of relying solely on a distance function for partitioning points. We currently only support a very limited set of distance functions but expect VPTree to support more than any our other trees in the future.
+
+MTree is generally the slowest tree but it has the advantage of supporting dynamic insertion. If frequent insertions are needed it's worth weighing up whether reconstructing a tree periodically or using an MTree is better. Both are solid options depending on your use-case.
 
 <div align="center">
 
