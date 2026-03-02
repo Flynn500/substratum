@@ -2551,3 +2551,80 @@ class spatial:
                 1D Array of density estimates at each training point.
             """
             ...
+
+    class ProjectionReducer:
+        @property
+        def input_dim(self) -> int: ...
+        
+        @property
+        def output_dim(self) -> int: ...
+
+        def __init__(
+            self, 
+            input_dim: int, 
+            output_dim: int, 
+            projection_type: Literal["gaussian", "sparse"] = "gaussian", 
+            density: float = 0.1, 
+            seed: Optional[int] = None
+        ) -> None:
+            """
+            Initializes a new ProjectionReducer.
+            
+            :param input_dim: Number of features in the input data.
+            :param output_dim: Number of features in the projected space.
+            :param projection_type: The method of projection ('gaussian' or 'sparse').
+            :param density: The density of the projection matrix (used if type is 'sparse').
+            :param seed: Random seed for reproducibility.
+            """
+            ...
+
+        def transform(self, data: ArrayLike) -> Array[float]:
+            """
+            Projects the data into the lower-dimensional space.
+            
+            :param data: Input array of shape (n_samples, input_dim).
+            :return: Projected PyArray of shape (n_samples, output_dim).
+            """
+            ...
+
+        @staticmethod
+        def fit_transform(
+            data: ArrayLike, 
+            output_dim: int, 
+            projection_type: Literal["gaussian", "sparse"] = "gaussian", 
+            density: float = 0.1, 
+            seed: Optional[int] = None
+        ) -> Tuple["spatial.ProjectionReducer", Array]:
+            """
+            Fits a reducer to the data dimensions and returns both the reducer and the transformed data.
+            """
+            ...
+        
+        def save(self, path: str) -> None:
+            """Serialize the reducer to disk in MessagePack format.
+
+            Args:
+                path: File path to write to. Will be created or overwritten.
+
+            Example:
+                >>> reducer = ProjectionReducer(data)
+                >>> reducer.save("my_reducer.mpack")
+            """
+            ...
+
+        @staticmethod
+        def load(path: str) -> "spatial.BruteForce":
+            """Deserialize a reducer from disk.
+
+            Args:
+                path: File path to read from.
+
+            Returns:
+                A ``ProjectionReducer`` instance restored from the saved state.
+
+            Example:
+                >>> reducer = ProjectionReducer.load("my_reducer.mpack")
+            """
+            ...
+
+

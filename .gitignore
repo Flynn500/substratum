@@ -16,3 +16,5 @@ __pycache__/
 dist/
 build/
 .venv/
+.hdf5
+tests/sift-128-euclidean.hdf5

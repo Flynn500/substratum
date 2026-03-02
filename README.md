@@ -8,19 +8,26 @@ Quickly find the k nearest neighbours in high-dimensional space using our Random
 ```python
 import ironforest as irn
 
-dims = 50
+dims = 256
 n = 100_000
 k = 10
 
+#Randomly generate data
 gen = irn.random.Generator.from_seed(0)
-points = gen.uniform(0.0, 100.0, [n, dims])
-tree = irn.spatial.RPTree.from_array(points, leaf_size=50)
-query_point = [50.0] * 50
+data = gen.uniform(0.0, 100.0, [n, dims])
+query_point = ([50.0] * dims)
+
+#Use random projections to reduce the dimensionality
+reducer, points = irn.spatial.ProjectionReducer.fit_transform(data, 50)
+tree = irn.spatial.KDTree.from_array(points, leaf_size=50)
+
+#Use our reducer to convert the query
+query_point = reducer.transform(query_point)
 result = tree.query_knn(query_point, k=k)
 
-#approximate k nearest neighbours
+#k nearest neighbours
 for output_idx, original_idx in enumerate(result.indices):
-    print(f"point: {points[original_idx]}, dist: {result.distances[output_idx]:.2f}")
+    print(f"index: {original_idx}, dist: {result.distances[output_idx]}")
 
 #print mean, meadian and max distances
 print(f"{result.mean():.2f}, {result.median():.2f}, {result.radius():.2f}")
@@ -33,7 +40,7 @@ print(f"{result.mean():.2f}, {result.median():.2f}, {result.radius():.2f}")
 
 You can also build with `maturin build --release` assuming maturin is installed.
 
-## Spatial Trees
+## Spatial
 Spatial trees support kNN, radius, and KDE queries. All spatial trees support serialization via `save()` & `load()`, alternatively you can use pickle.
 
 - KDTree - axis-aligned splits, best for low-to-moderate dimensions
@@ -42,6 +49,7 @@ Spatial trees support kNN, radius, and KDE queries. All spatial trees support se
 - RPTree - random-projection splits, strong in high dimensions with low intrinsic dimensionality. 
 - MTree - pivot-based splits, supports dynamic insertion at the cost of query speed.
 - AggTree - approximate KDE via aggregated nodes, tunable accuracy via atol
+- ProjectionReducer - use random projections to reduce dimensionality for more effecient spatial queries.
 
 ___
 

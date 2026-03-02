@@ -1,8 +1,9 @@
 use pyo3::prelude::*;
 use pyo3::exceptions::PyValueError;
 use pyo3::types::PyAny;
+use crate::Generator;
 use crate::array::{NdArray, Shape};
-use crate::projection::ProjectionType;
+use crate::projection::{ProjectionReducer, ProjectionType};
 use crate::spatial::{AggTree, BallTree, BruteForce, DistanceMetric, KDTree, KernelType, MTree, RPTree, SpatialQuery, VPTree, VantagePointSelection};
 use super::{PyArray, ArrayData, ArrayLike};
 use pyo3::types::PyBytes;
@@ -494,6 +495,7 @@ impl_serialization_methods!(PyBruteForce, BruteForce, PyBruteForce);
 impl_serialization_methods!(PyAggTree, AggTree, PyAggTree);
 impl_serialization_methods!(PyMTree, MTree, PyMTree);
 impl_serialization_methods!(PyRPTree, RPTree, PyRPTree);
+impl_serialization_methods!(PyProjectionReducer, ProjectionReducer, PyProjectionReducer);
 
 // =============================================================================
 // Tree Types
@@ -908,6 +910,106 @@ impl PyMTree {
 }
 
 // =============================================================================
+// Misc Types
+// =============================================================================
+#[pyclass(name = "ProjectionReducer")]
+pub struct PyProjectionReducer {
+    inner: Option<ProjectionReducer>,
+}
+
+#[pymethods]
+impl PyProjectionReducer {
+    #[new]
+    #[pyo3(signature = (input_dim, output_dim, projection_type="gaussian", density=0.1, seed=None))]
+    pub fn __init__(
+        input_dim: usize,
+        output_dim: usize,
+        projection_type: &str,
+        density: f64,
+        seed: Option<u64>,
+    ) -> PyResult<Self> {
+        let p_type = parse_projection_type(projection_type, density)?;
+        let mut rng = match seed {
+            Some(s) => Generator::from_seed(s),
+            None => Generator::new(),
+        };
+
+        let reducer = ProjectionReducer::fit(input_dim, output_dim, p_type, &mut rng);
+        Ok(PyProjectionReducer { inner: Some(reducer) })
+    }
+
+    #[staticmethod]
+    #[pyo3(signature = (data, output_dim, projection_type="gaussian", density=0.1, seed=None))]
+    pub fn fit_transform(
+        data: ArrayLike,
+        output_dim: usize,
+        projection_type: &str,
+        density: f64,
+        seed: Option<u64>,
+    ) -> PyResult<(Self, PyArray)> {
+        let p_type = parse_projection_type(projection_type, density)?;
+        let mut rng = match seed {
+            Some(s) => Generator::from_seed(s),
+            None => Generator::new(),
+        };
+        let input_ndarray = data.into_ndarray()?;
+
+        let (reducer, transformed) = ProjectionReducer::fit_transform(
+            &input_ndarray,
+            output_dim,
+            p_type,
+            &mut rng
+        );
+
+        Ok((
+            PyProjectionReducer { inner: Some(reducer) },
+            PyArray { inner: ArrayData::Float(transformed) }
+        ))
+    }
+
+    pub fn transform(&self, data: ArrayLike) -> PyResult<PyArray> {
+        let reducer = tree!(self);
+        let mut input_ndarray = data.into_ndarray()?;
+        let current_dims = input_ndarray.shape().dims();
+        let was_1d = current_dims.len() == 1;
+
+        if was_1d {
+            let n_features = current_dims[0];
+            input_ndarray = input_ndarray.reshape(vec![1, n_features]);
+        }
+
+        if input_ndarray.shape().dims()[1] != reducer.input_dim() {
+            return Err(PyValueError::new_err(format!(
+                "Dimension mismatch: expected {}, got {}",
+                reducer.input_dim(),
+                input_ndarray.shape().dims()[1]
+            )));
+        }
+        let transformed = reducer.transform(&input_ndarray);
+        if was_1d {
+            let len = transformed.as_slice().len();
+            return Ok(PyArray { inner: ArrayData::Float(transformed.reshape(vec![len])) });
+        }
+
+        Ok(PyArray { inner: ArrayData::Float(transformed) })
+    }
+
+    #[getter]
+    pub fn input_dim(&self) -> PyResult<usize> {
+        self.inner.as_ref()
+            .map(|r| r.input_dim())
+            .ok_or_else(|| PyValueError::new_err("Reducer not initialized"))
+    }
+
+    #[getter]
+    pub fn output_dim(&self) -> PyResult<usize> {
+        self.inner.as_ref()
+            .map(|r| r.output_dim())
+            .ok_or_else(|| PyValueError::new_err("Reducer not initialized"))
+    }
+}
+
+// =============================================================================
 // Module Registration
 // =============================================================================
 
@@ -920,5 +1022,6 @@ pub fn register_module(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyAggTree>()?;
     m.add_class::<PyBruteForce>()?;
     m.add_class::<PyRPTree>()?;
+    m.add_class::<PyProjectionReducer>()?;
     Ok(())
 }

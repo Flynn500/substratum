@@ -58,6 +58,7 @@ dependencies = [
 name = "ironforest"
 version = "0.5.0"
 dependencies = [
+ "num-traits",
  "numpy",
  "pyo3",
  "rayon",

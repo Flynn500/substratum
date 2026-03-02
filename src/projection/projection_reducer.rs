@@ -1,7 +1,9 @@
 use crate::array::{NdArray};
 use crate::random::Generator;
 use super::{RandomProjection, ProjectionType};
+use serde::{Deserialize, Serialize};
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProjectionReducer {
     projection: RandomProjection,
 }
