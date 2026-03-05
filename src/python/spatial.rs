@@ -4,7 +4,7 @@ use pyo3::types::PyAny;
 use crate::Generator;
 use crate::array::{NdArray, Shape};
 use crate::projection::{ProjectionReducer, ProjectionType};
-use crate::spatial::{AggTree, BallTree, BruteForce, DistanceMetric, KDTree, KernelType, MTree, RPTree, SpatialQuery, VPTree, VantagePointSelection};
+use crate::spatial::{AggTree, BallTree, BruteForce, DistanceMetric, KDTree, KernelType, MTree, RPTree, SpatialTree, KnnQuery, RadiusQuery, KdeQuery, VPTree, VantagePointSelection};
 use super::{PyArray, ArrayData, ArrayLike};
 use pyo3::types::PyBytes;
 use rmp_serde;

@@ -1,7 +1,7 @@
 use std::collections::BinaryHeap;
 
-use crate::{Generator, array::{NdArray, Shape}, projection::{ProjectionType, RandomProjection, random_projection::ProjectionDirection}, spatial::{HeapItem, common::DistanceMetric}};
-use super::spatial_query::{SpatialQuery};
+use crate::{Generator, array::{NdArray, Shape}, projection::{ProjectionType, RandomProjection, random_projection::ProjectionDirection}, spatial::{HeapItem, KdeQuery, common::DistanceMetric}};
+use super::spatial_query::{SpatialTree, KnnQuery, RadiusQuery};
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 
@@ -282,8 +282,9 @@ impl RPTree {
 }
 
 
-impl SpatialQuery for RPTree {
+impl SpatialTree for RPTree {
     type Node = RPNode;
+    const REDUCED: bool = true;
 
     fn nodes(&self) -> &[RPNode] { &self.nodes }
     fn indices(&self) -> &[usize] { &self.indices }
@@ -314,12 +315,20 @@ impl SpatialQuery for RPTree {
         let (first, second) = if proj <= node.split { (l, r) } else { (r, l) };
         (first, second, dist)
     }
+}
 
+impl KnnQuery for RPTree {
     fn query_knn_recursive(&self, node_idx: usize, query: &[f64], heap: &mut BinaryHeap<HeapItem>, k: usize) {
         self.knn_recursive_inner(node_idx, query, heap, k, 0.0)
     }
+}
 
+impl RadiusQuery for RPTree{
     fn query_radius_recursive(&self, node_idx: usize, query: &[f64], radius: f64, results: &mut Vec<(usize, f64)>) {
         self.radius_recursive_inner(node_idx, query, radius, results, 0.0);
     }
+}
+
+impl KdeQuery for RPTree{
+
 }

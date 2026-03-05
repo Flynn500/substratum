@@ -1,5 +1,5 @@
 use crate::{array::{NdArray, Shape}, spatial::common::DistanceMetric};
-use super::spatial_query::{SpatialQuery};
+use super::spatial_query::{SpatialTree, KnnQuery, RadiusQuery, KdeQuery};
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -157,8 +157,9 @@ impl KDTree {
     }
 }
 
-impl SpatialQuery for KDTree {
+impl SpatialTree for KDTree {
     type Node = KDNode;
+    const REDUCED: bool = true;
 
     fn nodes(&self) -> &[KDNode] { &self.nodes }
     fn indices(&self) -> &[usize] { &self.indices }
@@ -186,4 +187,16 @@ impl SpatialQuery for KDTree {
         let (l, r) = (node.left.unwrap(), node.right.unwrap());
         if query[node.axis] < node.split { (l, r) } else { (r, l) }
     }
+}
+
+impl KnnQuery for KDTree {
+
+}
+
+impl RadiusQuery for KDTree {
+
+}
+
+impl KdeQuery for KDTree {
+
 }

@@ -1,7 +1,7 @@
 use std::{cmp::Ordering};
 use crate::{array::{NdArray, Shape}, spatial::common::DistanceMetric};
 use crate::random::Generator;
-use super::spatial_query::{SpatialQuery};
+use super::spatial_query::{SpatialTree, KnnQuery, RadiusQuery, KdeQuery};
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Copy, Debug, Default, Serialize, Deserialize)]
@@ -40,13 +40,13 @@ impl VantagePointSelection{
                 candidates.iter().max_by(|&&a, &&b| {
                     let pa = data.row(indices[a]).to_vec();
                     let var_a = candidates.iter().map(|&j| {
-                        let d = metric.reduced_distance(data.row(indices[j]), &pa);
+                        let d = metric.distance(data.row(indices[j]), &pa);
                         d * d
                     }).sum::<f64>();
 
                     let pb = data.row(indices[b]).to_vec();
                     let var_b = candidates.iter().map(|&j| {
-                        let d = metric.reduced_distance(data.row(indices[j]), &pb);
+                        let d = metric.distance(data.row(indices[j]), &pb);
                         d * d
                     }).sum::<f64>();
 
@@ -71,7 +71,6 @@ pub struct VPNode {
     pub max_dist: f64,
 }
 
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct VPTree {
     pub nodes: Vec<VPNode>,
@@ -83,7 +82,6 @@ pub struct VPTree {
     pub metric: DistanceMetric,
     pub selection_method: VantagePointSelection,
 }
-
 
 impl VPTree {
     pub fn new(data: &NdArray<f64>, leaf_size: usize, metric: DistanceMetric, selection_method: VantagePointSelection) -> Self{
@@ -141,15 +139,14 @@ impl VPTree {
         let mut min = f64::INFINITY;
         let mut max = f64::NEG_INFINITY;
 
-        let vantage_point = self.data.row(start).to_vec();
+        let vantage_point = self.data.row(self.indices[start]).to_vec();
 
         let mut idx_dist: Vec<(usize, f64)> = (start + 1..end)
             .map(|i| {
-                let p = self.data.row(i);
-                let dist = self.metric.reduced_distance(p, &vantage_point);
-                let real_dist = self.metric.post_transform(dist);
-                min = min.min(real_dist);
-                max = max.max(real_dist);
+                let p = self.data.row(self.indices[i]);
+                let dist = self.metric.distance(p, &vantage_point);
+                min = min.min(dist);
+                max = max.max(dist);
                 (i, dist)
             })
             .collect();
@@ -209,8 +206,9 @@ impl VPTree {
     }
 }
 
-impl SpatialQuery for VPTree {
+impl SpatialTree for VPTree {
     type Node = VPNode;
+    const REDUCED: bool = false;
 
     fn nodes(&self) -> &[VPNode] { &self.nodes }
     fn indices(&self) -> &[usize] { &self.indices }
@@ -227,15 +225,26 @@ impl SpatialQuery for VPTree {
     fn min_distance_to_node(&self, node_idx: usize, query: &[f64]) -> f64 {
         let node = &self.nodes[node_idx];
         let vp = self.get_point(node.start);
-        let d_real = self.metric.post_transform(self.metric.reduced_distance(query, vp));
-        let min_real = (d_real - node.max_dist).max(node.min_dist - d_real).max(0.0);
-        self.metric.pre_transform_radius(min_real)
+        let d = self.metric.distance(query, vp);
+        (d - node.max_dist).max(node.min_dist - d).max(0.0)
     }
 
     fn knn_child_order(&self, node_idx: usize, query: &[f64]) -> (usize, usize) {
         let node = &self.nodes[node_idx];
-        let d = self.metric.reduced_distance(query, self.get_point(node.start));
+        let d = self.metric.distance(query, self.get_point(node.start));
         let (l, r) = (node.left.unwrap(), node.right.unwrap());
         if d < node.radius { (l, r) } else { (r, l) }
     }
+}
+
+impl KnnQuery for VPTree {
+
+}
+
+impl RadiusQuery for VPTree {
+
+}
+
+impl KdeQuery for VPTree {
+
 }

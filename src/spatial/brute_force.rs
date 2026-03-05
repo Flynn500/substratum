@@ -1,5 +1,5 @@
-use crate::{array::NdArray, spatial::common::DistanceMetric};
-use super::spatial_query::{SpatialQuery};
+use crate::{array::NdArray, spatial::{common::DistanceMetric}};
+use super::spatial_query::{SpatialTree, KnnQuery, RadiusQuery, KdeQuery};
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -51,8 +51,9 @@ impl BruteForce {
     }
 }
 
-impl SpatialQuery for BruteForce {
+impl SpatialTree for BruteForce {
     type Node = BFNode;
+    const REDUCED: bool = true;
 
     fn nodes(&self) -> &[BFNode] { &self.nodes }
     fn indices(&self) -> &[usize] { &self.indices }
@@ -71,4 +72,16 @@ impl SpatialQuery for BruteForce {
     fn knn_child_order(&self, _node_idx: usize, _query: &[f64]) -> (usize, usize) {
         unreachable!("BruteForce has no tree structure")
     }
+}
+
+impl KnnQuery for BruteForce {
+
+}
+
+impl RadiusQuery for BruteForce {
+
+}
+
+impl KdeQuery for BruteForce {
+
 }

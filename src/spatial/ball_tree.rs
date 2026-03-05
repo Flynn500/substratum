@@ -1,5 +1,5 @@
 use crate::{Shape, array::NdArray, spatial::common::DistanceMetric};
-use super::spatial_query::{SpatialQuery};
+use super::spatial_query::{SpatialTree, KnnQuery, RadiusQuery, KdeQuery};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -181,8 +181,9 @@ impl BallTree {
     }
 }
 
-impl SpatialQuery for BallTree {
+impl SpatialTree for BallTree {
     type Node = BallNode;
+    const REDUCED: bool = true;
 
     fn nodes(&self) -> &[BallNode] { &self.nodes }
     fn indices(&self) -> &[usize] { &self.indices }
@@ -210,4 +211,16 @@ impl SpatialQuery for BallTree {
         let dr = self.metric.reduced_distance(query, &self.nodes[r].center);
         if dl <= dr { (l, r) } else { (r, l) }
     }
+}
+
+impl KnnQuery for BallTree {
+
+}
+
+impl RadiusQuery for BallTree {
+
+}
+
+impl KdeQuery for BallTree {
+
 }

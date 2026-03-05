@@ -1,5 +1,5 @@
 use crate::{KernelType, array::NdArray, spatial::{HeapItem, common::DistanceMetric}};
-use super::spatial_query::{SpatialQuery};
+use super::spatial_query::{SpatialTree, KnnQuery, RadiusQuery, KdeQuery};
 use serde::{Deserialize, Serialize};
 use std::collections::BinaryHeap;
 
@@ -162,7 +162,7 @@ impl MTree {
         let mut best_cost = f64::MAX;
 
         for (i, entry) in entries.iter().enumerate() {
-            let d = self.metric.post_transform(self.metric.reduced_distance(point, &entry.object));
+            let d = self.metric.distance(point, &entry.object);
             let cost = if d <= entry.covering_radius {
                 d
             } else {
@@ -184,7 +184,7 @@ impl MTree {
         let MNode::Internal { entries, .. } = &self.nodes[node_idx] else { unreachable!() };
         let child_idx = entries[best_entry_idx].child_idx;
         let parent_obj = entries[best_entry_idx].object.clone();
-        let dist_to_child = self.metric.post_transform(self.metric.reduced_distance(&point, &parent_obj));
+        let dist_to_child = self.metric.distance(&point, &parent_obj);
 
         let split = self.insert_at(child_idx, point, point_idx, dist_to_child);
 
@@ -193,8 +193,8 @@ impl MTree {
         entries[best_entry_idx].covering_radius = entries[best_entry_idx].covering_radius.max(dist_to_child);
 
         if let Some((mut left, mut right)) = split {
-            left.dist_to_parent = self.metric.post_transform(self.metric.reduced_distance(&left.object, &parent_obj));
-            right.dist_to_parent = self.metric.post_transform(self.metric.reduced_distance(&right.object, &parent_obj));
+            left.dist_to_parent = self.metric.distance(&left.object, &parent_obj);
+            right.dist_to_parent =self.metric.distance(&right.object, &parent_obj);
 
             entries[best_entry_idx] = left;
             entries.push(right);
@@ -213,7 +213,7 @@ impl MTree {
 
         for i in 0..objects.len() {
             for j in i+1..objects.len() {
-                let d = self.metric.reduced_distance(&objects[i], &objects[j]);
+                let d = self.metric.distance(&objects[i], &objects[j]);
                 if d > best_dist {
                     best_dist = d;
                     best = (i, j);
@@ -236,8 +236,8 @@ impl MTree {
         let mut right_entries: Vec<LeafEntry> = Vec::new();
 
         for entry in entries {
-            let d1 = self.metric.post_transform(self.metric.reduced_distance(&entry.object, &p1));
-            let d2 = self.metric.post_transform(self.metric.reduced_distance(&entry.object, &p2));
+            let d1 = self.metric.distance(&entry.object, &p1);
+            let d2 = self.metric.distance(&entry.object, &p2);
             if d1 <= d2 {
                 left_entries.push(LeafEntry { dist_to_parent: d1, ..entry });
             } else {
@@ -286,8 +286,8 @@ impl MTree {
         let mut right_entries: Vec<RoutingEntry> = Vec::new();
 
         for mut entry in entries {
-            let d1 = self.metric.post_transform(self.metric.reduced_distance(&entry.object, &p1));
-            let d2 = self.metric.post_transform(self.metric.reduced_distance(&entry.object, &p2));
+            let d1 = self.metric.distance(&entry.object, &p1);
+            let d2 = self.metric.distance(&entry.object, &p2);
             if d1 <= d2 {
                 entry.dist_to_parent = d1;
                 left_entries.push(entry);
@@ -345,7 +345,7 @@ impl MTree {
                         continue;
                     }
 
-                    let dist = self.metric.reduced_distance(query, &entry.object);
+                    let dist = self.metric.distance(query, &entry.object);
                     if heap.len() < k {
                         heap.push(HeapItem { distance: dist, index: entry.point_idx });
                     } else if dist < heap.peek().unwrap().distance {
@@ -365,20 +365,19 @@ impl MTree {
                     };
                     let lb_child = (lb - entry.covering_radius).max(0.0);
                     let best = heap.peek().map(|h| h.distance).unwrap_or(f64::MAX);
-                    if heap.len() == k && self.metric.pre_transform_radius(lb_child) > best {
+                    if heap.len() == k && lb_child > best {
                         continue;
                     }
 
-                    let d_real = self.metric.post_transform(self.metric.reduced_distance(query, &entry.object));
+                    let d_real = self.metric.distance(query, &entry.object);
                     let min_dist_real = (d_real - entry.covering_radius).max(0.0);
-                    let min_dist_reduced = self.metric.pre_transform_radius(min_dist_real);
 
                     let best = heap.peek().map(|h| h.distance).unwrap_or(f64::MAX);
-                    if heap.len() == k && min_dist_reduced > best {
+                    if heap.len() == k && min_dist_real > best {
                         continue;
                     }
 
-                    children.push((min_dist_reduced, d_real, entry.child_idx));
+                    children.push((min_dist_real, d_real, entry.child_idx));
                 }
 
                 children.sort_unstable_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
@@ -415,7 +414,7 @@ impl MTree {
                         continue;
                     }
 
-                    let dist = self.metric.reduced_distance(query, &entry.object);
+                    let dist = self.metric.distance(query, &entry.object);
                     if dist <= radius {
                         results.push((entry.point_idx, dist));
                     }
@@ -430,13 +429,13 @@ impl MTree {
                     };
 
                     let lb_child = (lb - entry.covering_radius).max(0.0);
-                    if self.metric.pre_transform_radius(lb_child) > radius {
+                    if lb_child > radius {
                         continue;
                     }
 
-                    let d_real = self.metric.post_transform(self.metric.reduced_distance(query, &entry.object));
+                    let d_real = self.metric.distance(query, &entry.object);
                     let min_dist_real = (d_real - entry.covering_radius).max(0.0);
-                    if self.metric.pre_transform_radius(min_dist_real) > radius {
+                    if min_dist_real > radius {
                         continue;
                     }
 
@@ -465,13 +464,12 @@ impl MTree {
                     };
                     
                     //single point so don't need to multiply by n
-                    let transformed_lb = self.metric.post_transform(lb);
-                    if kernel.evaluate(transformed_lb, h) < 1e-10 {
+                    if kernel.evaluate(lb, h) < 1e-10 {
                         continue;
                     }
 
-                    let transformed_dist = self.metric.post_transform(self.metric.reduced_distance(query, &entry.object));
-                    *density += kernel.evaluate(transformed_dist, h);
+                    let dist = self.metric.distance(query, &entry.object);
+                    *density += kernel.evaluate(dist, h);
                 }
             }
             MNode::Internal { entries, .. } => {
@@ -484,16 +482,14 @@ impl MTree {
                     let min_dist_lb = (lb - entry.covering_radius).max(0.0);
                     let n = self.nodes[entry.child_idx].count() as f64;
                     
-                    let transformed_dist_lb = self.metric.post_transform(min_dist_lb);
-                    if kernel.evaluate(transformed_dist_lb, h) * n < 1e-10 {
+                    if kernel.evaluate(min_dist_lb, h) * n < 1e-10 {
                         continue;
                     }
 
-                    let d = self.metric.reduced_distance(query, &entry.object);
+                    let d = self.metric.distance(query, &entry.object);
                     let min_dist = (d - entry.covering_radius).max(0.0);
                     
-                    let transformed_dist = self.metric.post_transform(min_dist);
-                    if kernel.evaluate(transformed_dist, h) * n < 1e-10 {
+                    if kernel.evaluate(min_dist, h) * n < 1e-10 {
                         continue;
                     }
 
@@ -504,9 +500,9 @@ impl MTree {
     }
 }
 
-impl SpatialQuery for MTree {
+impl SpatialTree for MTree {
     type Node = MNode;
-
+    const REDUCED: bool = false;
     //most stuff is overriden so most helpers are uneeded
     fn nodes(&self) -> &[MNode] { &self.nodes }
     fn indices(&self) -> &[usize] { &[] }
@@ -536,25 +532,32 @@ impl SpatialQuery for MTree {
         match &self.nodes[node_idx] {
             MNode::Internal { entries, .. } => {
                 entries.iter().map(|e| {
-                    let d = self.metric.reduced_distance(query, &e.object);
+                    let d = self.metric.distance(query, &e.object);
                     (d - e.covering_radius).max(0.0)
                 }).fold(f64::MAX, f64::min)
             }
             MNode::Leaf { entries, .. } => {
-                entries.iter().map(|e| self.metric.reduced_distance(query, &e.object))
+                entries.iter().map(|e| self.metric.distance(query, &e.object))
                     .fold(f64::MAX, f64::min)
             }
         }
     }
+}
 
+
+impl KnnQuery for MTree {
     fn query_knn_recursive(&self, node_idx: usize, query: &[f64], heap: &mut BinaryHeap<HeapItem>, k: usize) {
         self.knn_recursive_inner(node_idx, query, f64::INFINITY, heap, k);
     }
+}
 
+impl RadiusQuery for MTree {
     fn query_radius_recursive(&self, node_idx: usize, query: &[f64], radius: f64, results: &mut Vec<(usize, f64)>) {
         self.radius_recursive_inner(node_idx, query, f64::INFINITY, radius, results);
     }
+}
 
+impl KdeQuery for MTree {
     fn kde_recursive(&self, node_idx: usize, query: &[f64], h: f64, density: &mut f64, kernel: KernelType) {
         self.kde_recursive_inner(node_idx, query, f64::INFINITY, h, density, kernel);
     }

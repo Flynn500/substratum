@@ -4,10 +4,12 @@ from ironforest import spatial
 
 # ── Trees under test (RPTree excluded – approximate only) ─────────────────────
 TREES = {
+    "BruteForce":   lambda d, ls: spatial.BruteForce.from_array(d),
     "KDTree":   lambda d, ls: spatial.KDTree.from_array(d, leaf_size=ls),
-    "BallTree": lambda d, ls: spatial.BallTree.from_array(d, leaf_size=ls),
-    "VPTree":   lambda d, ls: spatial.VPTree.from_array(d, leaf_size=ls),
-    "MTree":    lambda d, ls: spatial.MTree.from_array(d, capacity=ls),
+    "BallTree":   lambda d, ls: spatial.BallTree.from_array(d, leaf_size=ls),
+    "MTree":   lambda d, ls: spatial.MTree.from_array(d, capacity=ls),
+    "VPTree":   lambda d, ls: spatial.VPTree.from_array(d, leaf_size=ls, selection="variance"),
+    "RPTree":   lambda d, ls: spatial.RPTree.from_array(d, leaf_size=ls),
 }
 
 LEAF_SIZE  = 20
@@ -15,7 +17,7 @@ N_POINTS   = 2_000
 N_QUERIES  = 50
 K          = 10
 RADIUS     = 0.4
-DIMS       = [2, 8, 32]
+DIMS       = [2,4,8,16,32,64,128]
 
 # ── Brute-force reference (Euclidean) ─────────────────────────────────────────
 
@@ -116,7 +118,7 @@ def format_results(label: str, dim: int, pass_fail: PassFail):
 
 
 def run_correctness_tests():
-    rng     = np.random.default_rng(42)
+    rng     = np.random.default_rng()
     failed  = []  # (label, dim, tree_name)
 
     print("=== Correctness Tests ===\n")

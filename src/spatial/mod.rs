@@ -16,4 +16,4 @@ pub use rp_tree::RPTree;
 pub use agg_tree::AggTree;
 pub use brute_force::BruteForce;
 pub use common::{DistanceMetric, KernelType, HeapItem};
-pub use spatial_query::{SpatialQuery};
+pub use spatial_query::{SpatialTree, KnnQuery, RadiusQuery, KdeQuery};

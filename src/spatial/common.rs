@@ -43,7 +43,7 @@ impl DistanceMetric {
     }
 
 
-    //distance function for in tree calculations
+    //reduced distance function for in tree calculations
     #[inline]
     pub fn reduced_distance(self, a: &[f64], b: &[f64]) -> f64 {
         debug_assert_eq!(a.len(), b.len());
@@ -52,6 +52,18 @@ impl DistanceMetric {
             DistanceMetric::Manhattan => manhattan(a, b),
             DistanceMetric::Chebyshev => chebyshev(a, b),
             DistanceMetric::Cosine => squared_euclidean(a, b),
+        }
+    }
+
+    //distance function for in tree calculations
+    #[inline]
+    pub fn distance(self, a: &[f64], b: &[f64]) -> f64 {
+        debug_assert_eq!(a.len(), b.len());
+        match self {
+            DistanceMetric::Euclidean => euclidean(a, b),
+            DistanceMetric::Manhattan => manhattan(a, b),
+            DistanceMetric::Chebyshev => chebyshev(a, b),
+            DistanceMetric::Cosine => euclidean(a, b),
         }
     }
 
