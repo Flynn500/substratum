@@ -107,7 +107,7 @@ def run_benchmark(
         rows.append(
             dict(
                 dataset=f"{n}x{dim}",
-                structure="your.KDTree",
+                structure="irn.KDTree",
                 build=build,
                 knn=knn_t,
                 radius_t=rad_t,
@@ -127,7 +127,7 @@ def run_benchmark(
         rows.append(
             dict(
                 dataset=f"{n}x{dim}",
-                structure="your.BallTree",
+                structure="irn.BallTree",
                 build=build,
                 knn=knn_t,
                 radius_t=rad_t,

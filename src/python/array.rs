@@ -639,6 +639,7 @@ impl PyArray {
         }
     }
 
+    #[pyo3(signature = (dtype=None))]
     fn __array__(&self, py: Python<'_>, dtype: Option<&Bound<'_, PyAny>>) -> PyResult<Py<PyAny>> {
         let arr = self.to_numpy(py)?;
 
