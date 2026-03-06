@@ -639,6 +639,17 @@ impl PyArray {
         }
     }
 
+    fn __array__(&self, py: Python<'_>, dtype: Option<&Bound<'_, PyAny>>) -> PyResult<Py<PyAny>> {
+        let arr = self.to_numpy(py)?;
+
+        if let Some(dtype) = dtype {
+            let np = py.import("numpy")?;
+            return Ok(np.call_method1("asarray", (arr, dtype))?.unbind());
+        }
+        
+        Ok(arr)
+    }
+
     fn __repr__(&self) -> String {
         match &self.inner {
             ArrayData::Float(a) => format!(

@@ -1,7 +1,7 @@
 use std::collections::BinaryHeap;
 
 use crate::{Generator, array::{NdArray, Shape}, projection::{ProjectionType, RandomProjection, random_projection::ProjectionDirection}, spatial::{HeapItem, common::DistanceMetric}};
-use crate::spatial::queries::{KnnQuery, RadiusQuery, KdeQuery};
+use crate::spatial::queries::{KnnQuery, RadiusQuery, KdeQuery, AnnQuery};
 use crate::spatial::SpatialTree;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
@@ -332,4 +332,8 @@ impl RadiusQuery for RPTree{
 
 impl KdeQuery for RPTree{
 
+}
+
+impl AnnQuery for RPTree {
+    
 }

@@ -47,7 +47,7 @@ Spatial trees support kNN, radius, and KDE queries. All spatial trees support se
 - BallTree - pivot-based splits, handles higher dimensions well
 - VPTree - vantage-point splits, strong in general metric spaces
 - RPTree - random-projection splits, strong in high dimensions with low intrinsic dimensionality. 
-- MTree - pivot-based splits, supports dynamic insertion at the cost of query speed.
+- MTree (SOON) - pivot-based splits, supports dynamic insertion at the cost of query speed.
 - AggTree - approximate KDE via aggregated nodes, tunable accuracy via atol
 - ProjectionReducer - use random projections to reduce dimensionality for more effecient spatial queries.
 

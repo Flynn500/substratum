@@ -1,5 +1,5 @@
 use crate::{Shape, array::NdArray, spatial::common::DistanceMetric};
-use crate::spatial::queries::{KnnQuery, RadiusQuery, KdeQuery};
+use crate::spatial::queries::{KnnQuery, RadiusQuery, KdeQuery, AnnQuery};
 use crate::spatial::SpatialTree;
 use serde::{Deserialize, Serialize};
 
@@ -224,4 +224,8 @@ impl RadiusQuery for BallTree {
 
 impl KdeQuery for BallTree {
 
+}
+
+impl AnnQuery for BallTree {
+    
 }

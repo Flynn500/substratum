@@ -1,4 +1,4 @@
-use pyo3::prelude::*;
+use pyo3::{exceptions::PyTypeError, prelude::*};
 use pyo3::types::PyAny;
 use pyo3::exceptions::PyValueError;
 use numpy::{PyReadonlyArrayDyn, PyUntypedArrayMethods};
@@ -119,12 +119,30 @@ fn linspace(_py: Python<'_>, start: ArrayLike, stop: ArrayLike, num: i64) -> PyR
 
 #[pyfunction]
 fn from_numpy(_py: Python<'_>, arr: &Bound<'_, PyAny>) -> PyResult<PyArray> {
-    let numpy_arr: PyReadonlyArrayDyn<f64> = arr.extract()?;
-    let shape: Vec<usize> = numpy_arr.shape().to_vec();
-    let data: Vec<f64> = numpy_arr.as_slice()?.to_vec();
-    Ok(PyArray {
-        inner: ArrayData::Float(NdArray::from_vec(Shape::new(shape), data)),
-    })
+    let dtype = arr.getattr("dtype")?;
+    let dtype_str: String = dtype.getattr("kind")?.extract()?;
+
+    match dtype_str.as_str() {
+        "f" => {
+            let numpy_arr: PyReadonlyArrayDyn<f64> = arr.extract()?;
+            let shape = numpy_arr.shape().to_vec();
+            let data: Vec<f64> = numpy_arr.as_slice()?.to_vec();
+            Ok(PyArray {
+                inner: ArrayData::Float(NdArray::from_vec(Shape::new(shape), data)),
+            })
+        }
+        "i" | "u" => {
+            let numpy_arr: PyReadonlyArrayDyn<i64> = arr.extract()?;
+            let shape = numpy_arr.shape().to_vec();
+            let data: Vec<i64> = numpy_arr.as_slice()?.to_vec();
+            Ok(PyArray {
+                inner: ArrayData::Int(NdArray::from_vec(Shape::new(shape), data)),
+            })
+        }
+        other => Err(PyTypeError::new_err(format!(
+            "unsupported numpy dtype kind: '{other}'"
+        ))),
+    }
 }
 
 #[pyfunction]

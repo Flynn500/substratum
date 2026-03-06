@@ -6,6 +6,7 @@
 - Local Regression
 - Projection Reducer object for reducing dimensions
 - Serialization for spatial trees
+- aNN methods for KD, Ball & RP trees
 - Reshape & linspace methods for arrays
 - Standard __init__ methods for spatial trees that take an ArrayLike input
 
