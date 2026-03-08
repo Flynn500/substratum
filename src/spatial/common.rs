@@ -79,7 +79,8 @@ impl DistanceMetric {
 }
 
 
-#[target_feature(enable = "avx2,fma", target_arch = "x86_64"))]
+#[cfg(target_arch = "x86_64")]
+#[target_feature(enable = "avx2,fma")]
 unsafe fn squared_euclidean_single_acc(a: &[f64], b: &[f64]) -> f64 {
     let n = a.len();
     let chunks = n / 4;
@@ -159,7 +160,8 @@ unsafe fn squared_euclidean_multi_acc(a: &[f64], b: &[f64]) -> f64 {
     }
 }
 
-#[target_feature(enable = "avx2,fma", target_arch = "x86_64"))]
+#[cfg(target_arch = "x86_64")]
+#[target_feature(enable = "avx2,fma")]
 unsafe fn simd_squared_euclidean_avx2_fma(a: &[f64], b: &[f64]) -> f64 {
     let n = a.len();
     unsafe {
