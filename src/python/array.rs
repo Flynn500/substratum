@@ -16,6 +16,66 @@ fn parse_dtype(dtype: Option<&str>) -> PyResult<bool> {
     }
 }
 
+// get item enums
+enum AxisIndex {
+    /// a[3] — selects one element, collapses this axis
+    Single(usize),
+    /// a[1:5:2] — selects a range, keeps this axis
+    Slice {
+        start: usize,
+        step: isize,
+        len: usize,
+    },
+}
+
+fn parse_axis_index(key: &Bound<'_, PyAny>, axis: usize, dim_size: usize) -> PyResult<AxisIndex> {
+    if let Ok(slice) = key.cast::<PySlice>() {
+        let indices = slice.indices(dim_size as isize)?;
+        let mut len = 0usize;
+        let mut i = indices.start;
+        while (indices.step > 0 && i < indices.stop) || (indices.step < 0 && i > indices.stop) {
+            if i >= 0 && i < dim_size as isize {
+                len += 1;
+            }
+            i += indices.step;
+        }
+        Ok(AxisIndex::Slice {
+            start: indices.start as usize,
+            step: indices.step,
+            len,
+        })
+    } else if let Ok(idx) = key.extract::<isize>() {
+        let dim = dim_size as isize;
+        let normalized = if idx < 0 { dim + idx } else { idx };
+        if normalized < 0 || normalized >= dim {
+            return Err(PyValueError::new_err(format!(
+                "index {} is out of bounds for axis {} with size {}",
+                idx, axis, dim_size
+            )));
+        }
+        Ok(AxisIndex::Single(normalized as usize))
+    } else {
+        Err(PyValueError::new_err(format!(
+            "unsupported index type for axis {}", axis
+        )))
+    }
+}
+
+fn expand_axis_indices(axis: &AxisIndex) -> Vec<usize> {
+    match axis {
+        AxisIndex::Single(idx) => vec![*idx],
+        AxisIndex::Slice { start, step, len } => {
+            let mut v = Vec::with_capacity(*len);
+            let mut i = *start as isize;
+            for _ in 0..*len {
+                v.push(i as usize);
+                i += step;
+            }
+            v
+        }
+    }
+}
+
 
 #[pymethods]
 impl PyArray {
@@ -737,15 +797,18 @@ impl PyArray {
         let dims = self.dims();
         let ndim = dims.len();
 
+        // --- Boolean mask indexing ---
+        // Python: a[np.array([True, False, True])] or a[[True, False, True]]
         if let Ok(bool_mask) = key.extract::<Vec<bool>>() {
             return self.apply_bool_mask_py(&bool_mask, py);
         }
-
         if let Ok(np_bool) = key.extract::<PyReadonlyArrayDyn<bool>>() {
             let mask: Vec<bool> = np_bool.as_slice()?.iter().copied().collect();
             return self.apply_bool_mask_py(&mask, py);
         }
 
+        // --- Integer index array (custom PyArray) ---
+        // Python: a[pyarray_of_ints]
         if let Ok(py_arr) = key.extract::<PyRef<PyArray>>() {
             return match &py_arr.inner {
                 ArrayData::Int(idx_arr) => {
@@ -758,107 +821,96 @@ impl PyArray {
             };
         }
 
-        if let Ok(tuple) = key.cast::<PyTuple>() {
+        // --- Unified path: normalize key into Vec<AxisIndex> ---
+        // Handles:
+        //   a[3]          — single int
+        //   a[1:5]        — single slice
+        //   a[1, 2]       — tuple of ints
+        //   a[1, 2:5]     — tuple with mixed int/slice
+        //   a[:, 3]       — tuple with slice and int
+        //   a[0:2, 1:3]   — tuple of slices
+        let axes: Vec<AxisIndex> = if let Ok(tuple) = key.cast::<PyTuple>() {
             let tuple_len = tuple.len();
-
             if tuple_len > ndim {
                 return Err(PyValueError::new_err(format!(
                     "too many indices for array: array is {}-dimensional, but {} were indexed",
                     ndim, tuple_len
                 )));
             }
-
-            let mut indices: Vec<usize> = Vec::with_capacity(tuple_len);
+            let mut v = Vec::with_capacity(tuple_len);
             for i in 0..tuple_len {
-                let item = tuple.get_item(i)?;
-                let idx = item.extract::<isize>()?;
-                let dim_size = dims[i] as isize;
-                let normalized = if idx < 0 { dim_size + idx } else { idx };
-                if normalized < 0 || normalized >= dim_size {
-                    return Err(PyValueError::new_err(format!(
-                        "index {} is out of bounds for axis {} with size {}",
-                        idx, i, dims[i]
-                    )));
-                }
-                indices.push(normalized as usize);
+                v.push(parse_axis_index(&tuple.get_item(i)?, i, dims[i])?);
             }
+            v
+        } else {
+            // Single int or single slice on axis 0
+            vec![parse_axis_index(key, 0, dims[0])?]
+        };
 
-            if tuple_len == ndim {
-                return self.scalar_at_indices(&indices, py);
-            }
-
-            let result_dims: Vec<usize> = dims[tuple_len..].to_vec();
-            let result_size: usize = result_dims.iter().product();
-
-            let strides = self.strides_val();
-            let mut start_offset = 0;
-            for (i, &idx) in indices.iter().enumerate() {
-                start_offset += idx * strides[i];
-            }
-
-            return Ok(self.subarray_at(result_dims, start_offset, result_size)
-                .into_pyobject(py)?.into_any().unbind());
+        // Pad unspecified trailing axes with full slices
+        // e.g. a[3] on a 3D array becomes a[3, :, :]
+        let mut full_axes: Vec<AxisIndex> = axes;
+        for i in full_axes.len()..ndim {
+            full_axes.push(AxisIndex::Slice {
+                start: 0,
+                step: 1,
+                len: dims[i],
+            });
         }
 
-        if let Ok(idx) = key.extract::<isize>() {
-            let dim0 = dims[0] as isize;
-            let normalized = if idx < 0 { dim0 + idx } else { idx };
-            if normalized < 0 || normalized >= dim0 {
-                return Err(PyValueError::new_err(format!(
-                    "index {} is out of bounds for axis 0 with size {}",
-                    idx, dims[0]
-                )));
-            }
+        // Build result shape — Single axes are collapsed (removed)
+        let result_dims: Vec<usize> = full_axes.iter()
+            .filter_map(|a| match a {
+                AxisIndex::Single(_) => None,
+                AxisIndex::Slice { len, .. } => Some(*len),
+            })
+            .collect();
 
-            if ndim == 1 {
-                return self.scalar_at_flat(normalized as usize, py);
-            }
+        let strides = self.strides_val();
 
-            let result_dims: Vec<usize> = dims[1..].to_vec();
-            let result_size: usize = result_dims.iter().product();
-            let start_offset = normalized as usize * self.strides_val()[0];
+        // Expand each axis into its selected indices
+        let per_axis: Vec<Vec<usize>> = full_axes.iter()
+            .map(|a| expand_axis_indices(a))
+            .collect();
 
-            return Ok(self.subarray_at(result_dims, start_offset, result_size)
-                .into_pyobject(py)?.into_any().unbind());
+        // Scalar result — all axes were Single
+        // Python: a[1, 2, 3] on a 3D array
+        if result_dims.is_empty() {
+            let flat_idx: usize = per_axis.iter()
+                .enumerate()
+                .map(|(i, v)| v[0] * strides[i])
+                .sum();
+            return self.scalar_at_flat(flat_idx, py);
         }
 
-        if let Ok(slice) = key.cast::<PySlice>() {
-            let axis0_len = dims[0] as isize;
-            let indices = slice.indices(axis0_len)?;
-            let stride0 = self.strides_val()[0];
+        // Gather via cartesian product of per-axis indices
+        let total: usize = per_axis.iter().map(|v| v.len()).product();
+        let mut flat_indices = Vec::with_capacity(total);
+        let mut coord = vec![0usize; ndim];
 
-            if ndim == 1 {
-                let mut result_flat = Vec::new();
-                let mut i = indices.start;
-                while (indices.step > 0 && i < indices.stop) || (indices.step < 0 && i > indices.stop) {
-                    if i >= 0 && i < axis0_len {
-                        result_flat.push(i as usize);
-                    }
-                    i += indices.step;
+        loop {
+            let flat_idx: usize = coord.iter()
+                .enumerate()
+                .map(|(i, &c)| per_axis[i][c] * strides[i])
+                .sum();
+            flat_indices.push(flat_idx);
+
+            // Increment coord, rightmost first (row-major order)
+            let mut axis = ndim - 1;
+            loop {
+                coord[axis] += 1;
+                if coord[axis] < per_axis[axis].len() {
+                    break;
                 }
-                let arr = self.gather_flat_indices(result_flat);
-                return Ok(arr.into_pyobject(py)?.into_any().unbind());
-            }
-
-            let row_size: usize = dims[1..].iter().product();
-            let mut row_starts = Vec::new();
-            let mut i = indices.start;
-            while (indices.step > 0 && i < indices.stop) || (indices.step < 0 && i > indices.stop) {
-                if i >= 0 && i < axis0_len {
-                    row_starts.push(i as usize * stride0);
+                coord[axis] = 0;
+                if axis == 0 {
+                    // Done — all combinations enumerated
+                    let arr = self.gather_flat_indices_with_dims(flat_indices, result_dims);
+                    return Ok(arr.into_pyobject(py)?.into_any().unbind());
                 }
-                i += indices.step;
+                axis -= 1;
             }
-
-            let num_rows = row_starts.len();
-            let mut result_dims = vec![num_rows];
-            result_dims.extend_from_slice(&dims[1..]);
-
-            let arr = self.gather_rows(row_starts, row_size, result_dims);
-            return Ok(arr.into_pyobject(py)?.into_any().unbind());
         }
-
-        Err(PyValueError::new_err("indices must be integers, slices, or tuples of integers"))
     }
 
     fn __setitem__(&mut self, key: &Bound<'_, PyAny>, value: &Bound<'_, PyAny>) -> PyResult<()> {
@@ -1117,14 +1169,21 @@ impl PyArray {
     /// Gathers elements at an arbitrary set of flat indices into a new 1-D array.
     /// Used by fancy integer-array indexing on 1-D arrays.
     fn gather_flat_indices(&self, flat_indices: Vec<usize>) -> PyArray {
+        let len = flat_indices.len();
+        self.gather_flat_indices_with_dims(flat_indices, vec![len])
+    }
+
+    /// Gathers elements at arbitrary flat indices into an array with the given shape.
+    /// Used by the unified __getitem__ gather routine.
+    fn gather_flat_indices_with_dims(&self, flat_indices: Vec<usize>, dims: Vec<usize>) -> PyArray {
         match &self.inner {
             ArrayData::Float(a) => {
                 let data: Vec<f64> = flat_indices.iter().map(|&i| a.as_slice()[i]).collect();
-                PyArray { inner: ArrayData::Float(NdArray::from_vec(Shape::d1(data.len()), data)), alive: true }
+                PyArray { inner: ArrayData::Float(NdArray::from_vec(Shape::new(dims), data)), alive: true }
             }
             ArrayData::Int(a) => {
                 let data: Vec<i64> = flat_indices.iter().map(|&i| a.as_slice()[i]).collect();
-                PyArray { inner: ArrayData::Int(NdArray::from_vec(Shape::d1(data.len()), data)), alive: true }
+                PyArray { inner: ArrayData::Int(NdArray::from_vec(Shape::new(dims), data)), alive: true }
             }
         }
     }

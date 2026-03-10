@@ -9,8 +9,8 @@ TREES = {
     "KDTree":   lambda d, ls: spatial.KDTree.from_array(d, leaf_size=ls),
     "BallTree": lambda d, ls: spatial.BallTree.from_array(d, leaf_size=ls),
     "VPTree":   lambda d, ls: spatial.VPTree.from_array(d, leaf_size=ls),
-    "MTree":    lambda d, ls: spatial.MTree.from_array(d, capacity=ls),
     "RPTree":   lambda d, ls: spatial.RPTree.from_array(d, leaf_size=ls, projection="sparse"),
+    "BruteForce":    lambda d, ls: spatial.BruteForce.from_array(d)
 }
 
 DIMS = [2, 4, 8, 16, 32, 64, 128, 256, 512]

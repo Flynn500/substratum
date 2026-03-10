@@ -78,10 +78,11 @@ IronForest includes tree-based ML models that run entirely on the Rust core no e
 We include a handful of additional models built on core features our library already supports.
 - Linear Regression
 - Local Regression
+- KNN Regression & Classification
 
 ## Supporting Modules
 
-These modules are not the primary focus of the library but we still expose them through our python bindings. Numpy and SciPy should be preffered if a wider array of linear algebra and statistical methods are needed, all our functions support `ArrayLike` inputs, which can be numpy NdArrays, python lists or our own internal Array object. Our arrays can also be converted to alternative  formats via to_numpy() & tolist() for display and use alongside other libraries.
+These modules are not the primary focus of the library but we still expose them through our python bindings. Numpy and SciPy should be preffered if a wider array of linear algebra and statistical methods are needed, all our functions support `ArrayLike` inputs, which can be numpy NdArrays, python lists or our own internal Array object. Our arrays can also be converted to alternative  formats via to_numpy() & tolist() for display and use alongside other libraries. We also support the numpy array protocol.
 
 ### Array
 - An N-dimensional array object with broadcasting

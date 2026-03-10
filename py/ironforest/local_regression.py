@@ -42,6 +42,12 @@ class LocalRegression:
     }
 
     def __init__(self, tree, y, kernel="tricube", degree=1, k=None):
+        if kernel not in self.KERNELS:
+            raise ValueError(f"Unknown kernel: {kernel}")
+        
+        if degree not in (1, 2):
+            raise ValueError("degree must be 1 or 2")
+
         self.tree = tree
         self.y = y
         self.kernel = kernel
@@ -69,12 +75,6 @@ class LocalRegression:
         return LocalRegression(tree, y, kernel, degree, k)
 
     def _build_design(self, X_local):
-        """Build design matrix from local neighbor coordinates.
-        
-        X_local: shape (k, p) array of neighbor positions.
-        Returns column_stack of [1, x1, x2, ...] for degree=1,
-        or [1, x1, x2, ..., x1^2, x2^2, ...] for degree=2.
-        """
         X = irn.ndutils.asarray(X_local)
         n = X.shape[0]
         cols = [irn.ndutils.ones([n])]
@@ -124,14 +124,14 @@ class LocalRegression:
 
         for i in range(m):
             q = X_query[i]
-            indices, distances = self.tree.query_knn(q, k)
+            result = self.tree.query_knn(q, k)
 
-            max_d = distances[k - 1]
-            w = kernel_fn(distances, max_d)
+            max_d = result.distances[k - 1]
+            w = kernel_fn(result.distances, max_d)
 
-            X_local = self._get_points(indices.tolist())
+            X_local = self._get_points(result.indices)
 
-            y_local = self.y[indices].reshape([k, 1])
+            y_local = self.y[result.indices].reshape([k, 1])
 
             A = self._build_design(X_local)
             q_design = self._build_design(q.reshape([1, q.shape[0]]))
@@ -143,6 +143,31 @@ class LocalRegression:
         if single:
             return preds[0]
         return preds
+
+if __name__ == "__main__":
+    X = irn.ndutils.linspace(-5, 5, 200).reshape([200, 1])
+    y = irn.Array.sin(X.reshape([200])) + irn.random.Generator.from_seed(0).normal(0, 0.1, [200])
+
+    # Fit model
+    model = LocalRegression.from_array(
+        X,
+        y,
+        kernel="tricube",
+        degree=1,
+        k=40,
+    )
+
+    # Query points
+    X_test = irn.ndutils.linspace(-5, 5, 50).reshape([50, 1])
+
+    preds = model.predict(X_test)
+
+    # Should roughly match sin(x)
+    y_true = irn.Array.sin(X_test.reshape([50]))
+    mse = ((preds - y_true) ** 2).mean()
+
+    print("MSE:", mse)
+
 
 
 
