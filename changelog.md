@@ -1,3 +1,13 @@
+## 0.5.1
+
+### Added
+- Python wrapper kNN Regression & Classification for spatial index trees.
+- Additional indexing options for arrays to closer match numpy
+
+### Fixed
+- VPTree bug causing it to miss results in kNN & Radius queries.
+- Local Regression bug after tree API changes.
+
 ## 0.5
 
 ### Added
@@ -7,7 +17,7 @@
 - Serialization for spatial trees
 - aNN methods for KD, Ball & RP trees
 - Reshape & linspace methods for arrays
-- Standard __init__ methods for spatial trees that take an ArrayLike input
+- Standard \__init\__ methods for spatial trees that take an ArrayLike input
 - \__array\__ protocol for numpy conversion 
 
 ### Changed

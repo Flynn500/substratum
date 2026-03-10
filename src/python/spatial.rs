@@ -570,7 +570,7 @@ impl_serialization_methods!(PyKDTree, KDTree, PyKDTree);
 impl_serialization_methods!(PyVPTree, VPTree, PyVPTree);
 impl_serialization_methods!(PyBruteForce, BruteForce, PyBruteForce);
 impl_serialization_methods!(PyAggTree, AggTree, PyAggTree);
-impl_serialization_methods!(PyMTree, MTree, PyMTree);
+//impl_serialization_methods!(PyMTree, MTree, PyMTree);
 impl_serialization_methods!(PyRPTree, RPTree, PyRPTree);
 impl_serialization_methods!(PyProjectionReducer, ProjectionReducer, PyProjectionReducer);
 
@@ -814,157 +814,157 @@ impl PyAggTree {
     }
 }
 
-#[pyclass(name = "MTree")]
-pub struct PyMTree {
-    inner: Option<MTree>,
-}
+// #[pyclass(name = "MTree")]
+// pub struct PyMTree {
+//     inner: Option<MTree>,
+// }
 
-#[pymethods] //ide error
-impl PyMTree {
-    #[staticmethod]
-    #[pyo3(signature = (array, capacity=50, metric="euclidean"))]
-    fn from_array(array: &PyArray, capacity: Option<usize>, metric: Option<&str>) -> PyResult<Self> {
-        let capacity = capacity.unwrap_or(50);
-        let metric = parse_metric(metric.unwrap_or("euclidean"))?;
-        let tree = MTree::from_ndarray(array.as_float()?, capacity, metric);
-        Ok(PyMTree { inner: Some(tree) })
-    }
+// #[pymethods] //ide error
+// impl PyMTree {
+//     #[staticmethod]
+//     #[pyo3(signature = (array, capacity=50, metric="euclidean"))]
+//     fn from_array(array: &PyArray, capacity: Option<usize>, metric: Option<&str>) -> PyResult<Self> {
+//         let capacity = capacity.unwrap_or(50);
+//         let metric = parse_metric(metric.unwrap_or("euclidean"))?;
+//         let tree = MTree::from_ndarray(array.as_float()?, capacity, metric);
+//         Ok(PyMTree { inner: Some(tree) })
+//     }
 
-    #[new]
-    #[pyo3(signature = (array, capacity=20, metric="euclidean"))]
-    fn __init__(
-        array: ArrayLike,
-        capacity: Option<usize>,
-        metric: Option<&str>,
-    ) -> PyResult<Self> {
-        let capacity = capacity.unwrap_or(20);
-        let metric = parse_metric(metric.unwrap_or("euclidean"))?;
-        let data = array.into_ndarray()?;
-        let tree = MTree::from_ndarray(&data, capacity, metric);
-        Ok(PyMTree { inner: Some(tree) })
-    }
+//     #[new]
+//     #[pyo3(signature = (array, capacity=20, metric="euclidean"))]
+//     fn __init__(
+//         array: ArrayLike,
+//         capacity: Option<usize>,
+//         metric: Option<&str>,
+//     ) -> PyResult<Self> {
+//         let capacity = capacity.unwrap_or(20);
+//         let metric = parse_metric(metric.unwrap_or("euclidean"))?;
+//         let data = array.into_ndarray()?;
+//         let tree = MTree::from_ndarray(&data, capacity, metric);
+//         Ok(PyMTree { inner: Some(tree) })
+//     }
 
-    fn insert(&mut self, point: ArrayLike) -> PyResult<()> {
-        let tree = self.inner.as_mut()
-            .ok_or_else(|| PyValueError::new_err("Tree is uninitialized"))?;
-        let arr = point.into_spatial_query_ndarray(tree.dim)?;
-        let point_idx = tree.n_points;
-        tree.insert(arr.as_slice().to_vec(), point_idx);
-        Ok(())
-    }
+//     fn insert(&mut self, point: ArrayLike) -> PyResult<()> {
+//         let tree = self.inner.as_mut()
+//             .ok_or_else(|| PyValueError::new_err("Tree is uninitialized"))?;
+//         let arr = point.into_spatial_query_ndarray(tree.dim)?;
+//         let point_idx = tree.n_points;
+//         tree.insert(arr.as_slice().to_vec(), point_idx);
+//         Ok(())
+//     }
 
-    #[pyo3(signature = (indices=None))]
-    fn data(&self, indices: Option<ArrayLike>) -> PyResult<PyArray> {
-        let tree = tree!(self);
-        let data = tree.collect_data();
+//     #[pyo3(signature = (indices=None))]
+//     fn data(&self, indices: Option<ArrayLike>) -> PyResult<PyArray> {
+//         let tree = tree!(self);
+//         let data = tree.collect_data();
 
-        match indices {
-            None => Ok(PyArray {
-                inner: ArrayData::Float(NdArray::from_vec(
-                    Shape::new(vec![tree.n_points, tree.dim]),
-                    data,
-                )),
-                alive: true
-            }),
-            Some(idx) => {
-                let idx_arr = idx.into_i64_ndarray()?;
-                let k = idx_arr.len();
-                let mut result = Vec::with_capacity(k * tree.dim);
-                for &i in idx_arr.as_slice() {
-                    let i = i as usize;
-                    if i >= tree.n_points {
-                        return Err(PyValueError::new_err(format!(
-                            "Index {} out of bounds for tree with {} points", i, tree.n_points
-                        )));
-                    }
-                    result.extend_from_slice(&data[i * tree.dim..(i + 1) * tree.dim]);
-                }
-                Ok(PyArray {
-                    inner: ArrayData::Float(NdArray::from_vec(Shape::new(vec![k, tree.dim]), result)),
-                    alive: true
-                })
-            }
-        }
-    }
+//         match indices {
+//             None => Ok(PyArray {
+//                 inner: ArrayData::Float(NdArray::from_vec(
+//                     Shape::new(vec![tree.n_points, tree.dim]),
+//                     data,
+//                 )),
+//                 alive: true
+//             }),
+//             Some(idx) => {
+//                 let idx_arr = idx.into_i64_ndarray()?;
+//                 let k = idx_arr.len();
+//                 let mut result = Vec::with_capacity(k * tree.dim);
+//                 for &i in idx_arr.as_slice() {
+//                     let i = i as usize;
+//                     if i >= tree.n_points {
+//                         return Err(PyValueError::new_err(format!(
+//                             "Index {} out of bounds for tree with {} points", i, tree.n_points
+//                         )));
+//                     }
+//                     result.extend_from_slice(&data[i * tree.dim..(i + 1) * tree.dim]);
+//                 }
+//                 Ok(PyArray {
+//                     inner: ArrayData::Float(NdArray::from_vec(Shape::new(vec![k, tree.dim]), result)),
+//                     alive: true
+//                 })
+//             }
+//         }
+//     }
 
-    fn query_radius(&self, query: ArrayLike, radius: f64) -> PyResult<PySpatialResult> {
-        let tree = tree!(self);
-        let is_batch = query.ndim() == 2;
-        let queries_arr = query.into_spatial_query_ndarray(tree.dim)?;
-        if is_batch {
-            let results = tree.query_radius_batch(&queries_arr, radius);
-            let mut all_indices = Vec::new();
-            let mut all_distances = Vec::new();
-            let mut counts = Vec::with_capacity(results.len());
-            for batch in results {
-                counts.push(batch.len() as i64);
-                for (i, d) in batch {
-                    all_indices.push(i as i64);
-                    all_distances.push(d);
-                }
-            }
-            Ok(PySpatialResult::from_batch_radius(all_indices, all_distances, counts))
-        } else {
-            let query_slice = &queries_arr.as_slice()[..tree.dim];
-            let results = tree.query_radius(query_slice, radius);
-            let (indices, distances): (Vec<i64>, Vec<f64>) = results.into_iter()
-                .map(|(i, d)| (i as i64, d)).unzip();
-            Ok(PySpatialResult::from_single(indices, distances))
-        }
-    }
+//     fn query_radius(&self, query: ArrayLike, radius: f64) -> PyResult<PySpatialResult> {
+//         let tree = tree!(self);
+//         let is_batch = query.ndim() == 2;
+//         let queries_arr = query.into_spatial_query_ndarray(tree.dim)?;
+//         if is_batch {
+//             let results = tree.query_radius_batch(&queries_arr, radius);
+//             let mut all_indices = Vec::new();
+//             let mut all_distances = Vec::new();
+//             let mut counts = Vec::with_capacity(results.len());
+//             for batch in results {
+//                 counts.push(batch.len() as i64);
+//                 for (i, d) in batch {
+//                     all_indices.push(i as i64);
+//                     all_distances.push(d);
+//                 }
+//             }
+//             Ok(PySpatialResult::from_batch_radius(all_indices, all_distances, counts))
+//         } else {
+//             let query_slice = &queries_arr.as_slice()[..tree.dim];
+//             let results = tree.query_radius(query_slice, radius);
+//             let (indices, distances): (Vec<i64>, Vec<f64>) = results.into_iter()
+//                 .map(|(i, d)| (i as i64, d)).unzip();
+//             Ok(PySpatialResult::from_single(indices, distances))
+//         }
+//     }
 
-    fn query_knn(&self, query: ArrayLike, k: usize) -> PyResult<PySpatialResult> {
-        let tree = tree!(self);
-        let is_batch = query.ndim() == 2;
-        let queries_arr = query.into_spatial_query_ndarray(tree.dim)?;
-        let n_queries = queries_arr.shape().dims()[0];
-        if is_batch {
-            let results = tree.query_knn_batch(&queries_arr, k);
-            let (indices, distances): (Vec<i64>, Vec<f64>) = results.into_iter()
-                .flatten()
-                .map(|(i, d)| (i as i64, d))
-                .unzip();
-            Ok(PySpatialResult::from_batch_knn(indices, distances, n_queries, k))
-        } else {
-            let query_slice = &queries_arr.as_slice()[..tree.dim];
-            let results = tree.query_knn(query_slice, k);
-            let (indices, distances): (Vec<i64>, Vec<f64>) = results.into_iter()
-                .map(|(i, d)| (i as i64, d)).unzip();
-            Ok(PySpatialResult::from_single(indices, distances))
-        }
-    }
+//     fn query_knn(&self, query: ArrayLike, k: usize) -> PyResult<PySpatialResult> {
+//         let tree = tree!(self);
+//         let is_batch = query.ndim() == 2;
+//         let queries_arr = query.into_spatial_query_ndarray(tree.dim)?;
+//         let n_queries = queries_arr.shape().dims()[0];
+//         if is_batch {
+//             let results = tree.query_knn_batch(&queries_arr, k);
+//             let (indices, distances): (Vec<i64>, Vec<f64>) = results.into_iter()
+//                 .flatten()
+//                 .map(|(i, d)| (i as i64, d))
+//                 .unzip();
+//             Ok(PySpatialResult::from_batch_knn(indices, distances, n_queries, k))
+//         } else {
+//             let query_slice = &queries_arr.as_slice()[..tree.dim];
+//             let results = tree.query_knn(query_slice, k);
+//             let (indices, distances): (Vec<i64>, Vec<f64>) = results.into_iter()
+//                 .map(|(i, d)| (i as i64, d)).unzip();
+//             Ok(PySpatialResult::from_single(indices, distances))
+//         }
+//     }
 
-    fn kernel_density(
-        &self,
-        py: Python<'_>,
-        queries: Option<ArrayLike>,
-        bandwidth: Option<f64>,
-        kernel: Option<&str>,
-        normalize: Option<bool>,
-    ) -> PyResult<Py<PyAny>> {
-        let tree = tree!(self);
-        let bandwidth = bandwidth.unwrap_or(1.0);
-        let kernel_type = parse_kernel(kernel.unwrap_or("gaussian"))?;
-        let normalize = normalize.unwrap_or(false);
+//     fn kernel_density(
+//         &self,
+//         py: Python<'_>,
+//         queries: Option<ArrayLike>,
+//         bandwidth: Option<f64>,
+//         kernel: Option<&str>,
+//         normalize: Option<bool>,
+//     ) -> PyResult<Py<PyAny>> {
+//         let tree = tree!(self);
+//         let bandwidth = bandwidth.unwrap_or(1.0);
+//         let kernel_type = parse_kernel(kernel.unwrap_or("gaussian"))?;
+//         let normalize = normalize.unwrap_or(false);
 
-        let queries_arr = if let Some(q) = queries {
-            q.into_spatial_query_ndarray(tree.dim)?
-        } else {
-            NdArray::from_vec(
-                Shape::new(vec![tree.n_points, tree.dim]),
-                tree.collect_data(),
-            )
-        };
+//         let queries_arr = if let Some(q) = queries {
+//             q.into_spatial_query_ndarray(tree.dim)?
+//         } else {
+//             NdArray::from_vec(
+//                 Shape::new(vec![tree.n_points, tree.dim]),
+//                 tree.collect_data(),
+//             )
+//         };
 
-        let result = tree.kernel_density(&queries_arr, bandwidth, kernel_type, normalize);
+//         let result = tree.kernel_density(&queries_arr, bandwidth, kernel_type, normalize);
 
-        if result.shape().dims()[0] == 1 {
-            Ok(result.as_slice()[0].into_pyobject(py)?.into_any().unbind())
-        } else {
-            Ok(PyArray { inner: ArrayData::Float(result), alive: true }.into_pyobject(py)?.into_any().unbind())
-        }
-    }
-}
+//         if result.shape().dims()[0] == 1 {
+//             Ok(result.as_slice()[0].into_pyobject(py)?.into_any().unbind())
+//         } else {
+//             Ok(PyArray { inner: ArrayData::Float(result), alive: true }.into_pyobject(py)?.into_any().unbind())
+//         }
+//     }
+// }
 
 // =============================================================================
 // Misc Types
@@ -1076,7 +1076,7 @@ pub fn register_module(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyBallTree>()?;
     m.add_class::<PyKDTree>()?;
     m.add_class::<PyVPTree>()?;
-    m.add_class::<PyMTree>()?;
+    //m.add_class::<PyMTree>()?;
     m.add_class::<PyAggTree>()?;
     m.add_class::<PyBruteForce>()?;
     m.add_class::<PyRPTree>()?;

@@ -1841,239 +1841,239 @@ class spatial:
             """
             ...
 
-    class MTree:
-        """M-tree for efficient nearest neighbor queries with dynamic insertion.
+    # class MTree:
+    #     """M-tree for efficient nearest neighbor queries with dynamic insertion.
 
-        An M-tree partitions data into nested hyperspheres using routing objects
-        that must be actual data points. Unlike static trees, the M-tree supports
-        dynamic insertion without requiring a full rebuild.
-        """
+    #     An M-tree partitions data into nested hyperspheres using routing objects
+    #     that must be actual data points. Unlike static trees, the M-tree supports
+    #     dynamic insertion without requiring a full rebuild.
+    #     """
 
-        @staticmethod
-        def from_array(
-            array: Array[float],
-            capacity: int = 50,
-            metric: Literal["euclidean", "manhattan", "chebyshev", "cosine"] = "euclidean"
-        ) -> "spatial.MTree":
-            """Construct an M-tree from a 2D array of points.
+    #     @staticmethod
+    #     def from_array(
+    #         array: Array[float],
+    #         capacity: int = 50,
+    #         metric: Literal["euclidean", "manhattan", "chebyshev", "cosine"] = "euclidean"
+    #     ) -> "spatial.MTree":
+    #         """Construct an M-tree from a 2D array of points.
 
-            Args:
-                array: 2D array of shape (n_points, n_features) containing the data points.
-                capacity: Maximum number of entries per node before a split occurs.
-                    Larger values produce shallower trees but may slow queries.
-                    Defaults to 50.
-                metric: Distance metric to use for measuring distances between points.
-                    Options are:
-                    - "euclidean": Standard Euclidean (L2) distance (default)
-                    - "manhattan": Manhattan (L1) distance (taxicab distance)
-                    - "chebyshev": Chebyshev (L∞) distance (maximum coordinate difference)
-                    - "cosine": The angular distance between two vectors
+    #         Args:
+    #             array: 2D array of shape (n_points, n_features) containing the data points.
+    #             capacity: Maximum number of entries per node before a split occurs.
+    #                 Larger values produce shallower trees but may slow queries.
+    #                 Defaults to 50.
+    #             metric: Distance metric to use for measuring distances between points.
+    #                 Options are:
+    #                 - "euclidean": Standard Euclidean (L2) distance (default)
+    #                 - "manhattan": Manhattan (L1) distance (taxicab distance)
+    #                 - "chebyshev": Chebyshev (L∞) distance (maximum coordinate difference)
+    #                 - "cosine": The angular distance between two vectors
 
-            Returns:
-                A constructed MTree instance.
+    #         Returns:
+    #             A constructed MTree instance.
 
-            Raises:
-                AssertionError: If array is not 2-dimensional.
-                ValueError: If metric is not one of the valid options.
-            """
-            ...
+    #         Raises:
+    #             AssertionError: If array is not 2-dimensional.
+    #             ValueError: If metric is not one of the valid options.
+    #         """
+    #         ...
         
-        def __init__(
-            self,
-            data: ArrayLike,
-            capacity: int = 50,
-            metric: Literal["euclidean", "manhattan", "chebyshev", "cosine"] = "euclidean"
-        ):
-            """Construct an M-tree from a 2D array of points.
+    #     def __init__(
+    #         self,
+    #         data: ArrayLike,
+    #         capacity: int = 50,
+    #         metric: Literal["euclidean", "manhattan", "chebyshev", "cosine"] = "euclidean"
+    #     ):
+    #         """Construct an M-tree from a 2D array of points.
 
-            Args:
-                data: ArrayLike (n_points, n_features) containing the data points.
-                capacity: Maximum number of entries per node before a split occurs.
-                    Larger values produce shallower trees but may slow queries.
-                    Defaults to 50.
-                metric: Distance metric to use for measuring distances between points.
-                    Options are:
-                    - "euclidean": Standard Euclidean (L2) distance (default)
-                    - "manhattan": Manhattan (L1) distance (taxicab distance)
-                    - "chebyshev": Chebyshev (L∞) distance (maximum coordinate difference)
-                    - "cosine": The angular distance between two vectors
+    #         Args:
+    #             data: ArrayLike (n_points, n_features) containing the data points.
+    #             capacity: Maximum number of entries per node before a split occurs.
+    #                 Larger values produce shallower trees but may slow queries.
+    #                 Defaults to 50.
+    #             metric: Distance metric to use for measuring distances between points.
+    #                 Options are:
+    #                 - "euclidean": Standard Euclidean (L2) distance (default)
+    #                 - "manhattan": Manhattan (L1) distance (taxicab distance)
+    #                 - "chebyshev": Chebyshev (L∞) distance (maximum coordinate difference)
+    #                 - "cosine": The angular distance between two vectors
 
-            Returns:
-                A constructed MTree instance.
+    #         Returns:
+    #             A constructed MTree instance.
 
-            Raises:
-                AssertionError: If array is not 2-dimensional.
-                ValueError: If metric is not one of the valid options.
-            """
-            ...
+    #         Raises:
+    #             AssertionError: If array is not 2-dimensional.
+    #             ValueError: If metric is not one of the valid options.
+    #         """
+    #         ...
 
-        def insert(self, point: ArrayLike) -> None:
-            """Insert a single point into the tree.
+    #     def insert(self, point: ArrayLike) -> None:
+    #         """Insert a single point into the tree.
 
-            The tree is updated in place. If a node exceeds capacity after insertion,
-            it is split and the split propagates upward as needed.
+    #         The tree is updated in place. If a node exceeds capacity after insertion,
+    #         it is split and the split propagates upward as needed.
 
-            Args:
-                point: 1D array-like of shape (n_features,) representing the point to insert.
+    #         Args:
+    #             point: 1D array-like of shape (n_features,) representing the point to insert.
 
-            Raises:
-                ValueError: If point dimension does not match the tree's dimension.
-            """
-            ...
+    #         Raises:
+    #             ValueError: If point dimension does not match the tree's dimension.
+    #         """
+    #         ...
 
-        def query_radius(self, query: ArrayLike, radius: float) -> "spatial.SpatialResult":
-            """Find all points within a given radius of the query point.
+    #     def query_radius(self, query: ArrayLike, radius: float) -> "spatial.SpatialResult":
+    #         """Find all points within a given radius of the query point.
 
-            Args:
-                query: Query point or 2D array of query points.
-                radius: Search radius. All points with distance <= radius are returned.
+    #         Args:
+    #             query: Query point or 2D array of query points.
+    #             radius: Search radius. All points with distance <= radius are returned.
 
-            Returns:
-                Spatial result object
-            """
-            ...
+    #         Returns:
+    #             Spatial result object
+    #         """
+    #         ...
 
-        def query_knn(self, query: ArrayLike, k: int) -> "spatial.SpatialResult":
-            """Find the k nearest neighbors to the query point.
+    #     def query_knn(self, query: ArrayLike, k: int) -> "spatial.SpatialResult":
+    #         """Find the k nearest neighbors to the query point.
 
-            Args:
-                query: Query point or 2D array of query points.
-                k: Number of nearest neighbors to return.
+    #         Args:
+    #             query: Query point or 2D array of query points.
+    #             k: Number of nearest neighbors to return.
 
-            Returns:
-                Spatial result object
-            """
-            ...
+    #         Returns:
+    #             Spatial result object
+    #         """
+    #         ...
 
-        @overload
-        def data(self, indices: ArrayLike) -> Array[float]:
-            """Return training-data rows at specific original indices.
+    #     @overload
+    #     def data(self, indices: ArrayLike) -> Array[float]:
+    #         """Return training-data rows at specific original indices.
 
-            Args:
-                indices: 1D int array-like of original point indices (as returned
-                    by ``query_knn`` or ``query_radius``).
+    #         Args:
+    #             indices: 1D int array-like of original point indices (as returned
+    #                 by ``query_knn`` or ``query_radius``).
 
-            Returns:
-                float64 Array of shape ``(len(indices), n_features)``.
+    #         Returns:
+    #             float64 Array of shape ``(len(indices), n_features)``.
 
-            Raises:
-                ValueError: If any index is out of bounds.
-            """
-            ...
+    #         Raises:
+    #             ValueError: If any index is out of bounds.
+    #         """
+    #         ...
 
-        @overload
-        def data(self, indices: None = None) -> Array[float]:
-            """Return all training-data points in original insertion order.
+    #     @overload
+    #     def data(self, indices: None = None) -> Array[float]:
+    #         """Return all training-data points in original insertion order.
 
-            Returns:
-                float64 Array of shape ``(n_points, n_features)``.
-            """
-            ...
+    #         Returns:
+    #             float64 Array of shape ``(n_points, n_features)``.
+    #         """
+    #         ...
 
-        def save(self, path: str) -> None:
-            """Serialize the tree to disk in MessagePack format.
+    #     def save(self, path: str) -> None:
+    #         """Serialize the tree to disk in MessagePack format.
 
-            Args:
-                path: File path to write to. Will be created or overwritten.
+    #         Args:
+    #             path: File path to write to. Will be created or overwritten.
 
-            Example:
-                >>> tree = MTree.from_array(data)
-                >>> tree.save("my_tree.mpack")
-            """
-            ...
+    #         Example:
+    #             >>> tree = MTree.from_array(data)
+    #             >>> tree.save("my_tree.mpack")
+    #         """
+    #         ...
 
-        @staticmethod
-        def load(path: str) -> "spatial.MTree":
-            """Deserialize a tree from disk.
+    #     @staticmethod
+    #     def load(path: str) -> "spatial.MTree":
+    #         """Deserialize a tree from disk.
 
-            Args:
-                path: File path to read from.
+    #         Args:
+    #             path: File path to read from.
 
-            Returns:
-                An MTree instance restored from the saved state.
+    #         Returns:
+    #             An MTree instance restored from the saved state.
 
-            Example:
-                >>> tree = MTree.load("my_tree.mpack")
-            """
-            ...
+    #         Example:
+    #             >>> tree = MTree.load("my_tree.mpack")
+    #         """
+    #         ...
 
-        @overload
-        def kernel_density(
-            self,
-            queries: ArrayLike,
-            bandwidth: float = 1.0,
-            kernel: Literal["gaussian", "epanechnikov", "uniform", "triangular"] = "gaussian",
-            normalize: bool = True
-        ) -> float:
-            """Estimate kernel density at a single query point.
+    #     @overload
+    #     def kernel_density(
+    #         self,
+    #         queries: ArrayLike,
+    #         bandwidth: float = 1.0,
+    #         kernel: Literal["gaussian", "epanechnikov", "uniform", "triangular"] = "gaussian",
+    #         normalize: bool = True
+    #     ) -> float:
+    #         """Estimate kernel density at a single query point.
 
-            Args:
-                queries: Single query point (scalar, list, or array-like).
-                bandwidth: Bandwidth (smoothing parameter) for the kernel. Larger values
-                    produce smoother estimates. Defaults to 1.0.
-                kernel: Kernel function to use for density estimation. Options are:
-                    - "gaussian": Gaussian (normal) kernel (default)
-                    - "epanechnikov": Epanechnikov kernel
-                    - "uniform": Uniform (rectangular) kernel
-                    - "triangular": Triangular kernel
-                normalize: Bool to control whether normalized values are returned.
+    #         Args:
+    #             queries: Single query point (scalar, list, or array-like).
+    #             bandwidth: Bandwidth (smoothing parameter) for the kernel. Larger values
+    #                 produce smoother estimates. Defaults to 1.0.
+    #             kernel: Kernel function to use for density estimation. Options are:
+    #                 - "gaussian": Gaussian (normal) kernel (default)
+    #                 - "epanechnikov": Epanechnikov kernel
+    #                 - "uniform": Uniform (rectangular) kernel
+    #                 - "triangular": Triangular kernel
+    #             normalize: Bool to control whether normalized values are returned.
 
-            Returns:
-                Density estimate at the query point (float).
-            """
-            ...
+    #         Returns:
+    #             Density estimate at the query point (float).
+    #         """
+    #         ...
 
-        @overload
-        def kernel_density(
-            self,
-            queries: ArrayLike,
-            bandwidth: float = 1.0,
-            kernel: Literal["gaussian", "epanechnikov", "uniform", "triangular"] = "gaussian",
-            normalize: bool = True
-        ) -> List:
-            """Estimate kernel density at multiple query points.
+    #     @overload
+    #     def kernel_density(
+    #         self,
+    #         queries: ArrayLike,
+    #         bandwidth: float = 1.0,
+    #         kernel: Literal["gaussian", "epanechnikov", "uniform", "triangular"] = "gaussian",
+    #         normalize: bool = True
+    #     ) -> List:
+    #         """Estimate kernel density at multiple query points.
 
-            Args:
-                queries: 2D array-like of query points with shape (n_queries, n_features).
-                bandwidth: Bandwidth (smoothing parameter) for the kernel. Larger values
-                    produce smoother estimates. Defaults to 1.0.
-                kernel: Kernel function to use for density estimation. Options are:
-                    - "gaussian": Gaussian (normal) kernel (default)
-                    - "epanechnikov": Epanechnikov kernel
-                    - "uniform": Uniform (rectangular) kernel
-                    - "triangular": Triangular kernel
-                normalize: Bool to control whether normalized values are returned.
+    #         Args:
+    #             queries: 2D array-like of query points with shape (n_queries, n_features).
+    #             bandwidth: Bandwidth (smoothing parameter) for the kernel. Larger values
+    #                 produce smoother estimates. Defaults to 1.0.
+    #             kernel: Kernel function to use for density estimation. Options are:
+    #                 - "gaussian": Gaussian (normal) kernel (default)
+    #                 - "epanechnikov": Epanechnikov kernel
+    #                 - "uniform": Uniform (rectangular) kernel
+    #                 - "triangular": Triangular kernel
+    #             normalize: Bool to control whether normalized values are returned.
 
-            Returns:
-                1D Array of density estimates, one for each query point.
-            """
-            ...
+    #         Returns:
+    #             1D Array of density estimates, one for each query point.
+    #         """
+    #         ...
 
-        @overload
-        def kernel_density(
-            self,
-            queries: None = None,
-            bandwidth: float = 1.0,
-            kernel: Literal["gaussian", "epanechnikov", "uniform", "triangular"] = "gaussian",
-            normalize: bool = True
-        ) -> List:
-            """Estimate kernel density at all training points.
+    #     @overload
+    #     def kernel_density(
+    #         self,
+    #         queries: None = None,
+    #         bandwidth: float = 1.0,
+    #         kernel: Literal["gaussian", "epanechnikov", "uniform", "triangular"] = "gaussian",
+    #         normalize: bool = True
+    #     ) -> List:
+    #         """Estimate kernel density at all training points.
 
-            Args:
-                queries: If None, computes density at each training point.
-                bandwidth: Bandwidth (smoothing parameter) for the kernel. Larger values
-                    produce smoother estimates. Defaults to 1.0.
-                kernel: Kernel function to use for density estimation. Options are:
-                    - "gaussian": Gaussian (normal) kernel (default)
-                    - "epanechnikov": Epanechnikov kernel
-                    - "uniform": Uniform (rectangular) kernel
-                    - "triangular": Triangular kernel
-                normalize: Bool to control whether normalized values are returned.
+    #         Args:
+    #             queries: If None, computes density at each training point.
+    #             bandwidth: Bandwidth (smoothing parameter) for the kernel. Larger values
+    #                 produce smoother estimates. Defaults to 1.0.
+    #             kernel: Kernel function to use for density estimation. Options are:
+    #                 - "gaussian": Gaussian (normal) kernel (default)
+    #                 - "epanechnikov": Epanechnikov kernel
+    #                 - "uniform": Uniform (rectangular) kernel
+    #                 - "triangular": Triangular kernel
+    #             normalize: Bool to control whether normalized values are returned.
 
-            Returns:
-                1D Array of density estimates at each training point.
-            """
-            ...
+    #         Returns:
+    #             1D Array of density estimates at each training point.
+    #         """
+    #         ...
 
     class RPTree:
         """Random Projection tree for efficient nearest neighbor queries.

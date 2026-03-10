@@ -1,5 +1,5 @@
 use std::{cmp::Ordering};
-use crate::{array::{NdArray, Shape}, spatial::common::DistanceMetric};
+use crate::{array::{NdArray, Shape}, spatial::{common::DistanceMetric}};
 use crate::random::Generator;
 use crate::spatial::queries::{KnnQuery, RadiusQuery, KdeQuery};
 use crate::spatial::SpatialTree;
@@ -67,9 +67,8 @@ pub struct VPNode {
     pub right: Option<usize>,
 
     pub radius: f64,
-
-    pub min_dist: f64,
-    pub max_dist: f64,
+    pub center: Vec<f64>,
+    pub bounding_radius: f64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -125,7 +124,7 @@ impl VPTree {
         self.data = NdArray::from_vec(Shape::new(vec![self.n_points, self.dim]), new_data);
     }
 
-    fn init_node(&mut self, start: usize, end: usize) -> (f64, f64, f64, usize) {
+    fn init_node(&mut self, start: usize, end: usize) -> (f64, usize) {
         let vantage_idx = self.selection_method.select_vantage(
             start,
             end,
@@ -135,18 +134,12 @@ impl VPTree {
         ); 
         self.indices.swap(start, vantage_idx);  
 
-
-        let mut min = f64::INFINITY;
-        let mut max = f64::NEG_INFINITY;
-
         let vantage_point = self.data.row(self.indices[start]).to_vec();
 
         let mut idx_dist: Vec<(usize, f64)> = (start + 1..end)
             .map(|i| {
                 let p = self.data.row(self.indices[i]);
                 let dist = self.metric.distance(p, &vantage_point);
-                min = min.min(dist);
-                max = max.max(dist);
                 (i, dist)
             })
             .collect();
@@ -172,36 +165,61 @@ impl VPTree {
         let reordered: Vec<usize> = idx_dist.iter().map(|(i, _)| self.indices[*i]).collect();
         self.indices[start + 1..end].copy_from_slice(&reordered);
 
-        (median_radius, min, max, start + 1 + mid)
+        (median_radius, start + 1 + mid)
     }
 
     fn build_recursive(&mut self, start: usize, end: usize) -> usize {
-        let (radius, min_dist, max_dist, mid) = self.init_node(start, end);
-    
-        let node_idx = self.nodes.len();
-
-        self.nodes.push(VPNode { 
-            start, 
-            end, 
-            left: None, 
-            right: None, 
-            radius, 
-            min_dist, 
-            max_dist, 
-        });
-        
         let count = end - start;
+        let dim = self.dim;
+
+        let mut center = vec![0.0; dim];
+        for i in start..end {
+            let p = self.data.row(self.indices[i]);
+            for d in 0..dim {
+                center[d] += p[d];
+            }
+        }
+        for d in 0..dim {
+            center[d] /= count as f64;
+        }
+
+        let bounding_radius = (start..end)
+            .map(|i| self.metric.distance(self.data.row(self.indices[i]), &center))
+            .fold(0.0f64, f64::max);
 
         if count <= self.leaf_size {
+            let node_idx = self.nodes.len();
+            self.nodes.push(VPNode {
+                start,
+                end,
+                left: None,
+                right: None,
+                radius: 0.0,
+                center,
+                bounding_radius,
+            });
             return node_idx;
         }
+
+        let (radius, mid) = self.init_node(start, end);
+
+        let node_idx = self.nodes.len();
+        self.nodes.push(VPNode {
+            start,
+            end,
+            left: None,
+            right: None,
+            radius,
+            center,
+            bounding_radius,
+        });
 
         let left_idx = self.build_recursive(start, mid);
         let right_idx = self.build_recursive(mid, end);
 
         self.nodes[node_idx].left = Some(left_idx);
         self.nodes[node_idx].right = Some(right_idx);
-        
+
         node_idx
     }
 }
@@ -224,10 +242,8 @@ impl SpatialTree for VPTree {
 
     fn min_distance_to_node(&self, node_idx: usize, query: &[f64]) -> f64 {
         let node = &self.nodes[node_idx];
-        let vp = self.get_point(node.start);
-        let d = self.metric.distance(query, vp);
-        let shell_bound = (d - node.max_dist).max(node.min_dist - d).max(0.0);
-        shell_bound.min(d) 
+        let d = self.metric.distance(query, &node.center);
+        (d - node.bounding_radius).max(0.0)
     }
 
     fn knn_child_order(&self, node_idx: usize, query: &[f64]) -> (usize, usize) {

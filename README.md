@@ -33,12 +33,24 @@ for output_idx, original_idx in enumerate(result.indices):
 print(f"{result.mean():.2f}, {result.median():.2f}, {result.radius():.2f}")
 ```
 
-
 ## Installation
 
 `pip install ironforest`
 
 You can also build with `maturin build --release` assuming maturin is installed.
+
+## Status
+
+The main things I need to finish before 1.0 are improving compatibility with the wider python ecosystem and improving the robustness of my algorithms. Main goals are:
+- Adding buffer protocols
+- Integration with pandas and polars
+- Fixing a few known bugs
+- Spatial & RPForest objects
+
+**Known Issues**
+- RPTree has an issue with exact kNN in low dimensions. The RPTree should not really be used in these situations anyway but it is something to be aware of.
+
+I'd also like to highlight the fact that before 1.0, serialization will not be gauranteed across versions. This is because the underlying trees are still going through a fair amount of iteration as we are still in the early stages of this library. After 1.0 we will ensure backwards compatiability but prior to then it is not gauranteed.  
 
 ## Spatial
 Spatial trees support kNN, radius, and KDE queries. All spatial trees support serialization via `save()` & `load()`, alternatively you can use pickle.
@@ -53,7 +65,7 @@ Spatial trees support kNN, radius, and KDE queries. All spatial trees support se
 
 ___
 
-Speed comparison of our KDTree vs SciPy & Scikit-Learn on a randomly generated uniform dataset. KDE is not exposed directly on either of their trees, but `algorithm="kd_tree"` was specified for scikit-learn's `KernelDensity` object for the below comparison.
+Speed comparison of our KDTree vs SciPy & Scikit-Learn on a randomly generated uniform dataset. KDE is not exposed directly on either of their trees, but `algorithm="kd_tree"` was specified for scikit-learn's `KernelDensity` object for the below comparison. More comprehensive bencmarks can be found at docs/spatial.md
 
 <div align="center">
 
@@ -107,9 +119,10 @@ These modules are not the primary focus of the library but we still expose them 
 - Basic statistical methods for `Array` objects, mean, median, var std, and quantile.
 - Pearson and Spearman correlation.
 
-## Status
-This is largely a learning project and the API is subject to change. Expect less new features going forwards. I intend to expand my tree engine to support a wider variety of decision-tree type ML algorithms, as well as adding a few additional nicher spatial indexing trees but my core focus for the forseeable future is ironing out the kinks of what's already here and documenting what we are capable of and where we fall short.
+## Rationale
 
-The core rationale for this project was to build these algorithms from the ground up to understand how they work under the hood. I'm not looking for contributors at this stage but always welcome suggestions and criticism.
+This project very much started out as a learning project, which is primarily why we dip into many niches that are already covered within the python ecosystem. Going forward however the focus is on our spatial & models modules. IronForest will never be a fully fledged alternative to the likes of scikit-learn, nor will it ever be competitve with some of the state of the art aNN libraries for high speed aNN queries on large datasets. 
+
+What I intend to provide is an easy to use API with high performance while maintaing zero dependencies. Currently our spatial module is in a fairly good spot, but our models can and will be improved in this regard. Any bugs reports would be much appreciated and I'm open to feature requests that align with the above stated goals.
 
 

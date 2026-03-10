@@ -2,8 +2,6 @@ use crate::{KernelType, Shape, array::NdArray, spatial::common::DistanceMetric};
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 
-
-
 const KDE_PAR_THRESHOLD: usize = 512;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

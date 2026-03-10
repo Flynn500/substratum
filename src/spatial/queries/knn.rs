@@ -4,6 +4,9 @@ use rayon::prelude::*;
 use crate::spatial::SpatialTree;
 
 const KNN_PAR_THRESHOLD: usize = 512;
+const EPSILON: f64 = 1E-10;
+
+
 
 pub trait KnnQuery: SpatialTree {
     fn query_knn(&self, query: &[f64], k: usize) -> Vec<(usize, f64)> {
@@ -45,17 +48,19 @@ pub trait KnnQuery: SpatialTree {
 
         let (first, second, node_dist) = self.node_projection(node_idx, query);
 
-        if heap.len() == k && node_dist > heap.peek().unwrap().distance {
+        let threshold = heap.peek().map(|t| t.distance + EPSILON).unwrap_or(f64::INFINITY);
+
+        if heap.len() == k && node_dist > threshold {
             return;
         }
 
         let first_dist = self.min_distance_to_node(first, query);
-        if heap.len() < k || first_dist <= heap.peek().unwrap().distance {
+        if heap.len() < k || first_dist <= threshold {
             self.query_knn_recursive(first, query, heap, k);
         }
 
         let second_dist = self.min_distance_to_node(second, query);
-        if heap.len() < k || second_dist <= heap.peek().unwrap().distance {
+        if heap.len() < k || second_dist <= threshold {
             self.query_knn_recursive(second, query, heap, k);
         }
     }
