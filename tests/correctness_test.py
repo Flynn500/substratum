@@ -6,7 +6,7 @@ TREES = {
     # "BruteForce":   lambda d, ls: spatial.BruteForce.from_array(d),
     # "KDTree":   lambda d, ls: spatial.KDTree.from_array(d, leaf_size=ls),
     # "BallTree":   lambda d, ls: spatial.BallTree.from_array(d, leaf_size=ls),
-    # "MTree":   lambda d, ls: spatial.MTree.from_array(d, capacity=ls),
+    "MTree":   lambda d, ls: spatial.MTree.from_array(d, capacity=ls),
     "VPTree":   lambda d, ls: spatial.VPTree.from_array(d, leaf_size=ls, selection="variance"),
     # "RPTree":   lambda d, ls: spatial.RPTree.from_array(d, leaf_size=ls),
 }

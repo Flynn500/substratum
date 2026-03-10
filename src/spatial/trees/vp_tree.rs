@@ -225,7 +225,6 @@ impl SpatialTree for VPTree {
     fn min_distance_to_node(&self, node_idx: usize, query: &[f64]) -> f64 {
         let node = &self.nodes[node_idx];
         let vp = self.get_point(node.start);
-        //let d = self.metric.distance(query, vp);
         let d = self.metric.distance(query, vp);
         let shell_bound = (d - node.max_dist).max(node.min_dist - d).max(0.0);
         shell_bound.min(d) 

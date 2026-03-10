@@ -4,7 +4,6 @@ import time
 import ironforest as irn
 
 
-# Download e.g. http://ann-benchmarks.com/sift-128-euclidean.hdf5
 DATASET_PATH = "tests\sift-128-euclidean.hdf5"
 K = 10
 
@@ -12,7 +11,7 @@ def load_dataset(path):
     with h5py.File(path, "r") as f:
         train = np.array(f["train"], dtype=np.float64)
         test  = np.array(f["test"],  dtype=np.float64)
-        neighbors = np.array(f["neighbors"])  # ground truth, shape (n_queries, 100)
+        neighbors = np.array(f["neighbors"])
     return train, test, neighbors
 
 
@@ -31,7 +30,7 @@ train = irn.ndutils.from_numpy(train)
 test = irn.ndutils.from_numpy(test)
 print("Building index...")
 t0 = time.perf_counter()
-tree = irn.spatial.RPTree.from_array(train, leaf_size=200)
+tree = irn.spatial.RPTree.from_array(train, leaf_size=500)
 build_time = time.perf_counter() - t0
 print(f"Build time: {build_time:.2f}s")
 
@@ -40,7 +39,7 @@ n_queries = test.shape[0]
 
 print(f"Build time: {build_time:.2f}s")
 print("Querying...")
-for n_candidates in [500, 1000, 5000, 10000]:
+for n_candidates in [500, 1000, 5000, 10000, 20000]:
     results = []
     t0 = time.perf_counter()
     for i in range(n_queries):

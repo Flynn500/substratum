@@ -1,7 +1,5 @@
 import ironforest as irn
 
-#MAKE SLICES ACCEPT NDARRAY
-
 def _tricube(d, max_d):
     """Tricube kernel: (1 - (d/max_d)^3)^3 for d < max_d, else 0."""
     if max_d == 0.0:
@@ -23,6 +21,20 @@ def _gaussian(d, max_d):
     return irn.Array.exp(-0.5 * u ** 2)
 
 class LocalRegression:
+    """
+    Local polynomial regression estimator.
+
+    Predictions are computed by fitting a weighted polynomial model
+    to the k nearest neighbors of each query point. Neighbor weights
+    are determined by a kernel function applied to their distances.
+
+    Args:
+        tree: Spatial index built from the predictor data
+        y: Response values of shape (n_samples,)
+        kernel: Kernel function used for weighting neighbors
+        degree: Local polynomial degree (1 or 2)
+        k: Number of neighbors used for each local fit
+    """
     KERNELS = {
         "tricube": _tricube,
         "epanechnikov": _epanechnikov,
@@ -30,20 +42,6 @@ class LocalRegression:
     }
 
     def __init__(self, tree, y, kernel="tricube", degree=1, k=None):
-        """
-        Parameters
-        ----------
-        tree : spatial index (KDTree, BallTree, VPTree)
-            Built from the predictor points X.
-        y : irn.Array
-            Response values, shape (n,).
-        kernel : str
-            One of 'tricube', 'epanechnikov', 'gaussian'.
-        degree : int
-            Local polynomial degree (1 or 2).
-        k : int or None
-            Number of neighbors. Defaults to n * 0.3 if None.
-        """
         self.tree = tree
         self.y = y
         self.kernel = kernel
@@ -53,20 +51,21 @@ class LocalRegression:
     @staticmethod
     def from_array(arr: irn.Array, y, kernel, degree, k=None) -> "LocalRegression":
         """
-        Parameters
-        ----------
-        arr : irn.Array
-            Data to build BallTree tree with.
-        y : irn.Array
-            Response values, shape (n,).
-        kernel : str
-            One of 'tricube', 'epanechnikov', 'gaussian'.
-        degree : int
-            Local polynomial degree (1 or 2).
-        k : int or None
-            Number of neighbors. Defaults to n * 0.3 if None.
+        Construct a LocalRegression model from raw predictor data.
+
+        A KDTree is built internally from the provided array.
+
+        Args:
+            arr: Predictor data of shape (n_samples, n_features)
+            y: Response values of shape (n_samples,)
+            kernel: Kernel function used for weighting neighbors
+            degree: Local polynomial degree (1 or 2)
+            k: Number of neighbors used for each local fit
+
+        Returns:
+            LocalRegression: Initialized regression model
         """
-        tree = irn.spatial.BallTree.from_array(arr)
+        tree = irn.spatial.KDTree.from_array(arr)
         return LocalRegression(tree, y, kernel, degree, k)
 
     def _build_design(self, X_local):
@@ -100,14 +99,18 @@ class LocalRegression:
     
     def predict(self, X_query):
         """
-        Parameters
-        ----------
-        X_query : ArrayLike
-            Query points, shape (m, p) or (p,) for a single point.
+        Predict response values for query points.
 
-        Returns
-        -------
-        irn.Array of predicted values, shape (m,).
+        A weighted local polynomial model is fitted to the k nearest
+        neighbors of each query point using the specified kernel.
+
+        Args:
+            X_query: Query points of shape (n_samples, n_features)
+                or (n_features,) for a single sample
+
+        Returns:
+            Predicted values of shape (n_samples,). Returns a single
+            value if one query point is provided.
         """
         
         kernel_fn = self.KERNELS[self.kernel]

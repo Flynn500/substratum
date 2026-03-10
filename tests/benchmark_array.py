@@ -26,7 +26,7 @@ def bench_array_creation(size=1000):
     ss_time = benchmark(lambda: irn.ndutils.zeros(shape_ss), "ironforest zeros")
     np_time = benchmark(lambda: np.zeros(shape_np), "numpy zeros")
     
-    print(f"Ratio (numpy/substratum): {np_time/ss_time:.2f}x")
+    print(f"Ratio (numpy/IronForest): {np_time/ss_time:.2f}x")
 
 def bench_operations(size=1000):
     """Benchmark element-wise operations"""
@@ -43,17 +43,17 @@ def bench_operations(size=1000):
     b_np = np.array(data_f).reshape(size, size)
     
     # Addition
-    ss_add = benchmark(lambda: a_ss + b_ss, "substratum add")
+    ss_add = benchmark(lambda: a_ss + b_ss, "IronForest add")
     np_add = benchmark(lambda: a_np + b_np, "numpy add")
     print(f"Ratio: {np_add/ss_add:.2f}x\n")
     
     # Multiplication
-    ss_mul = benchmark(lambda: a_ss * b_ss, "substratum mul")
+    ss_mul = benchmark(lambda: a_ss * b_ss, "IronForest mul")
     np_mul = benchmark(lambda: a_np * b_np, "numpy mul")
     print(f"Ratio: {np_mul/ss_mul:.2f}x\n")
     
     # Negation
-    ss_neg = benchmark(lambda: -a_ss, "substratum neg")
+    ss_neg = benchmark(lambda: -a_ss, "IronForest neg")
     np_neg = benchmark(lambda: -a_np, "numpy neg")
     print(f"Ratio: {np_neg/ss_neg:.2f}x")
 
@@ -68,7 +68,7 @@ def bench_math_functions(size=1000):
     arr_np = np.array(data).reshape(size, size)
     
     # sqrt
-    ss_sqrt = benchmark(lambda: arr_ss.sqrt(), "substratum sqrt")
+    ss_sqrt = benchmark(lambda: arr_ss.sqrt(), "IronForest sqrt")
     np_sqrt = benchmark(lambda: np.sqrt(arr_np), "numpy sqrt")
     print(f"Ratio: {np_sqrt/ss_sqrt:.2f}x\n")
     
@@ -77,12 +77,12 @@ def bench_math_functions(size=1000):
     arr_ss_small = irn.Array([size, size], small_data)
     arr_np_small = np.array(small_data).reshape(size, size)
     
-    ss_exp = benchmark(lambda: arr_ss_small.exp(), "substratum exp")
+    ss_exp = benchmark(lambda: arr_ss_small.exp(), "IronForest exp")
     np_exp = benchmark(lambda: np.exp(arr_np_small), "numpy exp")
     print(f"Ratio: {np_exp/ss_exp:.2f}x\n")
     
     # sin
-    ss_sin = benchmark(lambda: arr_ss.sin(), "substratum sin")
+    ss_sin = benchmark(lambda: arr_ss.sin(), "IronForest sin")
     np_sin = benchmark(lambda: np.sin(arr_np), "numpy sin")
     print(f"Ratio: {np_sin/ss_sin:.2f}x")
 
@@ -97,23 +97,23 @@ def bench_random(size=1000):
     shape_np = (size, size)
     
     # Uniform
-    ss_uni = benchmark(lambda: gen_ss.uniform(0.0, 1.0, shape_ss), "substratum uniform")
+    ss_uni = benchmark(lambda: gen_ss.uniform(0.0, 1.0, shape_ss), "IronForest uniform")
     np_uni = benchmark(lambda: rng_np.uniform(0.0, 1.0, shape_np), "numpy uniform")
     print(f"Ratio: {np_uni/ss_uni:.2f}x\n")
     
     # Normal
-    ss_norm = benchmark(lambda: gen_ss.standard_normal(shape_ss), "substratum normal")
+    ss_norm = benchmark(lambda: gen_ss.standard_normal(shape_ss), "IronForest normal")
     np_norm = benchmark(lambda: rng_np.standard_normal(shape_np), "numpy normal")
     print(f"Ratio: {np_norm/ss_norm:.2f}x\n")
     
     # Randint
-    ss_int = benchmark(lambda: gen_ss.randint(0, 100, shape_ss), "substratum randint")
+    ss_int = benchmark(lambda: gen_ss.randint(0, 100, shape_ss), "IronForest randint")
     np_int = benchmark(lambda: rng_np.integers(0, 100, shape_np), "numpy randint")
     print(f"Ratio: {np_int/ss_int:.2f}x")
 
 if __name__ == "__main__":
     print("=" * 50)
-    print("Substratum vs NumPy Benchmark")
+    print("IronForest vs NumPy Benchmark")
     print("=" * 50)
     
     bench_array_creation()

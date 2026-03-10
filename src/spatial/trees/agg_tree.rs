@@ -335,13 +335,6 @@ impl AggTree {
             self.seq_kde_recursion(self.kernel, self.bandwidth, queries, n_queries, dim)
         };
 
-        for i in 0..n_queries {
-            let query = &queries.as_slice()[i * dim..(i + 1) * dim];
-            let mut density = 0.0;
-            self.kde_recursive(0, query, self.bandwidth, &mut density, self.kernel);
-            results[i] = density;
-        }
-
         if normalize {
             let h_d = self.bandwidth.powi(dim as i32);
             let c_k = self.kernel.normalization_constant(dim);

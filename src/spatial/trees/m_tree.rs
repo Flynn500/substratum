@@ -342,7 +342,7 @@ impl MTree {
                         0.0
                     };
                     let best = heap.peek().map(|h| h.distance).unwrap_or(f64::MAX);
-                    if heap.len() == k && self.metric.pre_transform_radius(lb) > best {
+                    if heap.len() == k && lb > best {
                         continue;
                     }
 
@@ -411,7 +411,7 @@ impl MTree {
                     } else {
                         0.0
                     };
-                    if self.metric.pre_transform_radius(lb) > radius {
+                    if lb > radius {
                         continue;
                     }
 

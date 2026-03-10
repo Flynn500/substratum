@@ -3,7 +3,7 @@ Fast spatial indexing and approximate density estimation for Python, powered by 
 
 ## Quickstart
 
-Quickly find the k nearest neighbours in high-dimensional space using our Random Projection Tree.
+Quickly find the k nearest neighbours in high-dimensional space using random projections and our KDTree.
 
 ```python
 import ironforest as irn

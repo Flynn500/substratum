@@ -16,6 +16,7 @@ fn parse_dtype(dtype: Option<&str>) -> PyResult<bool> {
     }
 }
 
+
 #[pymethods]
 impl PyArray {
     // -------------------------------------------------------------------------

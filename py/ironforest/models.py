@@ -1,12 +1,14 @@
 """Machine learning models built on top of ironforest."""
 
-from .linear_regression import LinearRegression as LinearRegression
-from .local_regression import LocalRegression as LocalRegression
-from .decision_tree import DecisionTreeClassifier as DecisionTreeClassifier
-from .decision_tree import DecisionTreeRegressor as DecisionTreeRegressor
-from .random_forest import RandomForestRegressor as RandomForestRegressor
-from .random_forest import RandomForestClassifier as RandomForestClassifier
-from .isolation_forest import IsolationForest as IsolationForest
+from .linear_regression import LinearRegression
+from .local_regression import LocalRegression
+from .decision_tree import DecisionTreeClassifier
+from .decision_tree import DecisionTreeRegressor
+from .random_forest import RandomForestRegressor
+from .random_forest import RandomForestClassifier
+from .isolation_forest import IsolationForest
+from .knn import KNNClassifier
+from .knn import KNNRegressor
 
 __all__ = [
     "LinearRegression",
@@ -15,5 +17,7 @@ __all__ = [
     "DecisionTreeRegressor",
     "RandomForestClassifier",
     "RandomForestRegressor",
-    "IsolationForest"
+    "IsolationForest",
+    "KNNClassifier",
+    "KNNRegressor"
 ]
