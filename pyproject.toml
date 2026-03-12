@@ -12,8 +12,12 @@ readme = "README.md"
 [tool.maturin]
 features = ["pyo3/extension-module", "pyo3/multiple-pymethods"]
 include = [
-    "py/ironforest/_core.pyi",
-    "py/ironforest/py.typed"
+    "py/ironforest/_core/linalg.pyi",
+    "py/ironforest/_core/ndutils.pyi",
+    "py/ironforest/_core/random.pyi",
+    "py/ironforest/_core/spatial.pyi",
+    "py/ironforest/_core/stats.pyi",
+    "py/ironforest/_core/py.typed"
 ]
 module-name = "ironforest._core"
 python-source = "py"

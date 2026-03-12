@@ -1,5 +1,7 @@
 """IronForest: A library supporting spatial queries & tree-based machine learning."""
 
+import sys
+
 from ironforest._core import (
     Array,
     linalg,
@@ -21,4 +23,4 @@ __all__ = [
     "models",
 ]
 
-__version__ = "0.5.0"
+__version__ = "0.5.2"

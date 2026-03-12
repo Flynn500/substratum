@@ -1,3 +1,12 @@
+## 0.5.2
+
+### Added
+- Random projection splits in random forest and decision tree
+
+### Fixed
+- Bug in exact kNN for random projection tree
+- Modules showing up as classes in type stubs
+
 ## 0.5.1
 
 ### Added

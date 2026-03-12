@@ -12,7 +12,7 @@ from matplotlib.colors import ListedColormap
 from ironforest.models import RandomForestClassifier, RandomForestRegressor
 
 
-# ── Datasets ──────────────────────────────────────────────────────────────────
+
 
 def make_clf_dataset(n=500, noise=0.10, seed=42):
     rng = np.random.default_rng(seed)
@@ -27,8 +27,6 @@ def make_reg_dataset(n=200, noise=0.25, seed=42):
     y = np.sin(X[:, 0]) + rng.normal(0, noise, n)
     return X, y
 
-
-# ── Plot helpers ──────────────────────────────────────────────────────────────
 
 CMAP_BG  = ListedColormap(["#aec6f5", "#f5aeae"])
 CMAP_PTS = ListedColormap(["#1a6eff50", "#ff222250"])
@@ -65,7 +63,6 @@ def plot_reg_curve(ax, model, X, y, title):
     ax.legend(fontsize=7, loc="upper right")
 
 
-# ── Main ──────────────────────────────────────────────────────────────────────
 
 def main():
     X_clf, y_clf = make_clf_dataset()
@@ -130,3 +127,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
